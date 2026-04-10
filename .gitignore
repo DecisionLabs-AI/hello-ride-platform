@@ -1,9 +1,11 @@
-# Dependencies
-node_modules/
-frontend/node_modules/
+# Python
+__pycache__/
+*.pyc
+*.pyo
+*.pyd
 
-# Build output
-frontend/dist/
+# Streamlit
+.streamlit/secrets.toml
 
 # Environment
 .env
