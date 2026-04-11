@@ -7,7 +7,7 @@ from components.header import render_mobile_header, render_page_header, render_s
 from components.navigation import render_sidebar
 from components.status_blocks import render_route_timeline, render_status_strip, render_timer_ring
 from data.mock_driver import DRIVER_EXPERIENCE, DRIVER_FORECAST_BARS
-from utils.state import initialize_state, set_driver_step
+from utils.state import initialize_state, set_driver_step, driver_logout
 from utils.styles import apply_global_styles
 
 
@@ -37,14 +37,6 @@ def apply_driver_styles() -> None:
 
         .hr-mobile-side:empty {
           min-width: 2.8rem;
-        }
-
-        .driver-app-header {
-          display: grid;
-          grid-template-columns: auto 1fr auto;
-          align-items: center;
-          gap: 0.75rem;
-          padding: 0.5rem 0.15rem 1rem;
         }
 
         .driver-status-pill {
@@ -82,21 +74,6 @@ def apply_driver_styles() -> None:
           color: #00b14f;
         }
 
-        .driver-avatar {
-          display: inline-flex;
-          align-items: center;
-          justify-content: center;
-          width: 2.15rem;
-          height: 2.15rem;
-          border-radius: 999px;
-          background: linear-gradient(135deg, #dff7e8 0%, #c7f1d6 100%);
-          color: #067c37;
-          font-size: 0.8rem;
-          font-weight: 800;
-          border: 1px solid rgba(0, 177, 79, 0.16);
-          margin-left: auto;
-        }
-
         .driver-subhead {
           margin: 0.1rem 0 0.95rem;
           text-align: center;
@@ -129,6 +106,176 @@ def apply_driver_styles() -> None:
           text-align: center;
           font-weight: 600;
         }
+
+        /* ── Registration page ────────────────────────────────────────────── */
+
+        .reg-intro {
+          padding: 0.9rem 0 1.1rem;
+          text-align: center;
+        }
+
+        .reg-intro-title {
+          font-size: 1.2rem;
+          font-weight: 800;
+          letter-spacing: -0.025em;
+          color: #0f172a;
+          line-height: 1.2;
+          margin-bottom: 0.4rem;
+        }
+
+        .reg-intro-body {
+          font-size: 0.86rem;
+          color: #64748b;
+          line-height: 1.5;
+          max-width: 24rem;
+          margin: 0 auto;
+        }
+
+        [data-testid="stVerticalBlockBorderWrapper"]:has(.reg-form-shell-anchor) {
+          border-radius: 1.15rem;
+          border: 1px solid rgba(217, 228, 238, 0.82);
+          background: rgba(255, 255, 255, 0.8);
+          box-shadow: 0 16px 36px rgba(15, 23, 42, 0.06);
+        }
+
+        .reg-eligibility {
+          background: rgba(255, 255, 255, 0.72);
+          border: 1px solid rgba(217, 228, 238, 0.7);
+          border-radius: 1rem;
+          padding: 0.9rem 1rem;
+          margin-bottom: 0.85rem;
+        }
+
+        .reg-eligibility-label {
+          font-size: 0.7rem;
+          font-weight: 700;
+          letter-spacing: 0.08em;
+          text-transform: uppercase;
+          color: #94a3b8;
+          margin-bottom: 0.65rem;
+        }
+
+        .reg-eligibility-grid {
+          display: grid;
+          grid-template-columns: 1fr 1fr;
+          gap: 0.45rem;
+        }
+
+        .reg-eligibility-item {
+          display: flex;
+          align-items: center;
+          gap: 0.45rem;
+          padding: 0.5rem 0.65rem;
+          background: rgba(0, 177, 79, 0.06);
+          border: 1px solid rgba(0, 177, 79, 0.16);
+          border-radius: 0.6rem;
+          font-size: 0.8rem;
+          font-weight: 600;
+          color: #1a3a2a;
+          line-height: 1.2;
+        }
+
+        .reg-check {
+          color: #00b14f;
+          font-size: 0.85rem;
+          font-weight: 800;
+          flex-shrink: 0;
+        }
+
+        .reg-doc-list {
+          background: rgba(255, 255, 255, 0.72);
+          border: 1px solid rgba(217, 228, 238, 0.7);
+          border-radius: 1rem;
+          overflow: hidden;
+          margin-bottom: 0.85rem;
+        }
+
+        .reg-doc-list-label {
+          font-size: 0.7rem;
+          font-weight: 700;
+          letter-spacing: 0.08em;
+          text-transform: uppercase;
+          color: #94a3b8;
+          padding: 0.8rem 1rem 0.55rem;
+          border-bottom: 1px solid rgba(217, 228, 238, 0.6);
+        }
+
+        .reg-doc-item {
+          display: flex;
+          align-items: center;
+          justify-content: space-between;
+          padding: 0.62rem 1rem;
+          border-bottom: 1px solid rgba(217, 228, 238, 0.35);
+        }
+
+        .reg-doc-item:last-child {
+          border-bottom: none;
+        }
+
+        .reg-doc-name {
+          font-size: 0.83rem;
+          font-weight: 600;
+          color: #1e293b;
+        }
+
+        .reg-doc-status {
+          font-size: 0.7rem;
+          font-weight: 600;
+          color: #94a3b8;
+          background: rgba(148, 163, 184, 0.1);
+          border: 1px solid rgba(148, 163, 184, 0.18);
+          padding: 0.18rem 0.5rem;
+          border-radius: 999px;
+          white-space: nowrap;
+        }
+
+        .reg-support {
+          text-align: center;
+          font-size: 0.78rem;
+          color: #64748b;
+          line-height: 1.5;
+          padding: 0.8rem 0.35rem 0.1rem;
+        }
+
+        [data-testid="stVerticalBlockBorderWrapper"]:has(.reg-cta-anchor) {
+          margin-top: 1.45rem;
+          border-radius: 1.25rem;
+          border: 1px solid rgba(217, 228, 238, 0.92);
+          background: rgba(255, 255, 255, 0.9);
+          box-shadow: 0 18px 36px rgba(15, 23, 42, 0.1);
+          backdrop-filter: blur(14px);
+          position: sticky;
+          bottom: 0.9rem;
+          z-index: 12;
+        }
+
+        [data-testid="stVerticalBlockBorderWrapper"]:has(.reg-cta-anchor) .stButton > button,
+        [data-testid="stVerticalBlockBorderWrapper"]:has(.reg-cta-anchor) [data-testid="stBaseButton-primary"] {
+          min-height: 3.65rem;
+          padding: 0.95rem 1.25rem;
+          border-radius: 1.1rem;
+          font-size: 1rem;
+          font-weight: 800;
+          letter-spacing: -0.01em;
+          color: #ffffff;
+          border: 1px solid rgba(8, 119, 51, 0.96);
+          background: linear-gradient(180deg, #0fd163 0%, #00b14f 60%, #0c9540 100%);
+          box-shadow: 0 14px 30px rgba(0, 177, 79, 0.28), 0 4px 12px rgba(12, 125, 53, 0.16);
+          transition: transform 0.16s ease, box-shadow 0.16s ease, background 0.16s ease;
+        }
+
+        [data-testid="stVerticalBlockBorderWrapper"]:has(.reg-cta-anchor) .stButton > button:hover,
+        [data-testid="stVerticalBlockBorderWrapper"]:has(.reg-cta-anchor) [data-testid="stBaseButton-primary"]:hover {
+          transform: translateY(-1px);
+          background: linear-gradient(180deg, #1ad56a 0%, #07b455 55%, #0c8740 100%);
+          box-shadow: 0 18px 34px rgba(0, 177, 79, 0.34), 0 6px 14px rgba(12, 125, 53, 0.18);
+        }
+
+        [data-testid="stVerticalBlockBorderWrapper"]:has(.reg-cta-anchor) .stButton > button:focus,
+        [data-testid="stVerticalBlockBorderWrapper"]:has(.reg-cta-anchor) [data-testid="stBaseButton-primary"]:focus {
+          border-color: rgba(8, 119, 51, 0.96);
+          box-shadow: 0 0 0 0.22rem rgba(0, 177, 79, 0.18), 0 14px 30px rgba(0, 177, 79, 0.28);
+        }
         </style>
         """,
         unsafe_allow_html=True,
@@ -148,8 +295,47 @@ def join_airport_queue() -> None:
 
 
 def accept_next_queue_job() -> None:
+    # Snapshot the previewed job into accepted_job before transitioning.
+    # jobRequest, tripNavigation, and paymentComplete all read from this key.
+    st.session_state.accepted_job = DRIVER_EXPERIENCE["guideTrip"]
     st.session_state.driver_in_queue = False
     set_driver_step("jobRequest")
+
+
+# ---------------------------------------------------------------------------
+# Navigation callbacks — used as on_click handlers so they fire reliably even
+# when a @st.fragment timer is auto-running in the background.  With inline
+# `if st.button():` blocks, a fragment auto-rerun can absorb the click before
+# the outer script gets a chance to evaluate it, causing the apparent need for
+# a second tap.  on_click callbacks are queued before the next full-page rerun
+# and are guaranteed to execute exactly once per click.
+# ---------------------------------------------------------------------------
+
+def _cb_registration_back() -> None:
+    set_driver_step("login")
+
+
+def _cb_accept_job() -> None:
+    set_driver_step("tripNavigation")
+
+
+def _cb_reject_job() -> None:
+    st.session_state.accepted_job = None
+    set_driver_step("guide")
+
+
+def _cb_arrived_at_pickup() -> None:
+    set_driver_step("paymentComplete")
+
+
+def _cb_confirm_payment() -> None:
+    st.session_state.accepted_job = None
+    st.session_state.driver_online = True
+    set_driver_step("guide")
+
+
+def _cb_logout() -> None:
+    driver_logout()
 
 
 @st.fragment(run_every="1s")
@@ -168,21 +354,18 @@ def driver_status_label() -> str:
     return "Online" if st.session_state.driver_online else "Offline"
 
 
-def render_driver_app_header(show_avatar: bool = True) -> None:
+def render_driver_app_header() -> None:
     pill_class = "driver-status-pill is-online" if st.session_state.driver_online else "driver-status-pill"
-    st.markdown(
-        f"""
-        <div class="driver-app-header">
-          <div class="{pill_class}">
-            <span class="driver-status-dot"></span>
-            {driver_status_label()}
-          </div>
-          <div class="driver-brand-center">Hello Ride</div>
-          <div class="driver-avatar">{DRIVER_EXPERIENCE['profile']['name'].split()[0][0]}J</div>
-        </div>
-        """,
-        unsafe_allow_html=True,
-    )
+    left_col, center_col, right_col = st.columns([3, 4, 2], vertical_alignment="center")
+    with left_col:
+        st.markdown(
+            f'<div class="{pill_class}"><span class="driver-status-dot"></span>{driver_status_label()}</div>',
+            unsafe_allow_html=True,
+        )
+    with center_col:
+        st.markdown('<div class="driver-brand-center">Hello Ride</div>', unsafe_allow_html=True)
+    with right_col:
+        st.button("Logout", key="driver_logout_btn", on_click=_cb_logout, use_container_width=True)
 
 
 def render_driver_queue_pressure_chart() -> None:
@@ -245,6 +428,18 @@ def perform_driver_login() -> None:
         set_driver_step("guide")
 
 
+def submit_driver_registration() -> None:
+    st.session_state.driver_registration = {
+        "firstName": st.session_state.get("driver_registration_first_name", "").strip(),
+        "lastName": st.session_state.get("driver_registration_last_name", "").strip(),
+        "phone": st.session_state.get("driver_registration_phone", "").strip(),
+    }
+    st.session_state.driver_registered = True
+    st.session_state.driver_verified = True
+    st.session_state.driver_approved = True
+    set_driver_step("guide")
+
+
 def render_driver_login() -> None:
     render_mobile_header("Hello Ride")
     render_info_card(
@@ -270,94 +465,126 @@ def render_driver_login() -> None:
 
 
 def render_driver_registration() -> None:
-    render_mobile_header("Hello Ride", left_label="Back", right_label="Log In")
-    render_info_card(
-        eyebrow="New Driver Registration",
-        title="Drive with Hello Ride.",
-        body="Start your journey today. Complete your profile and documents to get verified.",
-        tone="info",
+    registration = st.session_state.driver_registration
+    if "driver_registration_first_name" not in st.session_state:
+        st.session_state.driver_registration_first_name = registration["firstName"]
+    if "driver_registration_last_name" not in st.session_state:
+        st.session_state.driver_registration_last_name = registration["lastName"]
+    if "driver_registration_phone" not in st.session_state:
+        st.session_state.driver_registration_phone = registration["phone"]
+
+    # ── Header: Back | Hello Ride | Log In ─────────────────────────────────────
+    # Back and Log In are real Streamlit buttons with on_click callbacks so they
+    # fire on the first tap, even during fragment reruns.  render_mobile_header
+    # was removed here because it renders static HTML — not interactive.
+    h_left, h_center, h_right = st.columns([2, 4, 2], vertical_alignment="center")
+    with h_left:
+        st.button("Back", key="reg_back_btn", on_click=_cb_registration_back)
+    with h_center:
+        st.markdown('<div class="driver-brand-center">Hello Ride</div>', unsafe_allow_html=True)
+    with h_right:
+        st.button("Log In", key="reg_login_btn", on_click=_cb_registration_back, use_container_width=True)
+
+    # ── Intro ───────────────────────────────────────────────────────────────────
+    st.markdown(
+        """
+        <div class="reg-intro">
+          <div class="reg-intro-title">Drive with Hello Ride</div>
+          <div class="reg-intro-body">Join BKK Airport's proactive taxi dispatch network. Complete your details to begin the onboarding process.</div>
+        </div>
+        """,
+        unsafe_allow_html=True,
     )
-    render_section_heading("Join us", "Create Your Driver Account")
-    with st.form("driver_registration_form", clear_on_submit=False):
+
+    # ── Registration form ───────────────────────────────────────────────────────
+    with st.container(border=True):
+        st.markdown('<div class="reg-form-shell-anchor"></div>', unsafe_allow_html=True)
         name_cols = st.columns(2, gap="small")
         with name_cols[0]:
-            first_name = st.text_input(
+            st.text_input(
                 "First name",
-                value=st.session_state.driver_registration["firstName"],
+                key="driver_registration_first_name",
+                placeholder="Somchai",
             )
         with name_cols[1]:
-            last_name = st.text_input(
+            st.text_input(
                 "Last name",
-                value=st.session_state.driver_registration["lastName"],
+                key="driver_registration_last_name",
+                placeholder="Jaidee",
             )
-        phone = st.text_input(
+        st.text_input(
             "Mobile phone",
-            value=st.session_state.driver_registration["phone"],
+            key="driver_registration_phone",
             placeholder="+66 081 234 5678",
         )
-        submitted = st.form_submit_button("Submit Document", width="stretch")
 
     st.session_state.driver_registration = {
-        "firstName": first_name,
-        "lastName": last_name,
-        "phone": phone,
+        "firstName": st.session_state.get("driver_registration_first_name", "").strip(),
+        "lastName": st.session_state.get("driver_registration_last_name", "").strip(),
+        "phone": st.session_state.get("driver_registration_phone", "").strip(),
     }
 
-    render_section_heading("Qualify", "Are you eligible?")
-    eligibility_cols = st.columns(2, gap="small")
-    for column, item in zip(
-        eligibility_cols * 2,
-        [
-            "Thai Nationality",
-            "18-70 years old",
-            "No criminal record",
-            "Car under 9 years old",
-        ],
-    ):
-        with column:
-            render_metric_card("Eligibility", item)
-
-    render_section_heading("Documents", "Checklist")
-    for item in ["ID card", "Car registration", "Insurance/ACT", "Driver's License", "Bank book"]:
-        render_info_card("Required", item, "Pending upload", tone="neutral")
-    render_info_card("Support", "Need help with documents?", "Our support team is available 24/7 to guide you.", tone="info")
-
-    if submitted:
-        st.session_state.driver_registered = True
-        set_driver_step("verification")
-
-
-def render_driver_verification() -> None:
-    render_mobile_header("Hello Ride", left_label="Back")
-    render_page_header(
-        eyebrow="Verification",
-        title="Verify Your Identity",
-        body="Please complete the face scan to verify your Hello Ride driver profile credentials.",
+    # ── Eligibility criteria ────────────────────────────────────────────────────
+    st.markdown(
+        """
+        <div class="reg-eligibility">
+          <div class="reg-eligibility-label">Eligibility criteria</div>
+          <div class="reg-eligibility-grid">
+            <div class="reg-eligibility-item"><span class="reg-check">&#10003;</span>Thai nationality</div>
+            <div class="reg-eligibility-item"><span class="reg-check">&#10003;</span>18&ndash;70 years old</div>
+            <div class="reg-eligibility-item"><span class="reg-check">&#10003;</span>No criminal record</div>
+            <div class="reg-eligibility-item"><span class="reg-check">&#10003;</span>Car under 9 years old</div>
+          </div>
+        </div>
+        """,
+        unsafe_allow_html=True,
     )
-    render_info_card(
-        eyebrow="Face Scan",
-        title="Position face within frame",
-        body="Ensure your face is clearly visible in good lighting and remove sunglasses, hats, or masks before scanning.",
-        tone="neutral",
-    )
-    tips = st.columns(2, gap="small")
-    with tips[0]:
-        render_info_card("Good Lighting", "Keep your face visible", "Avoid harsh shadows and backlight.", tone="info")
-    with tips[1]:
-        render_info_card("No Accessories", "Scan-ready posture", "Remove sunglasses, hats, or masks.", tone="info")
 
-    action_cols = st.columns(2, gap="small")
-    with action_cols[0]:
-        if st.button("Start Face Scan", width="stretch"):
-            st.session_state.driver_face_scan_started = True
-            st.session_state.driver_verified = True
-    with action_cols[1]:
-        if st.button(
-            "Done",
-            width="stretch",
-            disabled=not st.session_state.driver_face_scan_started,
-        ):
-            set_driver_step("applicationStatus")
+    # ── Document checklist ─────────────────────────────────────────────────────
+    st.markdown(
+        """
+        <div class="reg-doc-list">
+          <div class="reg-doc-list-label">Documents required</div>
+          <div class="reg-doc-item">
+            <span class="reg-doc-name">National ID card</span>
+            <span class="reg-doc-status">Pending upload</span>
+          </div>
+          <div class="reg-doc-item">
+            <span class="reg-doc-name">Car registration</span>
+            <span class="reg-doc-status">Pending upload</span>
+          </div>
+          <div class="reg-doc-item">
+            <span class="reg-doc-name">Insurance / ACT</span>
+            <span class="reg-doc-status">Pending upload</span>
+          </div>
+          <div class="reg-doc-item">
+            <span class="reg-doc-name">Driver&rsquo;s license</span>
+            <span class="reg-doc-status">Pending upload</span>
+          </div>
+          <div class="reg-doc-item">
+            <span class="reg-doc-name">Bank book</span>
+            <span class="reg-doc-status">Pending upload</span>
+          </div>
+        </div>
+        """,
+        unsafe_allow_html=True,
+    )
+
+    # ── Support ─────────────────────────────────────────────────────────────────
+    with st.container(border=True):
+        st.markdown('<div class="reg-cta-anchor"></div>', unsafe_allow_html=True)
+        st.button(
+            "Continue Registration",
+            key="driver_registration_continue",
+            use_container_width=True,
+            type="primary",
+            on_click=submit_driver_registration,
+        )
+        st.markdown(
+            '<div class="reg-support">Need help? Chat with us 24/7 or call during business hours.</div>',
+            unsafe_allow_html=True,
+        )
+
 
 
 def render_driver_application_status() -> None:
@@ -425,6 +652,8 @@ def render_driver_guide() -> None:
         args=("driver_online_toggle",),
     )
 
+    render_metric_card("Identity", "Verified", tone="driver-soft")
+
     render_info_card(
         "Active Incentive",
         "Sukhumvit zone bonus",
@@ -449,15 +678,14 @@ def render_driver_guide() -> None:
                 st.markdown(f"**~{st.session_state.driver_queue_wait_min} min wait**")
                 st.caption("Estimated until next dispatch")
 
-            preview = DRIVER_EXPERIENCE["incomingJob"]
+            preview = DRIVER_EXPERIENCE["guideTrip"]
             render_info_card(
                 "Next job preview",
                 preview["pickup"],
                 f"{preview['dropoff']} · {preview['payout']}",
                 tone="driver-soft",
             )
-            if st.button("Accept job", width="stretch", type="primary"):
-                accept_next_queue_job()
+            st.button("Accept job", width="stretch", type="primary", on_click=accept_next_queue_job)
         else:
             st.markdown(
                 "<div class='driver-cta-note'>Join the airport queue to receive the next dispatch from the arrivals wave.</div>",
@@ -476,18 +704,23 @@ def render_driver_guide() -> None:
 
 
 def render_driver_job_request() -> None:
-    render_mobile_header("Hello Ride", right_label="Online")
+    # Use accepted_job as the single source of truth.  Fall back to guideTrip
+    # only if this screen is reached without going through the queue (e.g. dev
+    # hot-reload).  Never read from a different mock object on this screen.
+    job = st.session_state.accepted_job or DRIVER_EXPERIENCE["guideTrip"]
+
+    render_driver_app_header()
     if st.session_state.driver_offer_expired:
         st.warning("The previous offer expired and the guide screen has been restored.")
         st.session_state.driver_offer_expired = False
-    render_info_card("High Demand", "Hello Ride Plus", f"{DRIVER_EXPERIENCE['guideTrip']['distance']} ({DRIVER_EXPERIENCE['guideTrip']['eta']})", tone="driver")
-    render_metric_card("Net Earnings", DRIVER_EXPERIENCE["guideTrip"]["payout"], tone="driver")
+    render_info_card("High Demand", "Hello Ride Plus", f"{job['distance']} ({job['eta']})", tone="driver")
+    render_metric_card("Net Earnings", job["payout"], tone="driver")
     render_driver_job_timer(DRIVER_EXPERIENCE["incomingJob"]["countdown"])
     render_route_timeline(
-        pickup=DRIVER_EXPERIENCE["guideTrip"]["pickup"],
-        pickup_sublabel=DRIVER_EXPERIENCE["guideTrip"]["pickupAddress"],
-        destination=DRIVER_EXPERIENCE["guideTrip"]["dropoff"],
-        destination_sublabel=DRIVER_EXPERIENCE["guideTrip"]["dropoffAddress"],
+        pickup=job["pickup"],
+        pickup_sublabel=job["pickupAddress"],
+        destination=job["dropoff"],
+        destination_sublabel=job["dropoffAddress"],
     )
     with st.expander("More job details", expanded=False):
         details = DRIVER_EXPERIENCE["incomingJob"]
@@ -499,18 +732,18 @@ def render_driver_job_request() -> None:
         )
     action_cols = st.columns(2, gap="small")
     with action_cols[0]:
-        if st.button("Accept Job", width="stretch"):
-            set_driver_step("tripNavigation")
+        st.button("Accept Job", width="stretch", on_click=_cb_accept_job)
     with action_cols[1]:
-        if st.button("Reject", width="stretch"):
-            set_driver_step("guide")
+        st.button("Reject", width="stretch", on_click=_cb_reject_job)
 
 
 def render_driver_trip_navigation() -> None:
-    render_mobile_header("Hello Ride", right_label="Online")
+    job = st.session_state.accepted_job or DRIVER_EXPERIENCE["guideTrip"]
+
+    render_driver_app_header()
     render_info_card(
         "Navigation",
-        "Head north toward Robinson Rd / Marina Blvd",
+        "Head north toward the pickup zone",
         "200 m until next turn",
         tone="neutral",
     )
@@ -520,23 +753,24 @@ def render_driver_trip_navigation() -> None:
     with action_cols[1]:
         st.button("Call", width="stretch", disabled=True)
     render_info_card(
-        "Driver",
-        DRIVER_EXPERIENCE["activeTrip"]["driver"],
-        f"{DRIVER_EXPERIENCE['activeTrip']['service']} · {DRIVER_EXPERIENCE['activeTrip']['payout']}",
+        "Passenger",
+        job["passengerName"],
+        f"Hello Car · {job['payout']}",
         tone="neutral",
     )
     render_route_timeline(
-        pickup=DRIVER_EXPERIENCE["activeTrip"]["pickup"],
-        destination=DRIVER_EXPERIENCE["activeTrip"]["dropoff"],
+        pickup=job["pickup"],
+        pickup_sublabel=job.get("pickupAddress", ""),
+        destination=job["dropoff"],
+        destination_sublabel=job.get("dropoffAddress", ""),
     )
-    st.session_state.driver_trip_online_toggle = st.session_state.driver_online
-    st.toggle("Online status", key="driver_trip_online_toggle")
-    st.session_state.driver_online = st.session_state.driver_trip_online_toggle
-    if st.button("Arrived at Pick-up", width="stretch"):
-        set_driver_step("paymentComplete")
+    st.button("Arrived at Pick-up", width="stretch", on_click=_cb_arrived_at_pickup)
 
 
 def render_driver_payment_complete() -> None:
+    job = st.session_state.accepted_job or DRIVER_EXPERIENCE["guideTrip"]
+    fb = job["fareBreakdown"]
+
     render_mobile_header("Hello Ride", left_label="Guide", right_label="Trip Ended")
     render_info_card(
         "Journey Complete",
@@ -544,29 +778,20 @@ def render_driver_payment_complete() -> None:
         "You have successfully dropped off the passenger.",
         tone="driver",
     )
-    render_metric_card("Total Fare", DRIVER_EXPERIENCE["activeTrip"]["payout"], tone="driver")
+    render_metric_card("Total Fare", job["payout"], tone="driver")
     for label, value in [
-        (
-            f"Distance ({DRIVER_EXPERIENCE['activeTrip']['fareBreakdown']['distanceKm']} km)",
-            DRIVER_EXPERIENCE["activeTrip"]["fareBreakdown"]["distanceFare"],
-        ),
-        (
-            f"Time ({DRIVER_EXPERIENCE['activeTrip']['fareBreakdown']['durationMin']} mins)",
-            DRIVER_EXPERIENCE["activeTrip"]["fareBreakdown"]["durationFare"],
-        ),
-        ("Booking Fee", DRIVER_EXPERIENCE["activeTrip"]["fareBreakdown"]["bookingFee"]),
+        (f"Distance ({fb['distanceKm']} km)", fb["distanceFare"]),
+        (f"Time ({fb['durationMin']} mins)", fb["durationFare"]),
+        ("Booking Fee", fb["bookingFee"]),
     ]:
         render_metric_card(label, value)
-    if st.button("Confirm Payment Received", width="stretch"):
-        st.session_state.driver_online = True
-        set_driver_step("guide")
+    st.button("Confirm Payment Received", width="stretch", on_click=_cb_confirm_payment)
 
 
 SCREENS = {
     "home": render_driver_login,
     "login": render_driver_login,
     "registration": render_driver_registration,
-    "verification": render_driver_verification,
     "applicationStatus": render_driver_application_status,
     "guide": render_driver_guide,
     "jobRequest": render_driver_job_request,

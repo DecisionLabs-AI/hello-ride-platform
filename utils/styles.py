@@ -641,6 +641,148 @@ def apply_global_styles() -> None:
           font-weight: 600;
         }
 
+        /* Force the page_link element and all its wrappers to be full-width */
+        [data-testid="stPageLink"],
+        [data-testid="stPageLink"] > div {
+          display: block;
+          width: 100%;
+        }
+
+        [data-testid="stPageLink"] a {
+          display: flex !important;
+          align-items: center;
+          justify-content: center;
+          width: 100%;
+          box-sizing: border-box;
+          background: #0a9e48;
+          color: #ffffff !important;
+          padding: 0.9rem 1.5rem;
+          border-radius: 0.75rem;
+          font-weight: 600;
+          font-size: 0.92rem;
+          letter-spacing: 0.02em;
+          text-decoration: none !important;
+          transition: background 0.16s ease, box-shadow 0.16s ease;
+          box-shadow: 0 1px 3px rgba(0, 0, 0, 0.08), 0 3px 10px rgba(10, 125, 57, 0.22);
+          min-height: 3rem;
+        }
+
+        [data-testid="stPageLink"] a p,
+        [data-testid="stPageLink"] a span {
+          color: #ffffff !important;
+          margin: 0;
+        }
+
+        [data-testid="stPageLink"] a:hover {
+          background: var(--hr-primary-deep);
+          box-shadow: 0 4px 16px rgba(10, 125, 57, 0.3);
+          text-decoration: none !important;
+        }
+
+        [data-testid="stPageLink"] a svg {
+          display: none;
+        }
+
+        .hr-section-gap {
+          height: 2rem;
+        }
+
+        .hr-step-card {
+          background: rgba(255, 255, 255, 0.72);
+          border: 1px solid rgba(217, 228, 238, 0.7);
+          border-radius: 1.2rem;
+          padding: 1.2rem 1.4rem 1.4rem;
+          height: 100%;
+          display: flex;
+          flex-direction: column;
+        }
+
+        .hr-step-body {
+          flex: 1;
+          margin: 0;
+        }
+
+        /* ── Equal-height card rows (Overview page) ──────────────────────────── */
+
+        [data-testid="stHorizontalBlock"]:has(.hr-step-card) {
+          align-items: stretch;
+        }
+        [data-testid="stHorizontalBlock"]:has(.hr-step-card) > [data-testid="column"] {
+          display: flex;
+          flex-direction: column;
+        }
+        [data-testid="stHorizontalBlock"]:has(.hr-step-card) > [data-testid="column"] > [data-testid="stVerticalBlock"] {
+          flex: 1;
+          display: flex;
+          flex-direction: column;
+        }
+        [data-testid="stHorizontalBlock"]:has(.hr-step-card) > [data-testid="column"] > [data-testid="stVerticalBlock"] > div {
+          flex: 1;
+          display: flex;
+          flex-direction: column;
+        }
+
+        [data-testid="stHorizontalBlock"]:has(.hr-module-card) {
+          align-items: stretch;
+        }
+        [data-testid="stHorizontalBlock"]:has(.hr-module-card) > [data-testid="column"] {
+          display: flex;
+          flex-direction: column;
+        }
+        [data-testid="stHorizontalBlock"]:has(.hr-module-card) > [data-testid="column"] > [data-testid="stVerticalBlock"] {
+          flex: 1;
+          display: flex;
+          flex-direction: column;
+        }
+        [data-testid="stHorizontalBlock"]:has(.hr-module-card) > [data-testid="column"] > [data-testid="stVerticalBlock"] > [data-testid="stMarkdown"] {
+          flex: 1;
+          display: flex;
+          flex-direction: column;
+        }
+        [data-testid="stHorizontalBlock"]:has(.hr-module-card) > [data-testid="column"] > [data-testid="stVerticalBlock"] > [data-testid="stMarkdown"] > div {
+          flex: 1;
+          display: flex;
+          flex-direction: column;
+        }
+
+        .hr-module-card {
+          flex: 1;
+          display: flex;
+          flex-direction: column;
+        }
+
+        .hr-module-card .hr-copy {
+          flex: 1;
+        }
+
+        .hr-step-number {
+          display: inline-flex;
+          align-items: center;
+          justify-content: center;
+          width: 1.8rem;
+          height: 1.8rem;
+          border-radius: 999px;
+          background: var(--hr-primary);
+          color: #ffffff;
+          font-weight: 800;
+          font-size: 0.8rem;
+          margin-bottom: 0.7rem;
+        }
+
+        .hr-step-title {
+          font-size: 0.95rem;
+          font-weight: 700;
+          letter-spacing: -0.02em;
+          color: var(--hr-foreground);
+          line-height: 1.2;
+          margin-bottom: 0.4rem;
+        }
+
+        .hr-hero-body-constrained {
+          max-width: 44rem;
+          margin-top: 0.7rem;
+        }
+
         @media (max-width: 1024px) {
           .block-container {
             padding-top: 1.4rem;

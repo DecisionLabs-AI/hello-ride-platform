@@ -14,6 +14,17 @@ OPS_BY_TERMINAL = {
         "laneLoad": 87,
         "fleetReadiness": 93.9,
         "projectedDeficit": 49,
+        "deficitBreakdown": [
+            {"factor": "EK374 + QR833 arrival wave (JP/UAE routes)", "impact": 120, "type": "demand"},
+            {"factor": "QR scan spike at Claim C–D", "impact": 35, "type": "demand"},
+            {"factor": "Driver shortage — short-haul gap", "impact": -20, "type": "supply"},
+            {"factor": "Holding lane congestion (87% load)", "impact": -15, "type": "supply"},
+        ],
+        "impactSimulation": {
+            "current_pwt": 19, "projected_pwt": 11, "pwt_reduction_pct": 42,
+            "current_deficit": 49, "projected_deficit": 15, "queue_time_reduction": 8,
+            "action": "Activate Overflow Lane + Broadcast to +6 min drivers",
+        },
         "aiAdvice": "Activate Terminal 1 overflow lane planning and broadcast a 6-minute head start to holding drivers.",
         "criticalWindow": {"start": "14:45", "end": "15:00"},
         "flights": [
@@ -54,6 +65,17 @@ OPS_BY_TERMINAL = {
         "laneLoad": 63,
         "fleetReadiness": 95.3,
         "projectedDeficit": 14,
+        "deficitBreakdown": [
+            {"factor": "MH782 + CX751 arrival wave", "impact": 28, "type": "demand"},
+            {"factor": "QR scan uptick at Claim E–F", "impact": 12, "type": "demand"},
+            {"factor": "Low holding lane utilization", "impact": -10, "type": "supply"},
+            {"factor": "Inbound driver lead time", "impact": -8, "type": "supply"},
+        ],
+        "impactSimulation": {
+            "current_pwt": 12, "projected_pwt": 8, "pwt_reduction_pct": 33,
+            "current_deficit": 14, "projected_deficit": 5, "queue_time_reduction": 4,
+            "action": "Steady driver release + hold backup near arrivals bridge",
+        },
         "aiAdvice": "Keep Terminal 2 driver release steady and hold backup capacity near the arrivals bridge.",
         "criticalWindow": {"start": "15:00", "end": "15:15"},
         "flights": [
@@ -122,6 +144,35 @@ def _aggregate_supply(terminals: list[dict]) -> list[dict]:
     ]
 
 
+def _aggregate_deficit_breakdown(terminals: list[dict]) -> list[dict]:
+    result = []
+    for terminal in terminals:
+        for item in terminal.get("deficitBreakdown", []):
+            result.append({
+                "factor": f"[{terminal['code']}] {item['factor']}",
+                "impact": item["impact"],
+                "type": item["type"],
+            })
+    return result
+
+
+def _aggregate_impact_simulation(terminals: list[dict]) -> dict:
+    waiting_total = sum(t["waitingPassengers"] for t in terminals)
+    weights = [t["waitingPassengers"] for t in terminals]
+    sims = [t["impactSimulation"] for t in terminals]
+
+    def wavg(key: str) -> int:
+        return round(sum(s[key] * w for s, w in zip(sims, weights)) / (waiting_total or 1))
+
+    return {
+        "current_pwt": wavg("current_pwt"), "projected_pwt": wavg("projected_pwt"),
+        "pwt_reduction_pct": wavg("pwt_reduction_pct"),
+        "current_deficit": wavg("current_deficit"), "projected_deficit": wavg("projected_deficit"),
+        "queue_time_reduction": wavg("queue_time_reduction"),
+        "action": "Coordinate overflow activation across both terminals and sync driver broadcast airport-wide",
+    }
+
+
 def _build_all_view() -> dict:
     terminals = [OPS_BY_TERMINAL["T1"], OPS_BY_TERMINAL["T2"]]
     waiting_total = sum(terminal["waitingPassengers"] for terminal in terminals)
@@ -161,6 +212,8 @@ def _build_all_view() -> dict:
         ),
         "supply": _aggregate_supply(terminals),
         "forecast": _aggregate_forecast(terminals),
+        "deficitBreakdown": _aggregate_deficit_breakdown(terminals),
+        "impactSimulation": _aggregate_impact_simulation(terminals),
     }
 
 

@@ -1,6 +1,7 @@
 import altair as alt
 import pandas as pd
 import streamlit as st
+from datetime import datetime
 from html import escape
 
 from components.cards import render_alert_card, render_info_card, render_metric_card
@@ -207,12 +208,24 @@ def apply_ops_typography_styles() -> None:
 def build_forecast_chart(series: list[dict], critical_window: dict) -> alt.Chart:
     frame = pd.DataFrame(series)
     melted = frame.melt("time", var_name="metric", value_name="count")
+    time_order = list(frame["time"])
+
     critical_window_frame = pd.DataFrame(
         [{"start": critical_window["start"], "end": critical_window["end"], "label": "Critical deficit window"}]
     )
 
+    times_before = [t for t in time_order if t < critical_window["start"]]
+    times_during = [t for t in time_order if critical_window["start"] <= t <= critical_window["end"]]
+    times_after = [t for t in time_order if t > critical_window["end"]]
+
+    def mid_slot(slots: list[str]) -> str | None:
+        return slots[len(slots) // 2] if slots else None
+
+    y_max = max(p["demand"] for p in series) if series else 100
+    label_y = y_max * 1.12
+
     base = alt.Chart(melted).encode(
-        x=alt.X("time:N", title="", sort=list(frame["time"])),
+        x=alt.X("time:N", title="", sort=time_order),
         y=alt.Y("count:Q", title="Forecast riders / taxis"),
         color=alt.Color(
             "metric:N",
@@ -231,7 +244,32 @@ def build_forecast_chart(series: list[dict], critical_window: dict) -> alt.Chart
         .encode(x="start:N", x2="end:N")
     )
 
-    return deficit_band + lines
+    phase_layers = []
+    for slot, text, color in [
+        (mid_slot(times_before), "Rising Demand", "#64748b"),
+        (mid_slot(times_during), "Peak Arrival", "#A51C30"),
+        (mid_slot(times_after), "Recovery", "#0c7d35"),
+    ]:
+        if slot:
+            ann = pd.DataFrame([{"time": slot, "label": text, "y": label_y}])
+            phase_layers.append(
+                alt.Chart(ann)
+                .mark_text(
+                    color=color,
+                    align="center",
+                    baseline="bottom",
+                    fontSize=11,
+                    fontWeight=600,
+                    dy=-4,
+                )
+                .encode(
+                    x=alt.X("time:N", sort=time_order),
+                    y=alt.Y("y:Q"),
+                    text=alt.Text("label:N"),
+                )
+            )
+
+    return alt.layer(deficit_band, lines, *phase_layers)
 
 
 def with_fallback(items: list[dict], fallback: list[dict]) -> list[dict]:
@@ -438,11 +476,150 @@ def render_ai_advisory(ops_view: dict) -> None:
             st.rerun()
 
 
-def render_live_monitoring(ops_view: dict) -> None:
-    if st.session_state.ops_last_broadcast:
-        st.success(f"Driver broadcast sent at {st.session_state.ops_last_broadcast}.")
+def render_critical_alert(ops_view: dict) -> None:
+    if ops_view["pwt"] <= st.session_state.ops_guardrail_min:
+        return
+    render_alert_card(
+        title=f"PWT Critical — {ops_view['pwt']} min (guardrail: {st.session_state.ops_guardrail_min} min)",
+        body=(
+            f"Arrival wave projected in T-15 minutes. Predicted passenger influx will "
+            f"exceed current lane capacity by {ops_view['projectedDeficit']}%. "
+            f"Critical window: {ops_view['criticalWindow']['start']} – {ops_view['criticalWindow']['end']}."
+        ),
+        advisory=ops_view["aiAdvice"],
+    )
 
-    top_left, top_right = st.columns([1.8, 1], gap="large")
+
+def render_ai_advisory_card(ops_view: dict) -> None:
+    render_section_heading("AI Advisory", "Recommended Action")
+    render_info_card(
+        eyebrow=f"AI Advisory · {ops_view['title']}",
+        title="Recommended next action",
+        body=ops_view["aiAdvice"],
+        tone="ops",
+    )
+
+
+def render_deficit_breakdown(ops_view: dict) -> None:
+    breakdown = ops_view.get("deficitBreakdown", [])
+    if not breakdown:
+        return
+    render_section_heading("Deficit Breakdown", "Why is there a projected gap?")
+    demand_factors = [f for f in breakdown if f["type"] == "demand"]
+    supply_factors = [f for f in breakdown if f["type"] == "supply"]
+    with st.container(border=True):
+        left_col, right_col = st.columns(2, gap="medium")
+        with left_col:
+            st.markdown('<div class="ops-section-eyebrow">DEMAND PRESSURE</div>', unsafe_allow_html=True)
+            for item in demand_factors:
+                st.markdown(
+                    f'<div class="ops-list-card">'
+                    f'<div class="ops-card-main"><div class="ops-card-title">{escape(item["factor"])}</div></div>'
+                    f'<div class="ops-card-side">'
+                    f'<div class="ops-card-caption">forecast pax</div>'
+                    f'<div class="ops-card-value" style="color:#0c7d35;">&#8593; +{item["impact"]}</div>'
+                    f'</div></div>',
+                    unsafe_allow_html=True,
+                )
+        with right_col:
+            st.markdown('<div class="ops-section-eyebrow">SUPPLY CONSTRAINTS</div>', unsafe_allow_html=True)
+            for item in supply_factors:
+                st.markdown(
+                    f'<div class="ops-list-card">'
+                    f'<div class="ops-card-main"><div class="ops-card-title">{escape(item["factor"])}</div></div>'
+                    f'<div class="ops-card-side">'
+                    f'<div class="ops-card-caption">taxis short</div>'
+                    f'<div class="ops-card-value" style="color:#b91c1c;">&#8595; -{abs(item["impact"])}</div>'
+                    f'</div></div>',
+                    unsafe_allow_html=True,
+                )
+
+
+def render_impact_simulation(ops_view: dict) -> None:
+    sim = ops_view.get("impactSimulation")
+    if not sim:
+        return
+    render_section_heading("Impact Simulation", "If we act now — projected outcome")
+    with st.container(border=True):
+        st.markdown(
+            f'<div class="ops-section-eyebrow">RECOMMENDED ACTION</div>'
+            f'<div class="ops-section-title">{escape(sim["action"])}</div>',
+            unsafe_allow_html=True,
+        )
+        st.markdown("<br>", unsafe_allow_html=True)
+        before_col, arrow_col, after_col = st.columns([1, 0.18, 1], gap="small")
+        with before_col:
+            with st.container(border=True):
+                st.markdown('<div class="ops-section-eyebrow">CURRENT STATE</div>', unsafe_allow_html=True)
+                render_metric_card("PWT", f"{sim['current_pwt']} min", tone="danger")
+                render_metric_card("Projected deficit", f"{sim['current_deficit']}%", tone="danger")
+        with arrow_col:
+            st.markdown(
+                '<div style="text-align:center;font-size:1.4rem;padding-top:2.4rem;color:#64748b;">&#8594;</div>',
+                unsafe_allow_html=True,
+            )
+        with after_col:
+            with st.container(border=True):
+                st.markdown('<div class="ops-section-eyebrow">AFTER ACTION</div>', unsafe_allow_html=True)
+                render_metric_card("PWT", f"{sim['projected_pwt']} min", f"\u2212{sim['pwt_reduction_pct']}% reduction", tone="ops")
+                render_metric_card("Projected deficit", f"{sim['projected_deficit']}%", f"\u2212{sim['queue_time_reduction']} min queue time", tone="ops")
+
+
+def render_ops_control_actions() -> None:
+    render_section_heading("OPS Control Actions", "Act now — these change live state")
+    with st.container(border=True):
+        st.markdown('<div class="ops-section-eyebrow">DISPATCH CONTROLS</div>', unsafe_allow_html=True)
+        action_col1, action_col2, action_col3 = st.columns(3, gap="medium")
+
+        with action_col1:
+            with st.container(border=True):
+                st.markdown(
+                    '<div class="ops-card-title">Overflow Lane</div>'
+                    '<div class="ops-card-subtitle">Activate high-capacity overflow routing for Terminal 1 pickup zone</div>',
+                    unsafe_allow_html=True,
+                )
+                overflow_active = st.session_state.ops_extra_lane_active
+                overflow_label = "Overflow Active \u2713" if overflow_active else "Activate Overflow Lane"
+                overflow_type = "secondary" if overflow_active else "primary"
+                if st.button(overflow_label, key="btn_overflow_lane", type=overflow_type, use_container_width=True):
+                    st.session_state.ops_extra_lane_active = not overflow_active
+                    st.rerun()
+
+        with action_col2:
+            with st.container(border=True):
+                st.markdown(
+                    '<div class="ops-card-title">Driver Broadcast</div>'
+                    '<div class="ops-card-subtitle">Push a 6-minute head-start message to all holding and inbound drivers</div>',
+                    unsafe_allow_html=True,
+                )
+                last_broadcast = st.session_state.ops_last_broadcast
+                broadcast_label = f"Sent {last_broadcast} \u2713" if last_broadcast else "Broadcast to Drivers"
+                broadcast_type = "secondary" if last_broadcast else "primary"
+                if st.button(broadcast_label, key="btn_broadcast", type=broadcast_type, use_container_width=True):
+                    st.session_state.ops_last_broadcast = datetime.now().strftime("%H:%M")
+                    st.rerun()
+
+        with action_col3:
+            with st.container(border=True):
+                st.markdown(
+                    '<div class="ops-card-title">Lane 2</div>'
+                    '<div class="ops-card-subtitle">Open secondary pickup lane to relieve primary lane congestion</div>',
+                    unsafe_allow_html=True,
+                )
+                lane2_active = st.session_state.ops_lane2_active
+                lane2_label = "Lane 2 Open \u2713" if lane2_active else "Open Lane 2"
+                lane2_type = "secondary" if lane2_active else "primary"
+                if st.button(lane2_label, key="btn_lane2", type=lane2_type, use_container_width=True):
+                    st.session_state.ops_lane2_active = not lane2_active
+                    st.rerun()
+
+
+def render_live_monitoring(ops_view: dict) -> None:
+    # Stage 1: Critical Alert (only when PWT exceeds guardrail)
+    render_critical_alert(ops_view)
+
+    # Stage 2: KPI Summary
+    top_left, top_right = st.columns([2.6, 1], gap="large")
     with top_left:
         gauge_col, details_col = st.columns([1, 1.6], gap="large")
         with gauge_col:
@@ -468,22 +645,14 @@ def render_live_monitoring(ops_view: dict) -> None:
                     ops_view["holdingTaxis"],
                     ops_view["taxiTrend"],
                 )
-
             st.markdown(
-                f"""
-                <div class="hr-card">
-                  <div class="hr-card-row">
-                    <div>
-                      <div class="hr-eyebrow">Lane 1 high-capacity mode</div>
-                      <div class="hr-copy">System load {ops_view["laneLoad"]}%</div>
-                    </div>
-                  </div>
-                </div>
-                """,
+                f'<div class="hr-card"><div class="hr-card-row"><div>'
+                f'<div class="hr-eyebrow">Lane 1 high-capacity mode</div>'
+                f'<div class="hr-copy">System load {ops_view["laneLoad"]}%</div>'
+                f'</div></div></div>',
                 unsafe_allow_html=True,
             )
             st.progress(ops_view["laneLoad"] / 100)
-
             tail_cols = st.columns(2, gap="medium")
             with tail_cols[0]:
                 render_metric_card("Fleet readiness", f"{ops_view['fleetReadiness']}%")
@@ -497,20 +666,27 @@ def render_live_monitoring(ops_view: dict) -> None:
             f"{ops_view['title']} intervention threshold",
             tone="ops",
         )
-        render_alert_card(
-            title="Projected Deficit Alert",
-            body=f"Arrival wave projected in T-15 minutes. Predicted passenger influx will exceed current lane capacity by {ops_view['projectedDeficit']}%.",
-            advisory=ops_view["aiAdvice"],
-        )
-        if st.button("Broadcast to Drivers", width="stretch"):
-            st.session_state.ops_last_broadcast = "14:46"
 
+    # Stage 3: AI Advisory
+    render_ai_advisory_card(ops_view)
+
+    # Stage 4: Deficit Breakdown — WHY
+    render_deficit_breakdown(ops_view)
+
+    # Stage 5: Impact Simulation — SO WHAT
+    render_impact_simulation(ops_view)
+
+    # Stage 6: OPS Control Actions — WHAT TO DO
+    render_ops_control_actions()
+
+    # Stage 7: Arrival Wave Chart (enhanced with phase labels)
     render_section_heading("Predictive forecast", "Arrival Wave Analysis")
     st.altair_chart(
         build_forecast_chart(ops_view["forecast"], ops_view["criticalWindow"]),
-        width="stretch",
+        use_container_width=True,
     )
 
+    # Stage 8: Supporting data tables
     lower_cols = st.columns([1.06, 1.28, 1.06], gap="medium")
     with lower_cols[0]:
         render_ops_detail_section(
@@ -532,7 +708,7 @@ def render_live_monitoring(ops_view: dict) -> None:
                     "value": "84",
                     "caption": "forecast pax",
                 }
-            ]
+            ],
         )
     with lower_cols[1]:
         render_ops_detail_section(

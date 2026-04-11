@@ -93,14 +93,16 @@ A mobile-style flow covering the full driver partner lifecycle.
 **Screens (state machine on `driver_step`):**
 
 ```
-login → registration → verification → applicationStatus → guide
-                                                            ↓
-                                                        jobRequest  (countdown timer)
-                                                            ↓
-                                                      tripNavigation
-                                                            ↓
-                                                      paymentComplete → guide
+login → registration → guide
+                         ↓
+                     jobRequest  (countdown timer)
+                         ↓
+                   tripNavigation
+                         ↓
+                   paymentComplete → guide
 ```
+
+Note: `applicationStatus` remains in the SCREENS dict but is no longer on the critical path. Registration sets `driver_verified = True` and `driver_approved = True` automatically and routes directly to `guide`.
 
 **Key session state:**
 
@@ -108,8 +110,8 @@ login → registration → verification → applicationStatus → guide
 |---|---|---|
 | `driver_step` | `str` | Active screen |
 | `driver_registered` | `bool` | Registration form submitted |
-| `driver_verified` | `bool` | Face scan passed |
-| `driver_approved` | `bool` | Academy + background check passed |
+| `driver_verified` | `bool` | Set to `True` on registration submit |
+| `driver_approved` | `bool` | Set to `True` on registration submit |
 | `driver_online` | `bool` | Driver is available for jobs |
 | `driver_job_started_at` | `float \| None` | Unix timestamp when job offer started |
 | `driver_offer_expired` | `bool` | Countdown expired flag |
@@ -132,19 +134,18 @@ A desktop-first operations dashboard with two workspace modes.
 
 **Terminal selector (`ops_terminal`):** switches data between `"T1"`, `"T2"`, and `"All"` via `OPS_BY_TERMINAL` in `data/mock_ops.py`.
 
-**Key panels:**
+**Key panels (Live Monitoring — stage order):**
 
-| Panel | Data source |
-|---|---|
-| PWT gauge | `ops["pwt"]` |
-| Waiting passengers / holding taxis | `ops["waitingPassengers"]`, `ops["holdingTaxis"]` |
-| Lane load | `ops["laneLoad"]` |
-| Fleet readiness / projected deficit | `ops["fleetReadiness"]`, `ops["projectedDeficit"]` |
-| AI advisory | `ops["aiAdvice"]` |
-| Arrival wave forecast chart | `ops["forecast"]` (Altair chart) |
-| Flight wave | `ops["flights"]` |
-| Demand signals | `ops["demandSignals"]` |
-| Supply telemetry | `ops["supply"]` |
+| Stage | Panel | Data source |
+|---|---|---|
+| 1 | Critical Alert (conditional, PWT > guardrail) | `ops["pwt"]`, `ops["projectedDeficit"]`, `ops["aiAdvice"]` |
+| 2 | KPI summary — PWT gauge + metric tiles | `ops["pwt"]`, `ops["waitingPassengers"]`, `ops["holdingTaxis"]`, `ops["laneLoad"]`, `ops["fleetReadiness"]`, `ops["projectedDeficit"]` |
+| 3 | AI Advisory (standalone ops-blue card) | `ops["aiAdvice"]` |
+| 4 | Deficit Breakdown — WHY | `ops["deficitBreakdown"]` |
+| 5 | Impact Simulation — SO WHAT | `ops["impactSimulation"]` |
+| 6 | OPS Control Actions — WHAT TO DO | `ops_extra_lane_active`, `ops_last_broadcast`, `ops_lane2_active` |
+| 7 | Arrival Wave Chart (with phase annotations) | `ops["forecast"]`, `ops["criticalWindow"]` (Altair) |
+| 8 | Supporting data tables | `ops["flights"]`, `ops["demandSignals"]`, `ops["supply"]` |
 
 ---
 
@@ -193,10 +194,15 @@ OPS_BY_TERMINAL = {
   "T1": {
     "pwt", "waitingPassengers", "waitingTrend", "holdingTaxis", "taxiTrend",
     "laneLoad", "fleetReadiness", "projectedDeficit", "aiAdvice",
-    "flights":       [{ "code", "origin", "eta", "terminal", "status", "demand" }],
-    "demandSignals": [{ "time", "zone", "parties", "luggage" }],
-    "supply":        [{ "name", "value", "detail" }],
-    "forecast":      [{ "time", "demand", "supply" }],
+    "criticalWindow":    { "start", "end" },
+    "flights":           [{ "code", "origin", "eta", "terminal", "status", "demand" }],
+    "demandSignals":     [{ "time", "zone", "parties", "luggage" }],
+    "supply":            [{ "name", "value", "detail" }],
+    "forecast":          [{ "time", "demand", "supply" }],
+    "deficitBreakdown":  [{ "factor", "impact", "type" }],  # type: "demand" | "supply"
+    "impactSimulation":  { "current_pwt", "projected_pwt", "pwt_reduction_pct",
+                           "current_deficit", "projected_deficit",
+                           "queue_time_reduction", "action" },
   },
   "T2": { ... },
 }
@@ -272,6 +278,17 @@ The prototype uses `st.session_state` for all stateful values. State is initiali
 | `initialize_state()` | Set all session state defaults. Called once in `app.py`. |
 | `set_driver_step(step)` | Transition driver to a new step. Also sets `driver_job_started_at` for `"jobRequest"`. |
 | `reset_passenger_flow()` | Reset all `passenger_*` keys to initial values. |
+
+**Ops-specific state keys:**
+
+| Key | Type | Default | Purpose |
+|---|---|---|---|
+| `ops_terminal` | `str` | `"T1"` | Selected terminal context |
+| `ops_workspace` | `str` | `"Live Monitoring"` | Active workspace tab |
+| `ops_guardrail_min` | `int` | `10` | PWT threshold for critical alert |
+| `ops_extra_lane_active` | `bool` | `False` | Overflow lane toggle |
+| `ops_last_broadcast` | `str` | `""` | Timestamp of last driver broadcast |
+| `ops_lane2_active` | `bool` | `False` | Lane 2 open/close toggle |
 
 **Implications:**
 - State persists across page navigation within the same browser session.

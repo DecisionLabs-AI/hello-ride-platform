@@ -27,27 +27,26 @@ DRIVER_EXPERIENCE = {
         {"label": "Wave intensity", "value": "High demand from Japan / Gulf arrivals"},
         {"label": "Ops note", "value": "Hold lane entry after this trip for rebalancing"},
     ],
+    # Single source of truth for the offered job.
+    # Shown on jobRequest, tripNavigation, and paymentComplete.
+    # All fields here must stay consistent — do not read from incomingJob or
+    # activeTrip on those screens.  fareBreakdown items must sum to payout.
     "guideTrip": {
-        "pickup": "Marina Bay Sands, Tower 3",
-        "pickupAddress": "10 Bayfront Ave, Singapore 018956",
-        "dropoff": "Changi Airport Terminal 4",
-        "dropoffAddress": "Airport Blvd, Singapore 819665",
+        "job_id": "JOB-20260410-001",
+        "passengerName": "Tanaka K.",
+        "pickup": "Baggage Claim Gate A, Terminal 1",
+        "pickupAddress": "Suvarnabhumi Airport, Terminal 1, Bangkok",
+        "dropoff": "Asok BTS Station, Sukhumvit",
+        "dropoffAddress": "Sukhumvit Rd, Khlong Toei, Bangkok 10110",
         "eta": "4 mins",
-        "distance": "1.2 km away",
-        "payout": "$14.50",
-    },
-    "activeTrip": {
-        "driver": "Alex Johnston",
-        "service": "GrabCar Premium",
-        "pickup": "12 Marina View, Asia Square Tower 1",
-        "dropoff": "Changi Airport Terminal 3",
-        "payout": "$24.50",
+        "distance": "1.2 km to pickup",
+        "payout": "THB 385",
         "fareBreakdown": {
-            "distanceKm": 9.8,
-            "distanceFare": "$16.00",
-            "durationMin": 22,
-            "durationFare": "$6.50",
-            "bookingFee": "$2.00",
+            "distanceKm": 32.4,
+            "distanceFare": "THB 300",
+            "durationMin": 45,
+            "durationFare": "THB 70",
+            "bookingFee": "THB 15",
         },
     },
 }
