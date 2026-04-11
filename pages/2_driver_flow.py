@@ -1,6 +1,4 @@
 import streamlit as st
-import altair as alt
-import pandas as pd
 
 from components.cards import render_info_card, render_metric_card
 from components.header import render_mobile_header, render_page_header, render_section_heading
@@ -369,50 +367,30 @@ def render_driver_app_header() -> None:
 
 
 def render_driver_queue_pressure_chart() -> None:
-    forecast_df = pd.DataFrame(
-        [
-            {
-                "time": bar["time"],
-                "pressure": bar["height"],
-                "level": "Peak" if bar["type"] == "peak" else "High" if bar["type"] == "surge" else "Normal",
-            }
-            for bar in DRIVER_FORECAST_BARS
-        ]
-    )
-    chart = (
-        alt.Chart(forecast_df)
-        .mark_bar(cornerRadiusTopLeft=6, cornerRadiusTopRight=6)
-        .encode(
-            x=alt.X("time:N", title=None, sort=list(forecast_df["time"])),
-            y=alt.Y("pressure:Q", title=None, axis=None),
-            color=alt.Color(
-                "level:N",
-                scale=alt.Scale(
-                    domain=["Normal", "High", "Peak"],
-                    range=["#cbd5e1", "#7dd3a8", "#00b14f"],
-                ),
-                legend=None,
-            ),
-            tooltip=["time", "level"],
+    _COLOR = {"peak": "#00b14f", "surge": "#7dd3a8", "normal": "#cbd5e1"}
+    _LABEL = {"peak": "Peak", "surge": "High", "normal": ""}
+    MAX_PX = 180
+    max_h = max(b["height"] for b in DRIVER_FORECAST_BARS)
+
+    bars_html = ""
+    for bar in DRIVER_FORECAST_BARS:
+        h = round(bar["height"] / max_h * MAX_PX)
+        bars_html += (
+            f'<div style="flex:1;display:flex;flex-direction:column;align-items:center;gap:4px;">'
+            f'<span style="font-size:10px;font-weight:700;color:#0f172a;min-height:14px;">{_LABEL[bar["type"]]}</span>'
+            f'<div style="width:100%;display:flex;align-items:flex-end;height:{MAX_PX}px;">'
+            f'<div style="width:100%;height:{h}px;background:{_COLOR[bar["type"]]};border-radius:5px 5px 0 0;"></div>'
+            f'</div>'
+            f'<span style="font-size:11px;color:#64748b;">{bar["time"]}</span>'
+            f'</div>'
         )
-        .properties(height=220)
-    )
-    text = (
-        alt.Chart(forecast_df)
-        .mark_text(dy=-10, fontSize=11, fontWeight="bold", color="#0f172a")
-        .encode(
-            x=alt.X("time:N", sort=list(forecast_df["time"])),
-            y="pressure:Q",
-            text=alt.condition(
-                alt.datum.level == "Normal",
-                alt.value(""),
-                "level:N",
-            ),
-        )
-    )
-    st.altair_chart(chart + text, width="stretch")
+
     st.markdown(
-        "<div class='driver-forecast-note'>Best window: 18:00-20:00 for the strongest airport queue demand.</div>",
+        f'<div style="display:flex;gap:8px;padding:0.5rem 0;">{bars_html}</div>',
+        unsafe_allow_html=True,
+    )
+    st.markdown(
+        "<div class='driver-forecast-note'>Best window: 18:00–20:00 for the strongest airport queue demand.</div>",
         unsafe_allow_html=True,
     )
 

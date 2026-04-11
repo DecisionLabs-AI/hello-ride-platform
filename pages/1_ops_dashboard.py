@@ -1,4 +1,3 @@
-import altair as alt
 import pandas as pd
 import streamlit as st
 from datetime import datetime
@@ -205,71 +204,9 @@ def apply_ops_typography_styles() -> None:
     )
 
 
-def build_forecast_chart(series: list[dict], critical_window: dict) -> alt.Chart:
-    frame = pd.DataFrame(series)
-    melted = frame.melt("time", var_name="metric", value_name="count")
-    time_order = list(frame["time"])
-
-    critical_window_frame = pd.DataFrame(
-        [{"start": critical_window["start"], "end": critical_window["end"], "label": "Critical deficit window"}]
-    )
-
-    times_before = [t for t in time_order if t < critical_window["start"]]
-    times_during = [t for t in time_order if critical_window["start"] <= t <= critical_window["end"]]
-    times_after = [t for t in time_order if t > critical_window["end"]]
-
-    def mid_slot(slots: list[str]) -> str | None:
-        return slots[len(slots) // 2] if slots else None
-
-    y_max = max(p["demand"] for p in series) if series else 100
-    label_y = y_max * 1.12
-
-    base = alt.Chart(melted).encode(
-        x=alt.X("time:N", title="", sort=time_order),
-        y=alt.Y("count:Q", title="Forecast riders / taxis"),
-        color=alt.Color(
-            "metric:N",
-            title="",
-            scale=alt.Scale(
-                domain=["demand", "supply"],
-                range=["#154AA8", "#CBD5E1"],
-            ),
-        ),
-    )
-
-    lines = base.mark_line(point=True, strokeWidth=4).properties(height=280)
-    deficit_band = (
-        alt.Chart(critical_window_frame)
-        .mark_rect(opacity=0.12, color="#A51C30")
-        .encode(x="start:N", x2="end:N")
-    )
-
-    phase_layers = []
-    for slot, text, color in [
-        (mid_slot(times_before), "Rising Demand", "#64748b"),
-        (mid_slot(times_during), "Peak Arrival", "#A51C30"),
-        (mid_slot(times_after), "Recovery", "#0c7d35"),
-    ]:
-        if slot:
-            ann = pd.DataFrame([{"time": slot, "label": text, "y": label_y}])
-            phase_layers.append(
-                alt.Chart(ann)
-                .mark_text(
-                    color=color,
-                    align="center",
-                    baseline="bottom",
-                    fontSize=11,
-                    fontWeight=600,
-                    dy=-4,
-                )
-                .encode(
-                    x=alt.X("time:N", sort=time_order),
-                    y=alt.Y("y:Q"),
-                    text=alt.Text("label:N"),
-                )
-            )
-
-    return alt.layer(deficit_band, lines, *phase_layers)
+def build_forecast_chart_frame(series: list[dict]) -> pd.DataFrame:
+    frame = pd.DataFrame(series).set_index("time")
+    return frame[["demand", "supply"]]
 
 
 def with_fallback(items: list[dict], fallback: list[dict]) -> list[dict]:
@@ -681,9 +618,11 @@ def render_live_monitoring(ops_view: dict) -> None:
 
     # Stage 7: Arrival Wave Chart (enhanced with phase labels)
     render_section_heading("Predictive forecast", "Arrival Wave Analysis")
-    st.altair_chart(
-        build_forecast_chart(ops_view["forecast"], ops_view["criticalWindow"]),
+    st.line_chart(
+        build_forecast_chart_frame(ops_view["forecast"]),
+        color=["#154AA8", "#CBD5E1"],
         use_container_width=True,
+        height=280,
     )
 
     # Stage 8: Supporting data tables
