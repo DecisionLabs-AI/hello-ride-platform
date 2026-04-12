@@ -42,7 +42,7 @@ hello-ride-platform/
 
 ## Run Locally
 
-Install Python dependencies:
+Requires **Python 3.11**. Install dependencies:
 
 ```bash
 pip install -r requirements.txt
@@ -56,6 +56,14 @@ streamlit run app.py
 
 The app opens at `http://localhost:8501`.
 
+### Demo credentials
+
+| Surface | Credential |
+|---|---|
+| Driver login | username `driver_demo` · password `1234` |
+
+Credentials are pre-filled automatically via a `localStorage` draft bridge.
+
 ## Validate Python Syntax
 
 ```bash
@@ -65,6 +73,8 @@ python3 -m compileall app.py pages components data utils
 ## Notes
 
 - All data is static mock data — no backend or API integration.
-- Passenger and Driver flows use `st.session_state` to preserve inline state-machine behaviour across reruns.
-- OPS keeps the original dashboard hierarchy and uses mock interventions (lane activation, driver broadcast).
+- Passenger and Driver flows use `st.session_state` to preserve state-machine behaviour across reruns.
+- Destination autocomplete uses `streamlit.components.v1` to inject a JS bridge; confirmation is Enter-only.
+- OPS dashboard uses `st.line_chart` for the arrival wave forecast (Altair dependency removed).
+- Global CSS is injected once in `app.py` via `apply_global_styles()` in `utils/styles.py` — never call it inside a page file.
 - See `docs/architecture.md` for the full technical reference.
