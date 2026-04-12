@@ -236,13 +236,28 @@ CSS custom properties available globally after `apply_global_styles()`:
 
 | Variable | Value | Usage |
 |---|---|---|
-| `--color-primary` | `#00b14f` | Brand green, CTAs, online state |
-| `--color-danger` | `#d54b72` | Critical alerts, drop-off marker |
-| `--color-ops` | `#154aa8` | Ops surface accent |
-| `--color-driver` | `#0c7d35` | Driver surface accent |
-| `--color-passenger` | `#2d6bff` | Passenger surface accent |
-| `--color-warning` | `#f59e0b` | Surge indicators |
-| `--color-success` | `#29a85a` | Positive states |
+| `--hr-bg` | `#f6fbf7` | Base background reference |
+| `--hr-surface` | `rgba(255,255,255,0.96)` | Card / hero surface fill |
+| `--hr-card` | `#ffffff` | Solid card fill |
+| `--hr-foreground` | `#0f172a` | Body text |
+| `--hr-muted` | `#64748b` | Secondary / caption text |
+| `--hr-border` | `#d9e4ee` | Input and row borders |
+| `--hr-primary` | `#00b14f` | Brand green, CTAs, online state |
+| `--hr-primary-deep` | `#0c7d35` | Driver accent, hover states |
+| `--hr-secondary` | `#154aa8` | Ops surface accent |
+| `--hr-danger` | `#b91c1c` | Critical alerts, drop-off marker |
+| `--hr-info` | `#2d6bff` | Passenger surface accent |
+
+### Bordered containers
+
+`st.container(border=True)` renders through `[data-testid="stVerticalBlockBorderWrapper"]`. Global styles in `utils/styles.py` target this selector directly to give every bordered container:
+
+- **Background:** `rgba(255, 255, 255, 0.98)` — near-solid white surface
+- **Border:** `1px solid rgba(148, 163, 184, 0.35)` — visible slate separation from the tinted page background
+- **Shadow:** two-layer soft shadow (`0 2px 8px` + `0 1px 2px`)
+- **Radius:** `16px`
+
+This applies uniformly to all three surfaces without any per-page CSS. Do not override `background` or `border` on a `st.container(border=True)` wrapper at the page level — use the shared `.hr-card-*` tone classes instead, which set background on the inner HTML element rather than the Streamlit wrapper.
 
 ### Card tone variants
 
@@ -333,7 +348,7 @@ The route marker pattern for pickup → destination is implemented in `render_ro
   │     ├── render_pwt_gauge()       — circular PWT gauge
   │     ├── render_metric_card() × N — key KPI tiles (pax, taxis, lane load, readiness, deficit)
   │     ├── render_alert_card()      — projected deficit alert (tone="danger")
-  │     ├── Altair forecast chart    — demand vs supply over 15-min windows
+  │     ├── st.line_chart()          — demand vs supply over 15-min windows
   │     ├── render_info_card()       — flight wave table
   │     ├── render_info_card()       — demand signals table
   │     └── render_info_card()       — supply telemetry table

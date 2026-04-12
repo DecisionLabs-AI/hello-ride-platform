@@ -13,10 +13,12 @@ The passenger surface is a multi-screen state machine gated on `st.session_state
 | Key | Type | Initial | Purpose |
 |---|---|---|---|
 | `passenger_step` | `str` | `"home"` | Active screen |
-| `passenger_destination` | `str` | `""` | Confirmed destination value |
-| `passenger_destination_input` | `str` | `""` | Live text input value |
+| `passenger_destination` | `str \| dict` | `""` | Confirmed destination — either `""` or `{"mode": "selected"\|"free_text", "value": str}` |
+| `passenger_destination_input` | `str` | `""` | Live text input value (Streamlit widget key) |
+| `passenger_destination_mode` | `str` | `"free_text"` | Hidden widget tracking whether destination was chosen from presets (`"selected"`) or typed (`"free_text"`) |
+| `passenger_destination_debug` | `str` | `""` | Internal debug string (not rendered) |
 | `passenger_count` | `int` | `1` | Number of passengers |
-| `passenger_luggage` | `int` | `signal["luggage"]` from mock | Number of luggage items |
+| `passenger_luggage` | `int` | `1` | Number of luggage items |
 | `passenger_special_assistance` | `bool` | `False` | Accessibility vehicle requested |
 | `passenger_notes` | `str` | `""` | Free-text trip notes |
 | `passenger_selected_ride` | `str` | `""` | ID of selected ride option |
@@ -63,11 +65,21 @@ When `passenger_count` or `passenger_luggage` changes to make the current `passe
 Mobile-style home screen. Passenger enters destination, counts, and optional trip details.
 
 **Sections:**
-1. **Route card** — destination text input + route timeline (`render_route_timeline` from `components/status_blocks.py`)
-2. **Trip details card** — passenger counter, luggage counter (`render_step_counter` from `components/forms.py`), special assistance toggle, additional notes
-3. **Confirm Pick-up** button → `passenger_step = "carType"`
+1. **Destination input** — `st.text_input` bound to `passenger_destination_input` plus a hidden `passenger_destination_mode` widget. An autocomplete dropdown of preset Bangkok destinations (`DESTINATION_PRESETS`) appears as the user types. Confirmation is **Enter-only**:
+   - Arrow keys highlight a suggestion; Enter selects it as `mode="selected"`.
+   - Enter with no highlighted suggestion and ≥ 3 characters accepts the typed text as `mode="free_text"`.
+   - Enter with < 3 characters triggers Streamlit's native rerun, which shows the inline validation error without advancing the step.
+   - There is no Go/Use button. Clicking a suggestion is supported but not required.
+2. **Route summary** — read-only pickup → destination timeline
+3. **Trip details card** — passenger counter, luggage counter (`render_step_counter` from `components/forms.py`), special assistance toggle, additional notes
+4. **Confirm Pick-up** button — disabled while `passenger_confirm_errors()` is non-empty → `passenger_step = "carType"`
 
-**Header:** page header with `render_mobile_header` — no back arrow (first step).
+**Destination validation rules** (`passenger_destination_is_valid()`):
+- `mode == "selected"` → always valid
+- `mode == "free_text"` → valid only if `len(value) >= 3`
+- Empty → invalid (`"Please enter your destination"`)
+
+**Header:** `render_mobile_header` — no back arrow (first step).
 
 ---
 

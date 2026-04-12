@@ -11,9 +11,9 @@ Hello Ride is a Streamlit prototype for a proactive taxi dispatch system at Suva
 | Layer | Technology | Version |
 |---|---|---|
 | UI framework | Streamlit | ≥ 1.55, < 2.0 |
-| Language | Python | 3.x |
-| Data / tabular | pandas | ≥ 2.2, < 3.0 |
-| Charts | Altair | ≥ 5.0, < 6.0 |
+| Language | Python | 3.11 |
+| Data / tabular | pandas | 2.1.4 |
+| Charts | Streamlit native (`st.line_chart`) | — |
 | Styling | Inline CSS via `st.markdown(unsafe_allow_html=True)` | — |
 | State management | `st.session_state` | — |
 
@@ -77,7 +77,7 @@ home → carType → ride → review → [submitted]
 
 | Step | Key session state |
 |---|---|
-| `home` | `passenger_destination`, `passenger_count`, `passenger_luggage`, `passenger_special_assistance`, `passenger_notes` |
+| `home` | `passenger_destination`, `passenger_destination_mode`, `passenger_count`, `passenger_luggage`, `passenger_special_assistance`, `passenger_notes` |
 | `carType` | `passenger_selected_ride` (validated against capacity), `passenger_payment` |
 | `ride` | Read-only summary |
 | `review` | `passenger_rating`, `passenger_tip`, `passenger_comment`, `passenger_review_submitted` |
@@ -144,7 +144,7 @@ A desktop-first operations dashboard with two workspace modes.
 | 4 | Deficit Breakdown — WHY | `ops["deficitBreakdown"]` |
 | 5 | Impact Simulation — SO WHAT | `ops["impactSimulation"]` |
 | 6 | OPS Control Actions — WHAT TO DO | `ops_extra_lane_active`, `ops_last_broadcast`, `ops_lane2_active` |
-| 7 | Arrival Wave Chart (with phase annotations) | `ops["forecast"]`, `ops["criticalWindow"]` (Altair) |
+| 7 | Arrival Wave Chart | `ops["forecast"]` (`st.line_chart`, demand vs supply series) |
 | 8 | Supporting data tables | `ops["flights"]`, `ops["demandSignals"]`, `ops["supply"]` |
 
 ---
@@ -253,15 +253,26 @@ All components are plain Python functions that render Streamlit elements.
 
 All CSS is defined in `utils/styles.py` and injected once at app startup by `apply_global_styles()` in `app.py` via `st.markdown(..., unsafe_allow_html=True)`.
 
-**CSS variable tokens:**
+**CSS variable tokens (`:root`):**
 
 | Variable | Value | Usage |
 |---|---|---|
-| `--color-primary` | `#00b14f` | Brand green, CTAs, online state |
-| `--color-danger` | `#d54b72` | Critical alerts, drop-off marker |
-| `--color-ops` | `#154aa8` | Ops surface accent |
-| `--color-driver` | `#0c7d35` | Driver surface accent |
-| `--color-passenger` | `#2d6bff` | Passenger surface accent |
+| `--hr-bg` | `#f6fbf7` | Base background reference |
+| `--hr-surface` | `rgba(255,255,255,0.96)` | Card / hero surface fill |
+| `--hr-card` | `#ffffff` | Solid card fill |
+| `--hr-foreground` | `#0f172a` | Body text |
+| `--hr-muted` | `#64748b` | Secondary / caption text |
+| `--hr-border` | `#d9e4ee` | Input and row borders |
+| `--hr-primary` | `#00b14f` | Brand green, CTAs, online state |
+| `--hr-primary-deep` | `#0c7d35` | Driver accent, hover states |
+| `--hr-secondary` | `#154aa8` | Ops surface accent |
+| `--hr-danger` | `#b91c1c` | Critical alerts |
+| `--hr-danger-deep` | `#991b1b` | Gauge and deep danger states |
+| `--hr-info` | `#2d6bff` | Passenger surface accent |
+
+**`st.container(border=True)` styling:**
+
+`[data-testid="stVerticalBlockBorderWrapper"]` is targeted globally to give every bordered container a white surface (`rgba(255,255,255,0.98)`), a visible slate border, and a soft shadow — ensuring cards separate clearly from the tinted page background on all surfaces.
 
 **Card tone variants** (`tone` parameter on card components): `default`, `passenger`, `driver`, `ops`, `ops-dark`, `danger`, `success`, `muted`.
 
@@ -287,7 +298,7 @@ The prototype uses `st.session_state` for all stateful values. State is initiali
 | `ops_workspace` | `str` | `"Live Monitoring"` | Active workspace tab |
 | `ops_guardrail_min` | `int` | `10` | PWT threshold for critical alert |
 | `ops_extra_lane_active` | `bool` | `False` | Overflow lane toggle |
-| `ops_last_broadcast` | `str` | `""` | Timestamp of last driver broadcast |
+| `ops_last_broadcast` | `str` | `""` | Timestamp of last driver broadcast (HH:MM) |
 | `ops_lane2_active` | `bool` | `False` | Lane 2 open/close toggle |
 
 **Implications:**

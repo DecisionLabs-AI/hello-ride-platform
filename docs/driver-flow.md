@@ -63,6 +63,10 @@ Driver onboarding landing page.
 - **Register CTA:** sets `driver_step = "registration"` via `set_driver_step`
 - **Login CTA:** sets `driver_registered`, `driver_verified`, `driver_approved` = `True`, transitions to `"guide"` (bypasses onboarding for demo)
 
+**Credential persistence:** `render_driver_login_draft_bridge()` injects a JS component that reads/writes `localStorage` under `driver_login_draft_v1`. On each render it pre-fills the Username and Password inputs with the stored draft (defaulting to `driver_demo` / `1234`). Changes are saved back on every keystroke. This replaces the previous approach of restoring credentials from `driver_logout()` in session state.
+
+Default credentials: **username** `driver_demo`, **password** `1234`.
+
 ---
 
 ### `registration` — `driver_step == "registration"`
