@@ -1,5 +1,8 @@
-import streamlit as st
 from html import escape
+import json
+
+import streamlit as st
+import streamlit.components.v1 as components
 
 from components.cards import render_info_card
 from components.header import render_section_heading
@@ -15,6 +18,28 @@ st.set_page_config(
     layout="wide",
     initial_sidebar_state="expanded",
 )
+
+
+PASSENGER_REQUEST_DRAFT_KEY = "passenger_request_draft"
+DESTINATION_PRESETS = [
+    "Sukhumvit",
+    "Silom",
+    "Siam",
+    "Phaya Thai",
+    "Chatuchak",
+    "Don Mueang Airport",
+    "ICONSIAM",
+    "CentralWorld",
+    "Victory Monument",
+    "Asok",
+    "Ekkamai",
+    "Thonglor",
+    "Rama 9",
+    "Bang Na",
+    "Ratchada",
+    "Ari",
+]
+DESTINATION_PRESET_SET = set(DESTINATION_PRESETS)
 
 
 def apply_passenger_styles() -> None:
@@ -261,14 +286,554 @@ def apply_passenger_styles() -> None:
           line-height: 1.35;
           color: #64748b;
         }
+
+        [data-testid="stTextInput"]:has(input[aria-label="Destination Mode"]) {
+          display: none;
+        }
+
         </style>
         """,
         unsafe_allow_html=True,
     )
 
 
+def _coerce_passenger_int(value: object, default: int, minimum: int, maximum: int) -> int:
+    try:
+        parsed = int(value)
+    except (TypeError, ValueError):
+        parsed = default
+    return max(minimum, min(maximum, parsed))
+
+
+def _coerce_passenger_bool(value: object) -> bool:
+    if isinstance(value, bool):
+        return value
+    if isinstance(value, str):
+        return value.strip().lower() in {"1", "true", "yes", "on"}
+    return bool(value)
+
+
+def normalize_destination_value(value: object) -> dict[str, str] | None:
+    if isinstance(value, dict):
+        destination_value = str(value.get("value", value.get("label", "")) or "").strip()
+        if not destination_value:
+            return None
+        raw_mode = str(value.get("mode", "") or "").strip()
+        if not raw_mode:
+            raw_mode = "selected" if destination_value in DESTINATION_PRESET_SET else "free_text"
+        mode = "selected" if raw_mode == "selected" else "free_text"
+        if mode == "selected" and destination_value not in DESTINATION_PRESET_SET:
+            mode = "free_text"
+        return {"mode": mode, "value": destination_value}
+
+    destination_value = str(value or "").strip()
+    if not destination_value:
+        return None
+    return {"mode": "free_text", "value": destination_value}
+
+
+def passenger_destination_value() -> str:
+    destination = normalize_destination_value(st.session_state.get("passenger_destination", ""))
+    return destination["value"] if destination else ""
+
+
+def passenger_destination_mode() -> str:
+    destination = normalize_destination_value(st.session_state.get("passenger_destination", ""))
+    return destination["mode"] if destination else "free_text"
+
+
+def passenger_destination_is_valid() -> bool:
+    destination = normalize_destination_value(st.session_state.get("passenger_destination", ""))
+    if not destination:
+        return False
+    if destination["mode"] == "selected":
+        return True
+    return len(destination["value"]) >= 3
+
+
+def build_passenger_request_draft() -> dict[str, object]:
+    destination = normalize_destination_value(
+        {
+            "mode": st.session_state.get("passenger_destination_mode", "free_text"),
+            "value": st.session_state.get("passenger_destination_input", ""),
+        }
+    )
+    if not destination:
+        destination = normalize_destination_value(st.session_state.get("passenger_destination", ""))
+    return {
+        "passenger_destination": destination or "",
+        "passenger_destination_input": (
+            destination["value"] if destination else str(st.session_state.get("passenger_destination_input", "") or "")
+        ),
+        "passenger_destination_mode": destination["mode"] if destination else "free_text",
+        "passenger_count": _coerce_passenger_int(
+            st.session_state.get("passenger_count", 1),
+            default=1,
+            minimum=1,
+            maximum=10,
+        ),
+        "passenger_luggage": _coerce_passenger_int(
+            st.session_state.get("passenger_luggage", 1),
+            default=1,
+            minimum=1,
+            maximum=8,
+        ),
+        "passenger_special_assistance": _coerce_passenger_bool(
+            st.session_state.get("passenger_special_assistance", False)
+        ),
+        "passenger_notes": str(st.session_state.get("passenger_notes", "") or ""),
+    }
+
+
+def apply_passenger_request_draft(draft: dict[str, object]) -> None:
+    destination = normalize_destination_value(
+        draft.get(
+            "passenger_destination",
+            {
+                "mode": draft.get("passenger_destination_mode", "free_text"),
+                "value": draft.get("passenger_destination_input", ""),
+            },
+        )
+    )
+    st.session_state.passenger_destination = destination or ""
+    st.session_state.passenger_destination_input = destination["value"] if destination else ""
+    st.session_state.passenger_destination_mode = (
+        destination["mode"] if destination else "free_text"
+    )
+    st.session_state.passenger_count = _coerce_passenger_int(
+        draft.get("passenger_count", 1),
+        default=1,
+        minimum=1,
+        maximum=10,
+    )
+    st.session_state.passenger_luggage = _coerce_passenger_int(
+        draft.get("passenger_luggage", 1),
+        default=1,
+        minimum=1,
+        maximum=8,
+    )
+    st.session_state.passenger_special_assistance = _coerce_passenger_bool(
+        draft.get("passenger_special_assistance", False)
+    )
+    st.session_state.passenger_notes = str(draft.get("passenger_notes", "") or "")
+
+
+def get_query_param_value(key: str) -> str:
+    query_params = getattr(st, "query_params", None)
+    if query_params is not None:
+        value = query_params.get(key, "")
+        if isinstance(value, list):
+            return str(value[0]) if value else ""
+        return str(value or "")
+
+    experimental_get_query_params = getattr(st, "experimental_get_query_params", None)
+    if callable(experimental_get_query_params):
+        value = experimental_get_query_params().get(key, [""])
+        return str(value[0]) if value else ""
+
+    return ""
+
+
+def maybe_hydrate_passenger_request_draft() -> bool:
+    if st.session_state.get("passenger_request_draft_query_checked", False):
+        return False
+
+    st.session_state.passenger_request_draft_query_checked = True
+    raw_draft = get_query_param_value(PASSENGER_REQUEST_DRAFT_KEY)
+    if not raw_draft:
+        return False
+
+    try:
+        draft = json.loads(raw_draft)
+    except json.JSONDecodeError:
+        return False
+
+    if not isinstance(draft, dict):
+        return False
+
+    apply_passenger_request_draft(draft)
+    return True
+
+
+def render_passenger_request_draft_bridge(prefer_stored_on_boot: bool) -> None:
+    draft_json = json.dumps(build_passenger_request_draft(), separators=(",", ":"), sort_keys=True)
+    components.html(
+        f"""
+        <script>
+        (() => {{
+          const storageKey = {json.dumps(PASSENGER_REQUEST_DRAFT_KEY)};
+          const draftJson = {json.dumps(draft_json)};
+          const preferStoredOnBoot = {json.dumps(prefer_stored_on_boot)};
+          const topWindow = window.parent;
+
+          const isValidDraft = (raw) => {{
+            if (!raw) {{
+              return false;
+            }}
+            try {{
+              const parsed = JSON.parse(raw);
+              return typeof parsed === "object" && parsed !== null;
+            }} catch (error) {{
+              return false;
+            }}
+          }};
+
+          try {{
+            const storedRaw = topWindow.localStorage.getItem(storageKey);
+            const url = new URL(topWindow.location.href);
+            const queryRaw = url.searchParams.get(storageKey);
+
+            if (storedRaw && !isValidDraft(storedRaw)) {{
+              topWindow.localStorage.removeItem(storageKey);
+            }}
+
+            if (preferStoredOnBoot && storedRaw && isValidDraft(storedRaw) && storedRaw !== queryRaw) {{
+              url.searchParams.set(storageKey, storedRaw);
+              topWindow.location.replace(url.toString());
+              return;
+            }}
+
+            if (topWindow.localStorage.getItem(storageKey) !== draftJson) {{
+              topWindow.localStorage.setItem(storageKey, draftJson);
+            }}
+
+            if (url.searchParams.get(storageKey) !== draftJson) {{
+              url.searchParams.set(storageKey, draftJson);
+              topWindow.history.replaceState({{}}, "", url.toString());
+            }}
+          }} catch (error) {{
+            // Keep the Streamlit flow working even if browser storage is unavailable.
+          }}
+        }})();
+        </script>
+        """,
+        height=0,
+    )
+
+
+def render_destination_autocomplete_bridge() -> None:
+    components.html(
+        f"""
+        <script>
+        (() => {{
+          const topWindow = window.parent;
+          const doc = topWindow.document;
+          const presets = {json.dumps(DESTINATION_PRESETS)};
+          const dropdownId = "passenger-destination-autocomplete";
+          const inputLabel = "Destination";
+          const modeLabel = "Destination Mode";
+          const minimumLength = 3;
+
+          const nativeSetter = Object.getOwnPropertyDescriptor(
+            topWindow.HTMLInputElement.prototype,
+            "value",
+          )?.set;
+
+          const setDomValue = (input, value) => {{
+            if (!input || typeof nativeSetter !== "function") {{
+              return;
+            }}
+            nativeSetter.call(input, value);
+          }};
+
+          const commitWidgetValue = (input, value) => {{
+            if (!input || typeof nativeSetter !== "function") {{
+              return;
+            }}
+            if (input.value !== value) {{
+              nativeSetter.call(input, value);
+            }}
+            input.dispatchEvent(new Event("input", {{ bubbles: true }}));
+            input.dispatchEvent(new Event("change", {{ bubbles: true }}));
+          }};
+
+          const findInput = (labelText) => {{
+            const ariaMatch = doc.querySelector(`input[aria-label="${{labelText}}"]`);
+            if (ariaMatch) {{
+              return ariaMatch;
+            }}
+            const labels = Array.from(doc.querySelectorAll("label"));
+            for (const label of labels) {{
+              if (label.textContent.trim() !== labelText) {{
+                continue;
+              }}
+              const inputId = label.getAttribute("for");
+              if (inputId) {{
+                const match = doc.getElementById(inputId);
+                if (match) {{
+                  return match;
+                }}
+              }}
+            }}
+            return null;
+          }};
+
+          const rankMatches = (term) => {{
+            const query = term.trim().toLowerCase();
+            if (!query) {{
+              return [];
+            }}
+            return presets
+              .filter((preset) => preset.toLowerCase().includes(query))
+              .sort((left, right) => {{
+                const leftStarts = left.toLowerCase().startsWith(query) ? 0 : 1;
+                const rightStarts = right.toLowerCase().startsWith(query) ? 0 : 1;
+                if (leftStarts !== rightStarts) {{
+                  return leftStarts - rightStarts;
+                }}
+                return left.localeCompare(right);
+              }})
+              .slice(0, 8);
+          }};
+
+          const bind = (attempt = 0) => {{
+            const input = findInput(inputLabel);
+            const modeInput = findInput(modeLabel);
+            if (!input || !modeInput) {{
+              if (attempt < 20) {{
+                topWindow.requestAnimationFrame(() => bind(attempt + 1));
+              }}
+              return;
+            }}
+
+            const textInputContainer = input.closest('[data-testid="stTextInput"]');
+            const fieldWrapper = textInputContainer?.parentElement;
+            const inputShell = textInputContainer?.querySelector('div[data-baseweb="input"]') || input.parentElement;
+            if (!fieldWrapper || !inputShell) {{
+              if (attempt < 20) {{
+                topWindow.requestAnimationFrame(() => bind(attempt + 1));
+              }}
+              return;
+            }}
+
+            fieldWrapper.style.position = "relative";
+            fieldWrapper.style.overflow = "visible";
+            inputShell.style.position = "relative";
+            inputShell.style.overflow = "visible";
+
+            let dropdown = fieldWrapper.querySelector(`#${{dropdownId}}`);
+            if (!dropdown) {{
+              dropdown = doc.createElement("div");
+              dropdown.id = dropdownId;
+              dropdown.style.position = "absolute";
+              dropdown.style.left = "0";
+              dropdown.style.top = "calc(100% + 8px)";
+              dropdown.style.width = "100%";
+              dropdown.style.zIndex = "9999";
+              dropdown.style.background = "#ffffff";
+              dropdown.style.border = "1px solid rgba(217, 228, 238, 0.96)";
+              dropdown.style.borderRadius = "1rem";
+              dropdown.style.boxShadow = "0 18px 36px rgba(15, 23, 42, 0.12)";
+              dropdown.style.padding = "0.35rem";
+              dropdown.style.display = "none";
+              dropdown.style.maxHeight = "16rem";
+              dropdown.style.overflowY = "auto";
+              dropdown.style.pointerEvents = "auto";
+              fieldWrapper.appendChild(dropdown);
+            }}
+
+            let matches = [];
+            let highlightedIndex = -1;
+            let blurTimer = null;
+            let isInteractingWithDropdown = false;
+
+            const normalizedInputValue = () => (input.value || "").trim();
+
+            if (!topWindow.__passengerDestEnterOnlyState) {{
+              topWindow.__passengerDestEnterOnlyState = {{}};
+            }}
+            topWindow.__passengerDestEnterOnlyState.wrapper = fieldWrapper;
+            topWindow.__passengerDestEnterOnlyState.closeDropdown = () => closeDropdown();
+
+            const closeDropdown = () => {{
+              isInteractingWithDropdown = false;
+              dropdown.style.display = "none";
+              dropdown.innerHTML = "";
+              highlightedIndex = -1;
+            }};
+
+            const selectSuggestion = (match) => {{
+              if (blurTimer) {{
+                topWindow.clearTimeout(blurTimer);
+              }}
+              commitWidgetValue(modeInput, "selected");
+              input.dataset.destinationMode = "selected";
+              commitWidgetValue(input, match);
+              closeDropdown();
+              input.focus();
+            }};
+
+            const renderDropdown = () => {{
+              dropdown.innerHTML = "";
+              if (!matches.length) {{
+                closeDropdown();
+                return;
+              }}
+
+              matches.forEach((match, index) => {{
+                const option = doc.createElement("button");
+                option.type = "button";
+                option.textContent = match;
+                option.style.width = "100%";
+                option.style.border = "none";
+                option.style.borderRadius = "0.8rem";
+                option.style.background = index === highlightedIndex ? "#e8fff1" : "transparent";
+                option.style.color = "#0f172a";
+                option.style.cursor = "pointer";
+                option.style.fontSize = "0.94rem";
+                option.style.fontWeight = index === highlightedIndex ? "700" : "600";
+                option.style.lineHeight = "1.35";
+                option.style.padding = "0.72rem 0.85rem";
+                option.style.textAlign = "left";
+                option.style.margin = "0";
+                option.style.pointerEvents = "auto";
+                option.onmouseenter = () => {{
+                  highlightedIndex = index;
+                  renderDropdown();
+                }};
+                option.onpointerdown = (event) => {{
+                  event.preventDefault();
+                  event.stopPropagation();
+                  isInteractingWithDropdown = true;
+                  selectSuggestion(match);
+                }};
+                option.onclick = (event) => {{
+                  event.preventDefault();
+                  event.stopPropagation();
+                  selectSuggestion(match);
+                }};
+                dropdown.appendChild(option);
+              }});
+              dropdown.style.display = "block";
+            }};
+
+            const openDropdown = () => {{
+              matches = rankMatches(input.value);
+              highlightedIndex = -1;
+              renderDropdown();
+            }};
+
+            const acceptFreeText = () => {{
+              const nextValue = normalizedInputValue();
+              commitWidgetValue(modeInput, "free_text");
+              input.dataset.destinationMode = "free_text";
+              commitWidgetValue(input, nextValue);
+              closeDropdown();
+            }};
+
+            if (input.dataset.passengerAutocompleteBound === "true") {{
+              input.dataset.destinationMode = modeInput.value === "selected" ? "selected" : "free_text";
+              return;
+            }}
+
+            input.dataset.passengerAutocompleteBound = "true";
+            input.dataset.destinationMode = modeInput.value === "selected" ? "selected" : "free_text";
+
+            input.addEventListener("input", () => {{
+              setDomValue(modeInput, "free_text");
+              input.dataset.destinationMode = "free_text";
+              if ((input.value || "").trim()) {{
+                openDropdown();
+              }} else {{
+                closeDropdown();
+              }}
+            }});
+
+            input.addEventListener("focus", () => {{
+              if ((input.value || "").trim()) {{
+                openDropdown();
+              }}
+            }});
+
+            input.addEventListener("keydown", (event) => {{
+              if (event.key === "ArrowDown" && matches.length) {{
+                event.preventDefault();
+                highlightedIndex = highlightedIndex < matches.length - 1 ? highlightedIndex + 1 : 0;
+                renderDropdown();
+                return;
+              }}
+
+              if (event.key === "ArrowUp" && matches.length) {{
+                event.preventDefault();
+                highlightedIndex = highlightedIndex > 0 ? highlightedIndex - 1 : matches.length - 1;
+                renderDropdown();
+                return;
+              }}
+
+              if (event.key === "Escape") {{
+                event.preventDefault();
+                closeDropdown();
+                return;
+              }}
+
+              if (event.key === "Enter") {{
+                if (matches.length && highlightedIndex >= 0) {{
+                  event.preventDefault();
+                  selectSuggestion(matches[highlightedIndex]);
+                }} else {{
+                  // Let Streamlit handle Enter naturally (fires on_change -> set_passenger_destination).
+                  // Just close the dropdown so it doesn't linger after the rerun.
+                  closeDropdown();
+                }}
+              }}
+            }});
+
+            input.addEventListener("blur", () => {{
+              blurTimer = topWindow.setTimeout(() => {{
+                if (isInteractingWithDropdown) {{
+                  return;
+                }}
+                const activeElement = doc.activeElement;
+                if (
+                  activeElement
+                  && (fieldWrapper.contains(activeElement) || dropdown.contains(activeElement))
+                ) {{
+                  return;
+                }}
+                closeDropdown();
+              }}, 120);
+            }});
+
+            dropdown.addEventListener("mousedown", () => {{
+              isInteractingWithDropdown = true;
+              if (blurTimer) {{
+                topWindow.clearTimeout(blurTimer);
+              }}
+            }});
+
+            dropdown.addEventListener("mouseenter", () => {{
+              isInteractingWithDropdown = true;
+            }});
+
+            dropdown.addEventListener("mouseleave", () => {{
+              isInteractingWithDropdown = false;
+            }});
+
+            if (!topWindow.__passengerDestOutsideBound) {{
+              topWindow.__passengerDestOutsideBound = true;
+              doc.addEventListener("mousedown", (event) => {{
+                const state = topWindow.__passengerDestEnterOnlyState || {{}};
+                const target = event.target;
+                if (state.wrapper && state.wrapper.contains(target)) {{
+                  return;
+                }}
+                if (typeof state.closeDropdown === "function") {{
+                  state.closeDropdown();
+                }}
+              }});
+            }}
+          }};
+
+          bind();
+        }})();
+        </script>
+        """,
+        height=0,
+    )
+
+
 def passenger_destination() -> str:
-    return (st.session_state.get("passenger_destination", "") or "").strip()
+    return passenger_destination_value()
 
 
 def adjust_passenger_counter(key: str, delta: int, minimum: int, maximum: int) -> None:
@@ -281,9 +846,16 @@ def set_passenger_step(step: str) -> None:
 
 
 def set_passenger_destination() -> None:
-    st.session_state.passenger_destination = (
-        st.session_state.get("passenger_destination_input", "") or ""
-    ).strip()
+    destination_value = str(st.session_state.get("passenger_destination_input", "") or "").strip()
+    destination_mode = str(st.session_state.get("passenger_destination_mode", "free_text") or "free_text").strip()
+    if destination_mode == "selected" and destination_value not in DESTINATION_PRESET_SET:
+        destination_mode = "free_text"
+    destination = normalize_destination_value(
+        {"mode": destination_mode, "value": destination_value}
+        if destination_value
+        else ""
+    )
+    st.session_state.passenger_destination = destination or ""
 
 
 def set_passenger_ride(ride_id: str) -> None:
@@ -296,19 +868,26 @@ def set_passenger_payment(payment_id: str) -> None:
 
 def passenger_confirm_errors() -> list[str]:
     errors: list[str] = []
-    if not passenger_destination():
+    destination = normalize_destination_value(st.session_state.get("passenger_destination", ""))
+    if not destination:
         errors.append("Please enter your destination")
+    elif destination["mode"] != "selected" and len(destination["value"]) < 3:
+        errors.append("Please enter at least 3 characters")
     if int(st.session_state.get("passenger_count", 1)) < 1:
         errors.append("At least 1 passenger is required")
     return errors
 
 
 def ensure_destination_input_state() -> None:
-    if (
-        not st.session_state.get("passenger_destination_input")
-        and st.session_state.get("passenger_destination")
-    ):
-        st.session_state.passenger_destination_input = st.session_state.passenger_destination
+    if "passenger_destination_mode" not in st.session_state:
+        st.session_state.passenger_destination_mode = "free_text"
+
+    current_destination = normalize_destination_value(st.session_state.get("passenger_destination", ""))
+    if current_destination:
+        if not st.session_state.get("passenger_destination_input"):
+            st.session_state.passenger_destination_input = current_destination["value"]
+        if not st.session_state.get("passenger_destination_mode"):
+            st.session_state.passenger_destination_mode = current_destination["mode"]
 
 
 def confirm_passenger_pickup() -> None:
@@ -428,7 +1007,7 @@ def render_ride_configuration() -> None:
                 "Luggage",
                 "Bags or suitcases to carry",
                 "passenger_luggage",
-                minimum=0,
+                minimum=1,
                 maximum=8,
             )
         st.markdown(
@@ -553,13 +1132,24 @@ def render_passenger_home() -> None:
     st.text_input(
         "Destination",
         key="passenger_destination_input",
+        placeholder="Search Bangkok destination",
         on_change=set_passenger_destination,
     )
+    st.text_input(
+        "Destination Mode",
+        key="passenger_destination_mode",
+        label_visibility="collapsed",
+    )
+    render_destination_autocomplete_bridge()
     set_passenger_destination()
     destination = passenger_destination()
-    if not destination:
+    if not passenger_destination_is_valid():
         st.markdown(
-            "<div class='passenger-validation-error'>Please enter your destination</div>",
+            (
+                "<div class='passenger-validation-error'>Please enter your destination</div>"
+                if not destination
+                else "<div class='passenger-validation-error'>Please enter at least 3 characters</div>"
+            ),
             unsafe_allow_html=True,
         )
     render_passenger_route_summary(
@@ -774,9 +1364,13 @@ SCREEN_MAP = {
 
 
 initialize_state()
+maybe_hydrate_passenger_request_draft()
+prefer_stored_on_boot = not st.session_state.get("passenger_request_draft_browser_boot_checked", False)
+st.session_state.passenger_request_draft_browser_boot_checked = True
 apply_global_styles()
 apply_passenger_styles()
 render_sidebar(active="passenger")
+render_passenger_request_draft_bridge(prefer_stored_on_boot=prefer_stored_on_boot)
 
 left, middle, right = st.columns([1, 1.2, 1], gap="large")
 with middle:

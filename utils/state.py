@@ -11,8 +11,10 @@ def initialize_state() -> None:
         "passenger_step": "home",
         "passenger_destination": "",
         "passenger_destination_input": "",
+        "passenger_destination_mode": "free_text",
+        "passenger_destination_debug": "",
         "passenger_count": 1,
-        "passenger_luggage": PASSENGER_EXPERIENCE["signal"]["luggage"],
+        "passenger_luggage": 1,
         "passenger_special_assistance": False,
         "passenger_notes": "",
         "passenger_selected_ride": "",
@@ -70,9 +72,6 @@ def driver_logout() -> None:
     st.session_state.driver_job_started_at = None
     st.session_state.driver_offer_expired = False
     st.session_state.accepted_job = None
-    # Restore demo credentials so the login form is prefilled after logout.
-    st.session_state.driver_login_username = "driver_demo"
-    st.session_state.driver_login_password = "1234"
 
 
 def set_driver_step(step: str) -> None:
@@ -87,8 +86,10 @@ def reset_passenger_flow() -> None:
     st.session_state.passenger_step = "home"
     st.session_state.passenger_destination = ""
     st.session_state.passenger_destination_input = ""
+    st.session_state.passenger_destination_mode = "free_text"
+    st.session_state.passenger_destination_debug = ""
     st.session_state.passenger_count = 1
-    st.session_state.passenger_luggage = PASSENGER_EXPERIENCE["signal"]["luggage"]
+    st.session_state.passenger_luggage = 1
     st.session_state.passenger_special_assistance = False
     st.session_state.passenger_notes = ""
     st.session_state.passenger_selected_ride = ""

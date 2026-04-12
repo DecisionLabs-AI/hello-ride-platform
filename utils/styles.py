@@ -7,7 +7,7 @@ def apply_global_styles() -> None:
         <style>
         :root {
           --hr-bg: #f6fbf7;
-          --hr-surface: rgba(255, 255, 255, 0.86);
+          --hr-surface: rgba(255, 255, 255, 0.96);
           --hr-card: #ffffff;
           --hr-foreground: #0f172a;
           --hr-muted: #64748b;
@@ -20,10 +20,13 @@ def apply_global_styles() -> None:
           --hr-info: #2d6bff;
         }
 
-        .stApp {
+        .stApp,
+        .stAppViewContainer,
+        [data-testid="stAppViewContainer"],
+        .main {
           background:
             radial-gradient(circle at top, rgba(0, 177, 79, 0.12), transparent 28%),
-            linear-gradient(180deg, #fbfffc 0%, #eef5ff 100%);
+            linear-gradient(180deg, #edf5f0 0%, #e2ecf8 100%) !important;
           color: var(--hr-foreground);
         }
 
@@ -61,7 +64,7 @@ def apply_global_styles() -> None:
         .hr-hero,
         .hr-card,
         .hr-phone-shell {
-          border: 1px solid rgba(255, 255, 255, 0.68);
+          border: 1px solid rgba(196, 214, 230, 0.9);
           background: var(--hr-surface);
           box-shadow: 0 24px 70px rgba(15, 23, 42, 0.12);
           backdrop-filter: blur(16px);
@@ -132,7 +135,7 @@ def apply_global_styles() -> None:
         }
 
         .hr-eyebrow {
-          color: var(--hr-muted);
+          color: #475569;
           margin-bottom: 0.35rem;
         }
 
@@ -781,6 +784,15 @@ def apply_global_styles() -> None:
         .hr-hero-body-constrained {
           max-width: 44rem;
           margin-top: 0.7rem;
+        }
+
+        /* ── Streamlit bordered containers → visible card surface ──────────── */
+
+        [data-testid="stVerticalBlockBorderWrapper"] {
+          background: rgba(255, 255, 255, 0.98) !important;
+          border: 1px solid rgba(148, 163, 184, 0.35) !important;
+          border-radius: 16px !important;
+          box-shadow: 0 2px 8px rgba(15, 23, 42, 0.06), 0 1px 2px rgba(15, 23, 42, 0.04) !important;
         }
 
         @media (max-width: 1024px) {

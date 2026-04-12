@@ -1,4 +1,7 @@
+import json
+
 import streamlit as st
+import streamlit.components.v1 as components
 
 from components.cards import render_info_card, render_metric_card
 from components.header import render_mobile_header, render_page_header, render_section_heading
@@ -15,6 +18,11 @@ st.set_page_config(
     layout="wide",
     initial_sidebar_state="expanded",
 )
+
+
+DRIVER_LOGIN_DRAFT_KEY = "driver_login_draft_v1"
+DEFAULT_DRIVER_USERNAME = "driver_demo"
+DEFAULT_DRIVER_PASSWORD = "1234"
 
 
 def apply_driver_styles() -> None:
@@ -395,6 +403,122 @@ def render_driver_queue_pressure_chart() -> None:
     )
 
 
+def render_driver_login_draft_bridge() -> None:
+    default_draft = {
+        "username": str(st.session_state.get("driver_login_username", DEFAULT_DRIVER_USERNAME) or DEFAULT_DRIVER_USERNAME),
+        "password": str(st.session_state.get("driver_login_password", DEFAULT_DRIVER_PASSWORD) or DEFAULT_DRIVER_PASSWORD),
+    }
+    components.html(
+        f"""
+        <script>
+        (() => {{
+          const storageKey = {json.dumps(DRIVER_LOGIN_DRAFT_KEY)};
+          const defaults = {json.dumps(default_draft)};
+          const topWindow = window.parent;
+          const doc = topWindow.document;
+
+          const parseDraft = (raw) => {{
+            if (!raw) {{
+              return null;
+            }}
+            try {{
+              const parsed = JSON.parse(raw);
+              if (!parsed || typeof parsed !== "object") {{
+                return null;
+              }}
+              return {{
+                username: typeof parsed.username === "string" ? parsed.username : defaults.username,
+                password: typeof parsed.password === "string" ? parsed.password : defaults.password,
+              }};
+            }} catch (error) {{
+              return null;
+            }}
+          }};
+
+          const nativeSetter = Object.getOwnPropertyDescriptor(
+            topWindow.HTMLInputElement.prototype,
+            "value",
+          )?.set;
+
+          const setInputValue = (input, value) => {{
+            if (!input || typeof nativeSetter !== "function") {{
+              return;
+            }}
+            if (input.value === value) {{
+              return;
+            }}
+            nativeSetter.call(input, value);
+            input.dispatchEvent(new Event("input", {{ bubbles: true }}));
+            input.dispatchEvent(new Event("change", {{ bubbles: true }}));
+          }};
+
+          const findInput = (labelText) => {{
+            const labels = Array.from(doc.querySelectorAll("label"));
+            for (const label of labels) {{
+              if (label.textContent.trim() !== labelText) {{
+                continue;
+              }}
+              const inputId = label.getAttribute("for");
+              if (inputId) {{
+                const byId = doc.getElementById(inputId);
+                if (byId) {{
+                  return byId;
+                }}
+              }}
+              const nestedInput = label.parentElement?.querySelector("input");
+              if (nestedInput) {{
+                return nestedInput;
+              }}
+            }}
+            return doc.querySelector(`input[aria-label="${{labelText}}"]`);
+          }};
+
+          const saveDraft = (usernameInput, passwordInput) => {{
+            const nextDraft = JSON.stringify({{
+              username: usernameInput?.value ?? defaults.username,
+              password: passwordInput?.value ?? defaults.password,
+            }});
+            if (topWindow.localStorage.getItem(storageKey) !== nextDraft) {{
+              topWindow.localStorage.setItem(storageKey, nextDraft);
+            }}
+          }};
+
+          const bind = (attempt = 0) => {{
+            const usernameInput = findInput("Username");
+            const passwordInput = findInput("Password");
+            if (!usernameInput || !passwordInput) {{
+              if (attempt < 20) {{
+                topWindow.requestAnimationFrame(() => bind(attempt + 1));
+              }}
+              return;
+            }}
+
+            const storedDraft = parseDraft(topWindow.localStorage.getItem(storageKey));
+            const activeDraft = storedDraft ?? defaults;
+
+            setInputValue(usernameInput, activeDraft.username);
+            setInputValue(passwordInput, activeDraft.password);
+            saveDraft(usernameInput, passwordInput);
+
+            if (!usernameInput.dataset.driverLoginDraftBound) {{
+              usernameInput.dataset.driverLoginDraftBound = "true";
+              usernameInput.addEventListener("input", () => saveDraft(usernameInput, passwordInput));
+            }}
+
+            if (!passwordInput.dataset.driverLoginDraftBound) {{
+              passwordInput.dataset.driverLoginDraftBound = "true";
+              passwordInput.addEventListener("input", () => saveDraft(usernameInput, passwordInput));
+            }}
+          }};
+
+          bind();
+        }})();
+        </script>
+        """,
+        height=0,
+    )
+
+
 def perform_driver_login() -> None:
     username = st.session_state.get("driver_login_username", "").strip()
     password = st.session_state.get("driver_login_password", "")
@@ -427,10 +551,22 @@ def render_driver_login() -> None:
         tone="driver-soft",
     )
     with st.form("driver_login_form", clear_on_submit=False):
-        st.text_input("Username", key="driver_login_username", placeholder="somchai.driver")
-        st.text_input("Password", key="driver_login_password", type="password", placeholder="Enter password")
+        st.text_input(
+            "Username",
+            key="driver_login_username",
+            value=DEFAULT_DRIVER_USERNAME,
+            placeholder="somchai.driver",
+        )
+        st.text_input(
+            "Password",
+            key="driver_login_password",
+            value=DEFAULT_DRIVER_PASSWORD,
+            type="password",
+            placeholder="Enter password",
+        )
         submitted = st.form_submit_button("Log In", width="stretch")
-    st.caption("Demo credentials are prefilled for presentation: driver_demo / 1234")
+    render_driver_login_draft_bridge()
+    st.caption("Demo credentials prefilled: driver_demo / 1234")
 
     if submitted:
         perform_driver_login()
