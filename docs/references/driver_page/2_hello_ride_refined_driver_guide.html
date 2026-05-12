@@ -1,0 +1,202 @@
+<!DOCTYPE html>
+
+<html lang="en"><head>
+<meta charset="utf-8"/>
+<meta content="width=device-width, initial-scale=1.0" name="viewport"/>
+<script src="https://cdn.tailwindcss.com?plugins=forms,container-queries"></script>
+<script id="tailwind-config">
+      tailwind.config = {
+        darkMode: "class",
+        theme: {
+          extend: {
+            colors: {
+              "primary": "#00B14F",
+              "on-primary": "#ffffff",
+              "primary-container": "#e6f7ed",
+              "on-primary-container": "#003919",
+              "surface-tint": "#00B14F",
+              "background": "#fbfcfd",
+              "on-background": "#191c1d",
+              "surface": "#f8fafd",
+              "on-surface": "#191c1d",
+              "surface-variant": "#dee3e5",
+              "on-surface-variant": "#40484c",
+              "outline": "#70787d",
+              "outline-variant": "#c0c7cb",
+              "inverse-surface": "#2e3132",
+              "inverse-on-surface": "#eff1f1",
+              "secondary": "#4e606e",
+              "on-secondary": "#ffffff",
+              "secondary-container": "#dce3e9",
+              "on-secondary-container": "#101d23",
+              "tertiary": "#0061a3",
+              "on-tertiary": "#ffffff",
+              "tertiary-container": "#d0e4ff",
+              "on-tertiary-container": "#001d35",
+              "error": "#ba1a1a",
+              "on-error": "#ffffff",
+              "error-container": "#ffdad6",
+              "on-error-container": "#410002",
+              "surface-container-lowest": "#ffffff",
+              "surface-container-low": "#f1f4f4",
+              "surface-container": "#ecedee",
+              "surface-container-high": "#e6e8e9",
+              "surface-container-highest": "#e0e3e3",
+            },
+            fontFamily: {
+              "headline": ["Inter"],
+              "body": ["Inter"],
+              "label": ["Inter"]
+            },
+            borderRadius: {
+                "DEFAULT": "0.5rem", 
+                "lg": "0.75rem", 
+                "xl": "1rem", 
+                "2xl": "1.5rem",
+                "full": "9999px"
+            },
+          },
+        },
+      }
+    </script>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800;900&amp;family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<style>
+      .material-symbols-outlined {
+        font-variation-settings: 'FILL' 0, 'wght' 400, 'GRAD' 0, 'opsz' 24;
+      }
+      .no-scrollbar::-webkit-scrollbar { display: none; }
+      .no-scrollbar { -ms-overflow-style: none; scrollbar-width: none; }
+      .glass-effect { backdrop-filter: blur(20px); -webkit-backdrop-filter: blur(20px); }
+      body {
+        min-height: 100dvh;
+      }
+    </style>
+</head>
+<body class="bg-background text-on-background font-body pb-28">
+<!-- TopAppBar -->
+<header class="fixed top-0 w-full z-50 bg-white/80 backdrop-blur-xl border-b border-surface-variant/20">
+<div class="flex justify-between items-center px-4 h-16 w-full max-w-screen-xl mx-auto">
+<div class="flex items-center gap-3">
+<button class="p-2 hover:bg-zinc-100 rounded-full active:scale-95 transition-transform">
+<span class="material-symbols-outlined text-primary">menu</span>
+</button>
+<h1 class="text-xl font-extrabold tracking-tight Inter text-primary">Hello Ride</h1>
+</div>
+<div class="flex items-center gap-2">
+<div class="bg-surface-container-high px-3 py-1 rounded-full flex items-center gap-2">
+<div class="w-2 h-2 bg-zinc-400 rounded-full"></div>
+<span class="text-[10px] font-bold uppercase tracking-wider text-zinc-500">Offline</span>
+</div>
+<button class="p-1 hover:bg-zinc-100 rounded-full active:scale-95 transition-transform">
+<span class="material-symbols-outlined text-primary">account_circle</span>
+</button>
+</div>
+</div>
+</header>
+<main class="pt-20 px-4 max-w-md mx-auto space-y-5">
+<!-- Hero: Context -->
+<section class="mt-2">
+<h2 class="text-2xl font-black tracking-tight text-on-surface leading-tight mb-1">Good Morning, Partner</h2>
+<p class="text-sm text-on-surface-variant">Complete your daily checklist and stay ahead of the demand.</p>
+</section>
+<!-- Go Online Toggle Card -->
+<div class="bg-surface-container-lowest p-6 rounded-2xl shadow-sm border border-surface-variant/30">
+<div class="flex items-center justify-between">
+<div class="flex items-center gap-4">
+<div class="w-12 h-12 rounded-full bg-primary-container flex items-center justify-center">
+<span class="material-symbols-outlined text-primary text-3xl" style="font-variation-settings: 'FILL' 1;">power_settings_new</span>
+</div>
+<div>
+<h3 class="text-lg font-bold">Go Online</h3>
+<p class="text-sm text-on-surface-variant">Ready to start earning?</p>
+</div>
+</div>
+<!-- Toggle Switch -->
+<button class="w-14 h-8 bg-surface-container-highest rounded-full p-1 transition-colors relative">
+<div class="w-6 h-6 bg-white rounded-full shadow-md transform transition-transform translate-x-0"></div>
+</button>
+</div>
+</div>
+<!-- Dispatch Offers & Incentives -->
+<div class="bg-primary-container p-5 rounded-2xl border border-primary/20 space-y-4">
+<div class="flex justify-between items-center">
+<div class="flex items-center gap-2">
+<span class="material-symbols-outlined text-primary" style="font-variation-settings: 'FILL' 1;">local_offer</span>
+<h3 class="font-bold text-on-primary-container">Active Incentives</h3>
+</div>
+<span class="text-[10px] font-black uppercase text-primary bg-white px-2 py-1 rounded">Live Now</span>
+</div>
+<div class="space-y-3">
+<div class="bg-white/80 p-3 rounded-xl flex justify-between items-center">
+<div>
+<p class="text-xs font-bold text-on-surface-variant">Area Bonus</p>
+<p class="text-sm font-black text-primary">+฿50 per trip in Sukhumvit</p>
+</div>
+<span class="material-symbols-outlined text-primary">arrow_forward_ios</span>
+</div>
+<div class="bg-white/80 p-3 rounded-xl">
+<div class="flex justify-between items-center mb-2">
+<p class="text-xs font-bold text-on-surface-variant">Morning Quest</p>
+<p class="text-xs font-black text-on-surface">฿200 bonus</p>
+</div>
+<div class="w-full bg-surface-container-highest h-1.5 rounded-full overflow-hidden">
+<div class="bg-primary h-full w-2/3"></div>
+</div>
+<p class="text-[10px] mt-2 font-bold text-on-surface-variant uppercase tracking-wider">Complete 2 more trips</p>
+</div>
+</div>
+</div>
+<!-- Demand Heatmap/Signals -->
+<div class="bg-surface-container-lowest p-5 rounded-2xl border border-surface-variant/30 space-y-4">
+<div class="flex items-center gap-2">
+<span class="material-symbols-outlined text-tertiary" style="font-variation-settings: 'FILL' 1;">trending_up</span>
+<h3 class="font-bold">High Demand Lanes</h3>
+</div>
+<div class="space-y-3">
+<div class="flex items-center gap-4">
+<div class="w-10 h-10 rounded-lg bg-tertiary-container flex items-center justify-center shrink-0">
+<span class="material-symbols-outlined text-tertiary">location_on</span>
+</div>
+<div class="flex-1 border-b border-surface-variant/20 pb-3">
+<div class="flex justify-between">
+<h4 class="font-bold text-sm">Silom District</h4>
+<span class="text-[10px] font-bold text-tertiary px-1.5 py-0.5 bg-tertiary-container rounded">High</span>
+</div>
+<p class="text-xs text-on-surface-variant mt-1">Peak: 8:00 AM - 10:00 AM</p>
+</div>
+</div>
+<div class="flex items-center gap-4">
+<div class="w-10 h-10 rounded-lg bg-surface-container flex items-center justify-center shrink-0">
+<span class="material-symbols-outlined text-on-surface-variant">location_on</span>
+</div>
+<div class="flex-1">
+<div class="flex justify-between">
+<h4 class="font-bold text-sm">Siam Square</h4>
+<span class="text-[10px] font-bold text-on-surface-variant px-1.5 py-0.5 bg-surface-container rounded">Rising</span>
+</div>
+<p class="text-xs text-on-surface-variant mt-1">Expected: From 11:30 AM</p>
+</div>
+</div>
+</div>
+</div>
+</main>
+<!-- BottomNavBar -->
+<nav class="fixed bottom-0 left-0 w-full flex justify-around items-center px-4 pb-6 pt-2 bg-white/90 backdrop-blur-xl border-t border-surface-variant/20 z-50">
+<a class="flex flex-col items-center justify-center text-primary py-1 px-4" href="#">
+<span class="material-symbols-outlined" style="font-variation-settings: 'FILL' 1;">home</span>
+<span class="font-black text-[10px] uppercase mt-0.5">Home</span>
+</a>
+<a class="flex flex-col items-center justify-center text-zinc-400 py-1 px-4 hover:text-primary transition-colors" href="#">
+<span class="material-symbols-outlined">payments</span>
+<span class="font-bold text-[10px] uppercase mt-0.5">Earnings</span>
+</a>
+<a class="flex flex-col items-center justify-center text-zinc-400 py-1 px-4 hover:text-primary transition-colors" href="#">
+<span class="material-symbols-outlined">history</span>
+<span class="font-bold text-[10px] uppercase mt-0.5">Activity</span>
+</a>
+<a class="flex flex-col items-center justify-center text-zinc-400 py-1 px-4 hover:text-primary transition-colors" href="#">
+<span class="material-symbols-outlined">person</span>
+<span class="font-bold text-[10px] uppercase mt-0.5">Account</span>
+</a>
+</nav>
+</body></html>

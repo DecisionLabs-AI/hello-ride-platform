@@ -291,6 +291,53 @@ def apply_passenger_styles() -> None:
           display: none;
         }
 
+        /* ── Mobile-first centering ─────────────────────────────────────── */
+        [data-testid="stMainBlockContainer"].block-container {
+          max-width: 420px !important;
+          margin-left: auto !important;
+          margin-right: auto !important;
+          padding-left: max(1rem, env(safe-area-inset-left)) !important;
+          padding-right: max(1rem, env(safe-area-inset-right)) !important;
+          padding-bottom: max(3rem, env(safe-area-inset-bottom)) !important;
+          width: 100% !important;
+          box-sizing: border-box !important;
+        }
+
+        /* ── Touch-target upgrades ──────────────────────────────────────── */
+        .stButton > button,
+        [data-testid="stBaseButton-secondary"],
+        [data-testid="stBaseButton-primary"] {
+          min-height: 3.25rem !important;
+          font-size: 0.97rem;
+        }
+
+        /* Counter +/- buttons inside passenger counter cards */
+        [data-testid="stVerticalBlock"]:has(.passenger-counter-card) [data-testid="stHorizontalBlock"] .stButton > button {
+          min-height: 3.5rem !important;
+          font-size: 1.25rem !important;
+          font-weight: 700;
+        }
+
+        /* Inputs: explicit height and readable font */
+        .stTextInput input,
+        .stTextArea textarea {
+          min-height: 3rem !important;
+          font-size: 1rem !important;
+          padding-left: 0.9rem !important;
+          padding-right: 0.9rem !important;
+        }
+
+        /* Toggle: wider tap zone */
+        .stToggle {
+          padding-top: 0.35rem;
+          padding-bottom: 0.35rem;
+        }
+
+        /* Bordered containers: keep rounded-xl feel */
+        [data-testid="stVerticalBlockBorderWrapper"] {
+          border-radius: 1.35rem !important;
+        }
+
         </style>
         """,
         unsafe_allow_html=True,
@@ -1372,6 +1419,4 @@ apply_passenger_styles()
 render_sidebar(active="passenger")
 render_passenger_request_draft_bridge(prefer_stored_on_boot=prefer_stored_on_boot)
 
-left, middle, right = st.columns([1, 1.2, 1], gap="large")
-with middle:
-    SCREEN_MAP[st.session_state.passenger_step]()
+SCREEN_MAP[st.session_state.passenger_step]()

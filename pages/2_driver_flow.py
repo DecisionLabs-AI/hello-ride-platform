@@ -282,6 +282,53 @@ def apply_driver_styles() -> None:
           border-color: rgba(8, 119, 51, 0.96);
           box-shadow: 0 0 0 0.22rem rgba(0, 177, 79, 0.18), 0 14px 30px rgba(0, 177, 79, 0.28);
         }
+
+        /* ── Mobile-first centering ─────────────────────────────────────── */
+        [data-testid="stMainBlockContainer"].block-container {
+          max-width: 420px !important;
+          margin-left: auto !important;
+          margin-right: auto !important;
+          padding-left: max(1rem, env(safe-area-inset-left)) !important;
+          padding-right: max(1rem, env(safe-area-inset-right)) !important;
+          padding-bottom: max(3rem, env(safe-area-inset-bottom)) !important;
+          width: 100% !important;
+          box-sizing: border-box !important;
+        }
+
+        /* ── Touch-target upgrades ──────────────────────────────────────── */
+        .stButton > button,
+        [data-testid="stBaseButton-secondary"],
+        [data-testid="stBaseButton-primary"] {
+          min-height: 3.25rem !important;
+          font-size: 0.97rem;
+        }
+
+        /* Re-assert sticky registration CTA stays taller (3.65rem) */
+        [data-testid="stVerticalBlockBorderWrapper"]:has(.reg-cta-anchor) .stButton > button,
+        [data-testid="stVerticalBlockBorderWrapper"]:has(.reg-cta-anchor) [data-testid="stBaseButton-primary"] {
+          min-height: 3.65rem !important;
+        }
+
+        /* Inputs: explicit height and readable font */
+        .stTextInput input,
+        .stTextArea textarea {
+          min-height: 3rem !important;
+          font-size: 1rem !important;
+          padding-left: 0.9rem !important;
+          padding-right: 0.9rem !important;
+        }
+
+        /* Toggle: wider tap zone */
+        .stToggle {
+          padding-top: 0.35rem;
+          padding-bottom: 0.35rem;
+        }
+
+        /* Bordered containers: keep rounded-xl feel */
+        [data-testid="stVerticalBlockBorderWrapper"] {
+          border-radius: 1.35rem !important;
+        }
+
         </style>
         """,
         unsafe_allow_html=True,
@@ -919,6 +966,4 @@ apply_global_styles()
 apply_driver_styles()
 render_sidebar(active="driver")
 
-outer_left, middle, outer_right = st.columns([1, 1.25, 1], gap="large")
-with middle:
-    SCREENS[st.session_state.driver_step]()
+SCREENS[st.session_state.driver_step]()

@@ -797,7 +797,7 @@ def apply_global_styles() -> None:
 
         @media (max-width: 1024px) {
           .block-container {
-            padding-top: 1.4rem;
+            padding-top: max(1.4rem, env(safe-area-inset-top));
           }
 
           .hr-hero {

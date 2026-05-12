@@ -1,0 +1,265 @@
+<!DOCTYPE html>
+
+<html class="light" lang="en"><head>
+<meta charset="utf-8"/>
+<meta content="width=device-width, initial-scale=1.0" name="viewport"/>
+<script src="https://cdn.tailwindcss.com?plugins=forms,container-queries"></script>
+<link href="https://fonts.googleapis.com/css2?family=Manrope:wght@400;700;800&amp;family=Inter:wght@400;500;600;700&amp;display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<script id="tailwind-config">
+      tailwind.config = {
+        darkMode: "class",
+        theme: {
+          extend: {
+            colors: {
+              "surface-container": "#f0eded",
+              "on-surface": "#1b1c1c",
+              "on-secondary-fixed": "#002109",
+              "surface-container-high": "#eae7e7",
+              "on-secondary-container": "#376e41",
+              "on-primary-fixed": "#002109",
+              "error-container": "#ffdad6",
+              "on-secondary": "#ffffff",
+              "on-primary-container": "#003a15",
+              "surface": "#fcf9f8",
+              "on-error-container": "#93000a",
+              "on-tertiary-fixed": "#400013",
+              "tertiary": "#af294c",
+              "inverse-surface": "#303030",
+              "on-primary-fixed-variant": "#005321",
+              "error": "#ba1a1a",
+              "surface-tint": "#006e2e",
+              "primary-fixed": "#71fe91",
+              "on-error": "#ffffff",
+              "surface-variant": "#e5e2e1",
+              "inverse-on-surface": "#f3f0ef",
+              "primary": "#006e2e",
+              "on-tertiary-fixed-variant": "#8e0b36",
+              "on-tertiary": "#ffffff",
+              "tertiary-fixed-dim": "#ffb2bc",
+              "background": "#fcf9f8",
+              "on-primary": "#ffffff",
+              "on-surface-variant": "#3d4a3d",
+              "outline": "#6d7b6c",
+              "secondary-container": "#b2eeb6",
+              "on-tertiary-container": "#680024",
+              "surface-bright": "#fcf9f8",
+              "surface-container-lowest": "#ffffff",
+              "secondary-fixed-dim": "#99d59e",
+              "inverse-primary": "#52e078",
+              "primary-container": "#00b14f",
+              "surface-container-low": "#f6f3f2",
+              "tertiary-fixed": "#ffd9dd",
+              "outline-variant": "#bccbb9",
+              "surface-dim": "#dcd9d9",
+              "on-secondary-fixed-variant": "#195127",
+              "secondary": "#336a3d",
+              "surface-container-highest": "#e5e2e1",
+              "secondary-fixed": "#b5f1b9",
+              "tertiary-container": "#fd6584",
+              "primary-fixed-dim": "#52e078",
+              "on-background": "#1b1c1c"
+            },
+            fontFamily: {
+              "headline": ["Manrope"],
+              "body": ["Inter"],
+              "label": ["Inter"]
+            },
+            borderRadius: {"DEFAULT": "0.25rem", "lg": "0.5rem", "xl": "0.75rem", "full": "9999px"},
+          },
+        },
+      }
+    </script>
+<style>
+        .material-symbols-outlined {
+            font-variation-settings: 'FILL' 0, 'wght' 400, 'GRAD' 0, 'opsz' 24;
+            display: inline-block;
+            line-height: 1;
+            text-transform: none;
+            letter-spacing: normal;
+            word-wrap: normal;
+            white-space: nowrap;
+            direction: ltr;
+        }
+        .hide-scrollbar::-webkit-scrollbar { display: none; }
+        .hide-scrollbar { -ms-overflow-style: none; scrollbar-width: none; }
+        
+        /* The Kinetic Oasis Glassmorphism */
+        .glass-panel {
+            background: rgba(252, 249, 248, 0.8);
+            backdrop-filter: blur(20px);
+            -webkit-backdrop-filter: blur(20px);
+        }
+    </style>
+<style>
+    body {
+      min-height: max(884px, 100dvh);
+    }
+  </style>
+</head>
+<body class="bg-background text-on-background font-body min-h-screen overflow-hidden">
+<!-- Top Navigation Anchor -->
+<header class="bg-[#fcf9f8] dark:bg-gray-900 fixed top-0 left-0 right-0 z-50 no-border tonal-shift bg-[#f0eded] dark:bg-gray-800">
+<nav class="flex justify-between items-center w-full px-6 py-4 max-w-screen-xl mx-auto">
+<div class="flex items-center gap-4">
+<button class="p-2 hover:bg-gray-100 dark:hover:bg-gray-800 rounded-full transition-colors active:scale-95">
+<span class="material-symbols-outlined text-primary" data-icon="arrow_back">arrow_back</span>
+</button>
+<h1 class="text-2xl font-black text-[#006e2e] dark:text-[#00b14f] tracking-tight font-headline">Hello Ride</h1>
+</div>
+<div class="hidden md:flex gap-8 items-center">
+<span class="text-[#1b1c1c] dark:text-gray-400 font-medium hover:bg-gray-100 dark:hover:bg-gray-800 transition-colors cursor-pointer px-3 py-1 rounded-lg">Home</span>
+<span class="text-[#006e2e] dark:text-[#00b14f] font-bold hover:bg-gray-100 dark:hover:bg-gray-800 transition-colors cursor-pointer px-3 py-1 rounded-lg">Activity</span>
+<span class="text-[#1b1c1c] dark:text-gray-400 font-medium hover:bg-gray-100 dark:hover:bg-gray-800 transition-colors cursor-pointer px-3 py-1 rounded-lg">Payment</span>
+<div class="w-10 h-10 rounded-full bg-surface-container-highest overflow-hidden">
+<img class="w-full h-full object-cover" data-alt="Close-up professional portrait of a smiling man with a clean beard in soft natural studio lighting" src="https://lh3.googleusercontent.com/aida-public/AB6AXuAJbeq-hJ48CTe2wleEn_5XpY7A3A8wbf25ybbAcGK-h4fpbXkdjRQcPHb0ZXCIOe81hvyaEXCtQABo--YFyiyhYdR-i9X3-7En9E5B5AcPmjIkl8vcErXkHe_QHu1uJbrMz1lSwdJK6kfSu0MrmmxUZVaQPhaQY9ulxY8LXOOwkexAGd-v3srNvPz8ksprmI-9umWwk3g9GxyblwQfuIeI0bhpffJeJHOxKPEo7w6Qsfo-TEqElfvXiS-bXvg0f8oREwWfaQxcPes"/>
+</div>
+</div>
+<div class="md:hidden">
+<span class="material-symbols-outlined text-on-surface" data-icon="more_vert">more_vert</span>
+</div>
+</nav>
+</header>
+<!-- Main Canvas: Map View -->
+<main class="relative h-screen w-full pt-16">
+<!-- Interactive Map Mockup -->
+<div class="absolute inset-0 z-0">
+<div class="w-full h-full bg-surface-container-high relative overflow-hidden">
+<img class="w-full h-full object-cover opacity-60 grayscale-[0.2]" data-alt="Top down aerial view of a clean modern city map with simplified architectural shapes and soft green park spaces" data-location="Singapore" src="https://lh3.googleusercontent.com/aida-public/AB6AXuDEk9N2uoUF8r0cCmj1DC8bpjO9RLnf1Fh8hdE9YkRySm_2NBsmeGje0n4R2JEEhWldc4SFctOYVcpZbu0mKhhTBAWbGO78KiXrl6k8KoEHIZCysnXdtrKlpUSf5Ck4U5j5I2OeBvx_qyqU6PD0u-0GhNvJym1MWHtuhQSbbCRFEUannpaSIGeFrH_JFH6V7T6RW2RurZ2XYpCmjMtBAy62zY-iMpD-8WxwVzjCkYZPngv3ClkWFCGjaFUF9Kts19wVeOliBkeLlnE"/>
+<!-- Custom Route Ribbon -->
+<svg class="absolute inset-0 w-full h-full pointer-events-none" viewbox="0 0 400 800">
+<path class="drop-shadow-[0_0_12px_rgba(113,254,145,0.6)]" d="M 100 600 Q 150 400 300 350" fill="none" stroke="#006e2e" stroke-linecap="round" stroke-width="8"></path>
+<circle cx="100" cy="600" fill="#006e2e" r="10"></circle>
+<circle cx="300" cy="350" fill="#af294c" r="12"></circle>
+</svg>
+<!-- Floating Route Indicators -->
+<div class="absolute top-24 left-1/2 -translate-x-1/2 w-[90%] max-w-md">
+<div class="glass-panel p-4 rounded-2xl shadow-sm flex items-center gap-4">
+<div class="flex flex-col items-center gap-1">
+<div class="w-2 h-2 rounded-full bg-primary"></div>
+<div class="w-0.5 h-6 bg-outline-variant opacity-20"></div>
+<div class="w-2 h-2 rounded-full bg-tertiary"></div>
+</div>
+<div class="flex-1 space-y-1">
+<p class="text-xs font-semibold text-on-surface-variant font-label uppercase tracking-widest">Current Journey</p>
+<p class="text-sm font-bold truncate">Orchard Road, ION Mall</p>
+<p class="text-sm font-medium text-on-surface-variant truncate">Changi Airport Terminal 3</p>
+</div>
+</div>
+</div>
+</div>
+</div>
+<!-- Vehicle Selection Bottom Sheet -->
+<div class="absolute bottom-0 left-0 right-0 z-40 flex flex-col items-center">
+<!-- Sheet Handle -->
+<div class="w-12 h-1.5 bg-surface-variant rounded-full mb-3 opacity-60"></div>
+<section class="w-full max-w-2xl bg-surface rounded-t-[2.5rem] shadow-[0_-12px_40px_rgba(27,28,28,0.08)] px-6 pt-8 pb-10 flex flex-col max-h-[618px]">
+<header class="mb-6">
+<h2 class="text-2xl font-extrabold font-headline tracking-tight text-on-surface">Select ride</h2>
+<p class="text-sm text-on-surface-variant font-medium">Estimated arrival: 4 mins</p>
+</header>
+<!-- Options List (The "Non-List") -->
+<div class="flex-1 overflow-y-auto hide-scrollbar space-y-4 mb-8">
+<!-- JustGrab: Selected State -->
+<div class="bg-primary-fixed flex items-center p-5 rounded-[1.5rem] cursor-pointer transition-all duration-200 active:scale-98">
+<div class="w-16 h-16 bg-white/40 rounded-2xl flex items-center justify-center mr-4">
+<span class="material-symbols-outlined text-4xl text-on-primary-container" data-icon="directions_car">directions_car</span>
+</div>
+<div class="flex-1">
+<div class="flex items-center gap-2">
+<h3 class="text-lg font-bold">Just Hello</h3>
+<span class="bg-on-primary-container text-white text-[10px] px-2 py-0.5 rounded-full font-bold uppercase tracking-wider">Cheapest</span>
+</div>
+<p class="text-sm font-medium text-on-primary-container/70">Nearest car: 2 mins</p>
+</div>
+<div class="text-right">
+<p class="text-lg font-black font-headline">S$14.50</p>
+<p class="text-xs font-bold line-through opacity-40">S$18.00</p>
+</div>
+</div>
+<!-- GrabCar -->
+<div class="bg-surface-container-low flex items-center p-5 rounded-[1.5rem] cursor-pointer hover:bg-surface-container transition-colors active:scale-98">
+<div class="w-16 h-16 bg-surface-container-highest rounded-2xl flex items-center justify-center mr-4">
+<span class="material-symbols-outlined text-4xl text-on-surface-variant" data-icon="local_taxi">local_taxi</span>
+</div>
+<div class="flex-1">
+<h3 class="text-lg font-bold">Hello Car</h3>
+<p class="text-sm font-medium text-on-surface-variant">Premium daily rides</p>
+</div>
+<div class="text-right">
+<p class="text-lg font-bold font-headline">S$17.20</p>
+<p class="text-xs text-on-surface-variant">4 mins</p>
+</div>
+</div>
+<!-- GrabBike -->
+<div class="bg-surface-container-low flex items-center p-5 rounded-[1.5rem] cursor-pointer hover:bg-surface-container transition-colors active:scale-98">
+<div class="w-16 h-16 bg-surface-container-highest rounded-2xl flex items-center justify-center mr-4">
+<span class="material-symbols-outlined text-4xl text-on-surface-variant" data-icon="two_wheeler">two_wheeler</span>
+</div>
+<div class="flex-1">
+<div class="flex items-center gap-2">
+<h3 class="text-lg font-bold">Hello Bike</h3>
+<span class="bg-tertiary-container text-on-tertiary-container text-[10px] px-2 py-0.5 rounded-full font-bold uppercase tracking-wider">Fastest</span>
+</div>
+<p class="text-sm font-medium text-on-surface-variant">Beat the traffic</p>
+</div>
+<div class="text-right">
+<p class="text-lg font-bold font-headline">S$9.00</p>
+<p class="text-xs text-on-surface-variant">1 min</p>
+</div>
+</div>
+<!-- GrabTaxi -->
+<div class="bg-surface-container-low flex items-center p-5 rounded-[1.5rem] cursor-pointer hover:bg-surface-container transition-colors active:scale-98">
+<div class="w-16 h-16 bg-surface-container-highest rounded-2xl flex items-center justify-center mr-4">
+<span class="material-symbols-outlined text-4xl text-on-surface-variant" data-icon="hail">hail</span>
+</div>
+<div class="flex-1">
+<h3 class="text-lg font-bold">Hello Taxi</h3>
+<p class="text-sm font-medium text-on-surface-variant">Metered local taxi</p>
+</div>
+<div class="text-right">
+<p class="text-lg font-bold font-headline">Est. S$15-20</p>
+<p class="text-xs text-on-surface-variant">5 mins</p>
+</div>
+</div>
+<!-- GrabSUV -->
+<div class="bg-surface-container-low flex items-center p-5 rounded-[1.5rem] cursor-pointer hover:bg-surface-container transition-colors active:scale-98">
+<div class="w-16 h-16 bg-surface-container-highest rounded-2xl flex items-center justify-center mr-4">
+<span class="material-symbols-outlined text-4xl text-on-surface-variant" data-icon="airport_shuttle">airport_shuttle</span>
+</div>
+<div class="flex-1">
+<h3 class="text-lg font-bold">Hello SUV</h3>
+<p class="text-sm font-medium text-on-surface-variant">Spacious 6-seater</p>
+</div>
+<div class="text-right">
+<p class="text-lg font-bold font-headline">S$24.80</p>
+<p class="text-xs text-on-surface-variant">8 mins</p>
+</div>
+</div>
+</div>
+<!-- Payment & Footer Footer -->
+<div class="space-y-6">
+<!-- Payment Method Row -->
+<div class="flex items-center justify-between bg-surface-container-lowest border-2 border-primary/5 p-4 rounded-2xl">
+<div class="flex items-center gap-3">
+<div class="w-10 h-6 bg-[#003a15] rounded flex items-center justify-center">
+<span class="text-[8px] text-white font-black tracking-tighter">GrabPay</span>
+</div>
+<div class="flex flex-col">
+<span class="text-sm font-bold">Hello Pay Wallet</span>
+<span class="text-xs text-on-surface-variant">S$142.50 available</span>
+</div>
+</div>
+<button class="text-primary font-bold text-sm px-4 py-2 hover:bg-primary/5 rounded-full transition-colors">Change</button>
+</div>
+<!-- Booking CTA -->
+<button class="w-full bg-gradient-to-br from-primary to-primary-container text-on-primary py-5 rounded-full font-bold text-lg shadow-[0_12px_24px_rgba(0,110,46,0.2)] active:scale-95 transition-transform">Book Just Hello</button>
+</div>
+</section>
+</div>
+</main>
+<!-- Navigation Shell Placeholder (Suppressed on focused transactional map view as per guidelines) -->
+<!-- The BottomNavBar is suppressed here as the user is in a focused booking journey (Task-Focused: Close/Back action implied) -->
+<!-- Mobile Navigation Shell (Visual only, suppressed visibility for focus) -->
+</body></html>

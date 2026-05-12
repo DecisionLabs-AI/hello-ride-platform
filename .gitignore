@@ -6,6 +6,7 @@ __pycache__/
 
 # Streamlit
 .streamlit/secrets.toml
+!.streamlit/secrets.toml.example
 
 # Environment
 .env
@@ -16,5 +17,18 @@ __pycache__/
 .DS_Store
 *.local
 
+# Virtual environment
+.venv/
+venv/
+
+# ML model binaries
+models/*.joblib
+
 # Claude
 .claude/
+
+# AI session memory — private notes (local only)
+.agents/private/
+# Secrets (explicit, even if already present above)
+.streamlit/secrets.toml
+.env

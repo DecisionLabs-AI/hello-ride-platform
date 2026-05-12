@@ -1,0 +1,582 @@
+import { useState } from "react";
+import { PASSENGER, RIDES, PAYMENT_OPTIONS, TIP_OPTIONS, DESTINATION_PRESETS } from "../data/mockPassenger.js";
+
+// ── Step Indicator ────────────────────────────────────────────────────────
+
+const STEPS = [
+  { id: "home", label: "Trip details" },
+  { id: "carType", label: "Choose ride" },
+  { id: "ride", label: "Confirmed" },
+  { id: "review", label: "Review" },
+];
+
+function StepIndicator({ current }) {
+  const idx = STEPS.findIndex((s) => s.id === current);
+  return (
+    <div className="flex items-center gap-1">
+      {STEPS.map((step, i) => (
+        <div key={step.id} className="flex items-center">
+          <div className={`flex items-center gap-1.5 ${i <= idx ? "text-slate-900" : "text-muted"}`}>
+            <div className={`w-6 h-6 rounded-full flex items-center justify-center text-xs font-bold shadow-sm transition-all ${
+              i < idx ? "bg-brand text-white" : i === idx ? "bg-brand text-white ring-4 ring-brand/20" : "bg-slate-200 text-slate-400"
+            }`}>
+              {i < idx ? "✓" : i + 1}
+            </div>
+            <span className="text-xs font-medium hidden sm:block">{step.label}</span>
+          </div>
+          {i < STEPS.length - 1 && (
+            <div className={`w-8 h-0.5 mx-1.5 rounded-full transition-colors ${i < idx ? "bg-brand/40" : "bg-slate-200"}`} />
+          )}
+        </div>
+      ))}
+    </div>
+  );
+}
+
+// ── Shared Mobile Header ──────────────────────────────────────────────────
+
+function MobileHeader({ title, backLabel, onBack, rightLabel, showAvatar }) {
+  return (
+    <div className="flex items-center justify-between py-3 mb-4">
+      <div className="w-16">
+        {onBack && (
+          <button onClick={onBack} className="flex items-center justify-center hover:opacity-70 transition-opacity">
+            <span className="material-symbols-outlined text-[#006e2e] text-xl">arrow_back</span>
+          </button>
+        )}
+      </div>
+      <p className="text-base font-bold text-slate-900">{title}</p>
+      <div className="w-16 flex justify-end">
+        {showAvatar && (
+          <div className="w-8 h-8 rounded-full bg-brand/20 border border-brand/30 flex items-center justify-center text-xs font-bold text-brand">
+            NT
+          </div>
+        )}
+        {rightLabel && <p className="text-xs text-muted">{rightLabel}</p>}
+      </div>
+    </div>
+  );
+}
+
+// ── Route Summary Card ─────────────────────────────────────────────────────
+
+function RouteSummary({ pickup, destination }) {
+  return (
+    <div className="bg-[#f6f3f2] rounded-2xl p-3.5 flex items-stretch gap-3">
+      <div className="flex flex-col items-center gap-1 pt-1">
+        <div className="w-3 h-3 rounded-full bg-[#006e2e]" />
+        <div className="w-0.5 flex-1 bg-[#c8c5c4]" />
+        <div className="w-3 h-3 rounded bg-[#d54b72]" />
+      </div>
+      <div className="flex-1 flex flex-col gap-2">
+        <div className="bg-white rounded-xl px-3 py-2.5">
+          <p className="text-xs text-muted mb-0.5">Pickup</p>
+          <p className="text-sm font-medium text-slate-800">Suvarnabhumi Airport, Terminal 1</p>
+        </div>
+        <div className="bg-white rounded-xl px-3 py-2.5">
+          <p className="text-xs text-muted mb-0.5">Destination</p>
+          <p className={`text-sm font-medium ${destination ? "text-slate-900" : "text-slate-400"}`}>
+            {destination || "Where to?"}
+          </p>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+// ── Counter ────────────────────────────────────────────────────────────────
+
+function Counter({ label, subtitle, value, onChange, min = 0, max = 10, icon }) {
+  return (
+    <div className="bg-[#f6f3f2] p-3.5 rounded-2xl flex items-center justify-between">
+      <div className="flex items-center gap-2">
+        {icon && <span className="material-symbols-outlined text-[#006e2e] text-xl">{icon}</span>}
+        <div>
+          <p className="text-sm font-medium text-slate-900">{label}</p>
+          {subtitle && <p className="text-xs text-muted mt-0.5">{subtitle}</p>}
+        </div>
+      </div>
+      <div className="flex items-center gap-3">
+        <button
+          onClick={() => onChange(Math.max(min, value - 1))}
+          className="w-7 h-7 rounded-full bg-[#e5e2e1] flex items-center justify-center font-bold text-slate-700 hover:bg-[#d5d2d1] transition-colors"
+        >
+          −
+        </button>
+        <span className="text-slate-900 font-bold w-8 text-center">{value}</span>
+        <button
+          onClick={() => onChange(Math.min(max, value + 1))}
+          className="w-7 h-7 rounded-full bg-[#00b14f]/20 text-[#006e2e] flex items-center justify-center font-bold hover:bg-[#00b14f]/30 transition-colors"
+        >
+          +
+        </button>
+      </div>
+    </div>
+  );
+}
+
+// ── Home Screen ────────────────────────────────────────────────────────────
+
+function HomeScreen({ onNext }) {
+  const [dest, setDest] = useState("");
+  const [destInput, setDestInput] = useState("");
+  const [passengers, setPassengers] = useState(1);
+  const [luggage, setLuggage] = useState(1);
+  const [specialAssistance, setSpecialAssistance] = useState(false);
+  const [notes, setNotes] = useState("");
+  const [showSuggestions, setShowSuggestions] = useState(false);
+
+  const filtered = DESTINATION_PRESETS.filter((p) =>
+    p.toLowerCase().includes(destInput.toLowerCase())
+  ).slice(0, 8);
+
+  const isValid = dest && passengers >= 1;
+
+  return (
+    <div className="flex flex-col gap-4">
+      <MobileHeader title="Hello Ride" showAvatar />
+
+      {/* Destination input */}
+      <div>
+        <p className="text-xs text-muted uppercase tracking-widest font-medium mb-2">Destination</p>
+        <div className="relative">
+          <input
+            type="text"
+            value={destInput}
+            onChange={(e) => {
+              setDestInput(e.target.value);
+              setDest("");
+              setShowSuggestions(true);
+            }}
+            onFocus={() => setShowSuggestions(true)}
+            placeholder="Search Bangkok destination"
+            className="w-full bg-white border border-slate-200 rounded-xl px-4 py-3 text-slate-900 placeholder:text-slate-400 text-sm focus:outline-none focus:border-brand focus:ring-2 focus:ring-brand/10 transition-all shadow-sm"
+          />
+          {showSuggestions && destInput && filtered.length > 0 && !dest && (
+            <div className="absolute z-10 top-full mt-1 w-full bg-white border border-slate-200 rounded-xl overflow-hidden shadow-lg">
+              {filtered.map((s) => (
+                <button
+                  key={s}
+                  onClick={() => { setDest(s); setDestInput(s); setShowSuggestions(false); }}
+                  className="w-full text-left px-4 py-2.5 text-sm text-slate-600 hover:bg-slate-50 hover:text-slate-900 transition-colors"
+                >
+                  {s}
+                </button>
+              ))}
+            </div>
+          )}
+        </div>
+        {!destInput && (
+          <div className="flex flex-wrap gap-2 mt-2">
+            {DESTINATION_PRESETS.slice(0, 6).map((s) => (
+              <button
+                key={s}
+                onClick={() => { setDest(s); setDestInput(s); }}
+                className="text-xs px-3 py-1.5 rounded-lg bg-slate-100 text-slate-500 hover:text-slate-800 hover:bg-slate-200 border border-slate-200 transition-colors"
+              >
+                {s}
+              </button>
+            ))}
+          </div>
+        )}
+      </div>
+
+      {/* Route summary */}
+      <RouteSummary pickup={PASSENGER.route.pickup} destination={dest} />
+
+      {/* Trip details */}
+      <div>
+        <p className="text-xs text-muted uppercase tracking-widest font-medium mb-2">Trip details</p>
+        <p className="text-sm text-muted mb-3">Configure your ride</p>
+        <div className="flex flex-col gap-2">
+          <Counter
+            label="Passengers"
+            subtitle="How many travelers are riding"
+            value={passengers}
+            onChange={setPassengers}
+            min={1}
+            max={10}
+            icon="person"
+          />
+          <Counter
+            label="Luggage"
+            subtitle="Bags or suitcases to carry"
+            value={luggage}
+            onChange={setLuggage}
+            min={0}
+            max={8}
+            icon="luggage"
+          />
+        </div>
+        <p className="text-xs text-muted mt-2">
+          Adjust the party size and luggage count before confirming your airport pickup.
+        </p>
+      </div>
+
+      {/* Special assistance */}
+      <div className="bg-white shadow-sm border border-slate-100 rounded-2xl p-4 flex items-center justify-between">
+        <p className="text-sm text-slate-900">Special Assistance</p>
+        <button
+          onClick={() => setSpecialAssistance((v) => !v)}
+          className={`w-11 h-6 rounded-full transition-colors relative ${specialAssistance ? "bg-brand" : "bg-slate-200"}`}
+        >
+          <span className={`absolute top-0.5 w-5 h-5 bg-white rounded-full shadow transition-transform ${specialAssistance ? "translate-x-5.5 left-0.5" : "left-0.5"}`} />
+        </button>
+      </div>
+
+      {/* Additional notes */}
+      <div>
+        <p className="text-xs text-muted uppercase tracking-widest font-medium mb-2">Additional Notes</p>
+        <textarea
+          value={notes}
+          onChange={(e) => setNotes(e.target.value)}
+          placeholder="e.g. In front of the building"
+          rows={2}
+          className="w-full bg-white border border-slate-200 rounded-xl px-4 py-3 text-sm text-slate-900 placeholder:text-slate-400 focus:outline-none focus:border-brand focus:ring-2 focus:ring-brand/10 transition-all resize-none shadow-sm"
+        />
+      </div>
+
+      <button
+        onClick={() => isValid && onNext({ dest, passengers, luggage, specialAssistance, notes })}
+        disabled={!isValid}
+        className="w-full py-4 rounded-full bg-gradient-to-br from-[#006e2e] to-[#00b14f] text-white font-headline font-extrabold text-lg shadow-[0_8px_24px_rgba(0,110,46,0.25)] disabled:opacity-40 disabled:cursor-not-allowed active:scale-95 transition-transform"
+      >
+        Confirm Pick-up ⚡
+      </button>
+    </div>
+  );
+}
+
+// ── Car Type Screen ────────────────────────────────────────────────────────
+
+function CarTypeScreen({ passengers, luggage, onBack, onNext }) {
+  const [selectedRide, setSelectedRide] = useState(null);
+  const [selectedPayment, setSelectedPayment] = useState(null);
+
+  function isEligible(ride) {
+    return passengers <= ride.maxPassengers && luggage <= ride.maxLuggage;
+  }
+
+  return (
+    <div className="flex flex-col gap-4">
+      <MobileHeader title="Hello Ride" backLabel="Back" onBack={onBack} />
+
+      {/* Current journey card */}
+      <RouteSummary destination="Asok BTS Station" />
+
+      {/* Ride selection */}
+      <div>
+        <p className="text-sm font-bold text-slate-900">Select ride</p>
+        <p className="text-xs text-muted mb-3">Estimated arrival: 4 mins</p>
+        <p className="text-xs text-muted mb-2">Tap one option to select your ride.</p>
+        <div className="flex flex-col gap-2">
+          {RIDES.map((ride) => {
+            const eligible = isEligible(ride);
+            const selected = selectedRide === ride.id;
+            return (
+              <button
+                key={ride.id}
+                onClick={() => eligible && setSelectedRide(ride.id)}
+                disabled={!eligible}
+                className={`w-full text-left rounded-2xl p-4 flex items-center gap-4 transition-all ${
+                  !eligible ? "bg-slate-50 border border-slate-100 opacity-40 cursor-not-allowed" :
+                  selected ? "bg-[#71fe91] border-2 border-[#006e2e]" : "bg-white border border-slate-100 hover:border-slate-300 hover:shadow-md"
+                }`}
+              >
+                <div className={`w-16 h-16 rounded-xl flex items-center justify-center shrink-0 ${selected ? "bg-white/50" : "bg-[#f6f3f2]"}`}>
+                  <span className="material-symbols-outlined text-3xl text-[#006e2e]">local_taxi</span>
+                </div>
+                <div className="flex-1">
+                  <p className="text-sm font-bold text-slate-900">{ride.label}</p>
+                  <p className="text-xs text-muted mt-0.5">
+                    {ride.description}
+                    {!eligible && ` · Max ${ride.maxPassengers} pax, ${ride.maxLuggage} bags`}
+                  </p>
+                </div>
+                <p className={`text-sm font-headline font-bold shrink-0 ${selected ? "text-[#006e2e]" : "text-slate-900"}`}>{ride.price}</p>
+              </button>
+            );
+          })}
+        </div>
+      </div>
+
+      {/* Payment selection */}
+      <div>
+        <p className="text-sm font-bold text-slate-900 mb-3">Payment</p>
+        <div className="flex flex-col gap-2">
+          {PAYMENT_OPTIONS.map((pay) => {
+            const selected = selectedPayment === pay.id;
+            return (
+              <button
+                key={pay.id}
+                onClick={() => setSelectedPayment(pay.id)}
+                className={`w-full text-left rounded-2xl p-3.5 flex items-center gap-3 transition-all ${
+                  selected ? "bg-[#71fe91] border-2 border-[#006e2e]" : "bg-[#f6f3f2] border border-transparent hover:border-slate-300"
+                }`}
+              >
+                <span className="material-symbols-outlined text-[#006e2e] text-xl shrink-0">account_balance_wallet</span>
+                <div className="flex-1">
+                  <p className="text-sm font-semibold text-slate-900">{pay.label}</p>
+                  <p className="text-xs text-muted">{pay.detail}</p>
+                </div>
+                {selected && <span className="text-[#006e2e] font-bold text-sm">✓</span>}
+              </button>
+            );
+          })}
+        </div>
+      </div>
+
+      <button
+        onClick={() => selectedRide && selectedPayment && onNext({ selectedRide, selectedPayment })}
+        disabled={!selectedRide || !selectedPayment}
+        className="w-full py-4 rounded-full bg-gradient-to-br from-[#006e2e] to-[#00b14f] text-white font-headline font-extrabold text-lg shadow-[0_8px_24px_rgba(0,110,46,0.25)] disabled:opacity-40 disabled:cursor-not-allowed active:scale-95 transition-transform"
+      >
+        Book ride
+      </button>
+    </div>
+  );
+}
+
+// ── Ride Confirmation Screen ───────────────────────────────────────────────
+
+function RideScreen({ dest, passengers, luggage, selectedRide, selectedPayment, specialAssistance, notes, onBack, onNext }) {
+  const ride = RIDES.find((r) => r.id === selectedRide);
+  const payment = PAYMENT_OPTIONS.find((p) => p.id === selectedPayment);
+  const driver = PASSENGER.tracking;
+
+  return (
+    <div className="flex flex-col gap-4">
+      <MobileHeader title="Hello Ride" backLabel="Back" onBack={onBack} showAvatar />
+
+      {/* Trip complete */}
+      <div className="bg-brand/10 border border-brand/25 rounded-2xl p-5">
+        <p className="text-xs text-brand-deep uppercase tracking-widest font-medium">Trip complete</p>
+        <h2 className="text-xl font-bold text-slate-900 mt-1">Arrived at {dest}</h2>
+        <p className="text-sm text-slate-600 mt-1">
+          {PASSENGER.route.pickup} → {dest}
+        </p>
+        <p className="text-sm text-slate-600">Driver {driver.driver}</p>
+        <div className="flex items-center justify-between mt-3 pt-3 border-t border-brand/15">
+          <p className="text-xs text-muted">Fare</p>
+          <p className="text-xl font-bold text-slate-900">{ride?.price}</p>
+        </div>
+      </div>
+
+      {/* Trip summary */}
+      <div className="bg-white shadow-sm border border-slate-100 rounded-2xl p-5">
+        <p className="text-sm font-bold text-slate-900 mb-4">Trip summary</p>
+        {[
+          ["Route", `${PASSENGER.route.pickup} → ${dest}`],
+          ["Party", `${passengers} passengers · ${luggage} luggage`],
+          ["Ride", `${ride?.label} · ${ride?.description}`],
+          ...(specialAssistance ? [["Support", "Special assistance requested"]] : []),
+        ].map(([label, value]) => (
+          <div key={label} className="flex justify-between gap-4 py-2 border-b border-slate-100">
+            <p className="text-xs text-muted">{label}</p>
+            <p className="text-sm text-slate-900 text-right">{value}</p>
+          </div>
+        ))}
+        {notes && (
+          <div className="flex justify-between gap-4 py-2">
+            <p className="text-xs text-muted">Notes</p>
+            <p className="text-xs text-muted text-right">{notes}</p>
+          </div>
+        )}
+      </div>
+
+      {/* Payment */}
+      <div className="bg-white shadow-sm border border-slate-100 rounded-2xl p-5">
+        <p className="text-sm font-bold text-slate-900 mb-4">Payment</p>
+        <div className="flex justify-between py-2 border-b border-slate-100">
+          <p className="text-xs text-muted">Method</p>
+          <p className="text-sm text-slate-900">{payment?.label} · {payment?.detail}</p>
+        </div>
+        <div className="flex justify-between py-2">
+          <p className="text-xs text-muted">Total</p>
+          <p className="text-lg font-bold text-slate-900">{ride?.price}</p>
+        </div>
+      </div>
+
+      <button
+        onClick={onNext}
+        className="w-full py-4 rounded-full bg-gradient-to-br from-[#006e2e] to-[#00b14f] text-white font-headline font-extrabold text-lg shadow-[0_8px_24px_rgba(0,110,46,0.25)] active:scale-95 transition-transform"
+      >
+        Leave a Review →
+      </button>
+
+      <button
+        onClick={onBack}
+        className="w-full py-2.5 rounded-xl border border-slate-200 text-slate-500 text-sm hover:border-slate-400 hover:text-slate-700 transition-colors"
+      >
+        Done
+      </button>
+    </div>
+  );
+}
+
+// ── Review Screen ──────────────────────────────────────────────────────────
+
+function ReviewScreen({ onBack, onHome }) {
+  const [rating, setRating] = useState(5);
+  const [tip, setTip] = useState("฿50");
+  const [comment, setComment] = useState("");
+  const [submitted, setSubmitted] = useState(false);
+  const driver = PASSENGER.tracking;
+  const driverFirst = driver.driver.split(" ")[0];
+
+  if (submitted) {
+    return (
+      <div className="flex flex-col gap-4">
+        <MobileHeader title="Hello Ride" backLabel="Close" onBack={onBack} />
+        <div className="bg-brand/10 border border-brand/25 rounded-2xl p-6 text-center">
+          <p className="text-xs text-brand-deep uppercase tracking-widest font-medium mb-2">Review submitted!</p>
+          <p className="text-xl font-bold text-slate-900">Thanks for your feedback</p>
+          <p className="text-sm text-muted mt-2">Thank you for your feedback, {driverFirst}.</p>
+        </div>
+        <button
+          onClick={onHome}
+          className="w-full py-4 rounded-full bg-gradient-to-br from-[#006e2e] to-[#00b14f] text-white font-headline font-extrabold text-lg shadow-[0_8px_24px_rgba(0,110,46,0.25)] active:scale-95 transition-transform"
+        >
+          Back to Home
+        </button>
+      </div>
+    );
+  }
+
+  return (
+    <div className="flex flex-col gap-4">
+      <MobileHeader title="How was your ride?" backLabel="Close" onBack={onBack} rightLabel="Hello Ride" />
+
+      {/* Driver card */}
+      <div className="bg-white shadow-sm border border-slate-100 rounded-2xl p-5">
+        <p className="text-xs text-muted uppercase tracking-widest font-medium mb-2">Driver</p>
+        <p className="text-base font-bold text-slate-900">{driver.driver}</p>
+        <p className="text-xs text-muted">{driver.vehicle} · {driver.plate}</p>
+      </div>
+
+      {/* Star rating */}
+      <div>
+        <p className="text-sm font-bold text-slate-900 mb-1">Tap to rate</p>
+        <p className="text-xs text-muted mb-3">Choose a star rating</p>
+        <div className="flex gap-2">
+          {[1, 2, 3, 4, 5].map((star) => (
+            <button
+              key={star}
+              onClick={() => setRating(star)}
+              className={`flex-1 py-3 rounded-xl text-lg transition-all ${
+                star <= rating ? "bg-brand/20 text-brand-deep" : "bg-slate-100 text-slate-400"
+              }`}
+            >
+              ★
+            </button>
+          ))}
+        </div>
+      </div>
+
+      {/* Tip */}
+      <div>
+        <div className="flex items-center justify-between mb-3">
+          <p className="text-sm font-bold text-slate-900">Add a tip for {driverFirst}?</p>
+          <p className="text-xs text-muted">Optional</p>
+        </div>
+        <div className="grid grid-cols-4 gap-2">
+          {TIP_OPTIONS.map((t) => (
+            <button
+              key={t}
+              onClick={() => setTip(tip === t ? null : t)}
+              className={`py-2.5 rounded-xl text-sm font-semibold transition-all ${
+                tip === t ? "bg-brand text-white" : "bg-slate-100 text-slate-500 hover:bg-slate-200 hover:text-slate-700"
+              }`}
+            >
+              {t}
+            </button>
+          ))}
+        </div>
+      </div>
+
+      {/* Comment */}
+      <div>
+        <p className="text-sm font-bold text-slate-900 mb-2">Leave a comment</p>
+        <textarea
+          value={comment}
+          onChange={(e) => setComment(e.target.value)}
+          placeholder="Share your experience (e.g. 'Great driver, clean car!')"
+          rows={3}
+          className="w-full bg-white border border-slate-200 rounded-xl px-4 py-3 text-sm text-slate-900 placeholder:text-slate-400 focus:outline-none focus:border-brand focus:ring-2 focus:ring-brand/10 transition-all resize-none shadow-sm"
+        />
+      </div>
+
+      <button
+        onClick={() => setSubmitted(true)}
+        className="w-full py-4 rounded-full bg-gradient-to-br from-[#006e2e] to-[#00b14f] text-white font-headline font-extrabold text-lg shadow-[0_8px_24px_rgba(0,110,46,0.25)] active:scale-95 transition-transform"
+      >
+        Submit Review →
+      </button>
+    </div>
+  );
+}
+
+// ── Main Passenger Portal ──────────────────────────────────────────────────
+
+export default function PassengerPortal() {
+  const [step, setStep] = useState("home");
+  const [tripData, setTripData] = useState({});
+
+  function handleHomeNext(data) {
+    setTripData(data);
+    setStep("carType");
+  }
+
+  function handleCarTypeNext(data) {
+    setTripData((prev) => ({ ...prev, ...data }));
+    setStep("ride");
+  }
+
+  function handleRideNext() {
+    setStep("review");
+  }
+
+  function handleHome() {
+    setStep("home");
+    setTripData({});
+  }
+
+  return (
+    <div className="max-w-md mx-auto px-6 py-6">
+      {step !== "home" && (
+        <div className="mb-4">
+          <StepIndicator current={step} />
+        </div>
+      )}
+
+      {step === "home" && <HomeScreen onNext={handleHomeNext} />}
+      {step === "carType" && (
+        <CarTypeScreen
+          passengers={tripData.passengers}
+          luggage={tripData.luggage}
+          onBack={() => setStep("home")}
+          onNext={handleCarTypeNext}
+        />
+      )}
+      {step === "ride" && (
+        <RideScreen
+          dest={tripData.dest}
+          passengers={tripData.passengers}
+          luggage={tripData.luggage}
+          selectedRide={tripData.selectedRide}
+          selectedPayment={tripData.selectedPayment}
+          specialAssistance={tripData.specialAssistance}
+          notes={tripData.notes}
+          onBack={() => setStep("carType")}
+          onNext={handleRideNext}
+        />
+      )}
+      {step === "review" && (
+        <ReviewScreen
+          onBack={() => setStep("ride")}
+          onHome={handleHome}
+        />
+      )}
+    </div>
+  );
+}

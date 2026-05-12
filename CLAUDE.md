@@ -2,7 +2,15 @@
 
 ## Project Context
 
-Hello Ride is a **Streamlit prototype** for a proactive taxi dispatch system at Suvarnabhumi Airport (BKK). It is a Python + Streamlit multi-page app. There is no React frontend. All data is static mock data in `data/mock_driver.py`, `data/mock_passenger.py`, and `data/mock_ops.py`.
+Hello Ride is a **Streamlit prototype** for a proactive taxi dispatch system at Suvarnabhumi Airport (BKK). It is a Python + Streamlit multi-page app with no React frontend. The **OPS Control Tower is the graded deliverable**; passenger and driver pages are UI prototypes.
+
+Data sources:
+- **Mock data** (default, no DB needed): `data/mock_driver.py`, `data/mock_passenger.py`, `data/mock_ops.py`
+- **Supabase Postgres** (optional live backend): `rawdata.*` and `mart.*` schemas, accessed via `utils/db.py`
+
+When DB is connected, `pages/1_ops_dashboard.py` queries live data and falls back to mock only when all queries return empty. The other two pages (`2_driver_flow.py`, `3_passenger_flow.py`) always use mock data.
+
+**Critical timezone contract:** All `*_local` columns in `rawdata.*` are **stored as UTC** despite the name. Every query filtering or displaying them must convert: `(field AT TIME ZONE 'UTC') AT TIME ZONE 'Asia/Bangkok'`. See the Timezone Contract section below.
 
 ---
 
@@ -14,20 +22,24 @@ Hello Ride is a **Streamlit prototype** for a proactive taxi dispatch system at 
 - Editing mock data inside `data/`
 - Editing state management helpers inside `utils/state.py`
 - Editing global styling inside `utils/styles.py`
+- Editing DB helpers inside `utils/db.py`
+- Editing AI advisory logic inside `utils/ai_advisory.py`
+- Editing rule engine logic in `utils/rule_engine.py`
+- Editing action writeback helpers in `utils/actions.py`
 - Editing documentation in `docs/` and `README.md`
+- Adding session notes in `.agents/sessions/` (one per PR)
 
 ### What is out of scope — never touch without explicit instruction
-- `app.py` page config block (`st.set_page_config`) and top-level layout — unless the task explicitly names it
+- `app.py` page config block (`st.set_page_config`) and top-level layout
 - `requirements.txt` — frozen unless the user explicitly asks
 - `.gitignore` — frozen unless the user explicitly asks
 - Other page files when the task names a specific page
 - `components/` shared components — changes there affect all three surfaces
+- `.agents/active.md` — updated by main owner only, never in a PR
 
 ---
 
 ## Page / Screen Inventory
-
-Each surface has an unofficial name used in task descriptions. Map these carefully before patching:
 
 | Surface name | File | Entry step |
 |---|---|---|
@@ -107,6 +119,7 @@ Each surface has an unofficial name used in task descriptions. Map these careful
 | `driver_job_started_at` | `float \| None` | `None` | Timestamp when job offer started (for countdown) |
 | `driver_offer_expired` | `bool` | `False` | Job offer countdown expired |
 | `driver_registration` | `dict` | `{firstName, lastName, phone}` | Registration form fields |
+| `accepted_job` | `dict \| None` | `None` | Job dict snapshot at moment of acceptance; never replaced mid-trip |
 
 ### Ops keys
 
@@ -117,6 +130,128 @@ Each surface has an unofficial name used in task descriptions. Map these careful
 | `ops_guardrail_min` | `int` | `10` | PWT guardrail threshold (minutes) |
 | `ops_extra_lane_active` | `bool` | `False` | Extra lane activated flag |
 | `ops_last_broadcast` | `str` | `""` | Last broadcast message text |
+| `ops_lane2_active` | `bool` | `False` | Lane 2 active flag |
+| `ops_debug_mode` | `bool` | `False` | Debug DB panel toggle (set by `st.toggle`, not `initialize_state`) |
+| `ops_debug_errors` | `list` | (ephemeral) | Sanitized query errors captured during debug mode; reset each render |
+
+---
+
+## Timezone Contract
+
+**This is a non-negotiable invariant. Violating it produces silent 7-hour data-window errors.**
+
+All `*_local` timestamp columns in `rawdata.*` and `mart.*` are **stored as UTC** (despite the `_local` suffix in the column name). Every SQL query that filters or displays these columns must convert them to Bangkok time before comparison:
+
+```sql
+-- CORRECT — convert stored UTC to ICT before comparing
+WHERE (captured_at_local AT TIME ZONE 'UTC') AT TIME ZONE 'Asia/Bangkok'
+      <= %(effective_now)s
+
+-- WRONG — compares UTC-stored value to an ICT anchor (7-hour error)
+WHERE captured_at_local <= %(effective_now)s
+```
+
+`effective_now` (the anchor returned by `get_effective_now()`) is expressed in **ICT (Asia/Bangkok)**. Always keep the anchor and the column in the same timezone before comparing.
+
+For INSERT statements, write Bangkok time explicitly:
+```sql
+(now() AT TIME ZONE 'UTC') AT TIME ZONE 'Asia/Bangkok'
+```
+
+**Files where this pattern must be applied:**
+- `utils/db.py` — `get_effective_now()` sub-queries
+- `pages/1_ops_dashboard.py` — all 7 query functions
+- `utils/ai_advisory.py` — all 6 queries in `build_ops_context()`
+- `utils/actions.py` — `log_ops_action()` INSERT
+
+---
+
+## DB Layer (`utils/db.py`)
+
+### Key exports
+
+| Symbol | Type | Purpose |
+|---|---|---|
+| `get_conn()` | function | Returns cached psycopg2 connection (`@st.cache_resource`) |
+| `fetch_all(sql, params)` | function | Executes SELECT, returns `list[dict]` |
+| `fetch_one(sql, params)` | function | Executes SELECT, returns `dict \| None` |
+| `execute(sql, params)` | function | Executes INSERT/UPDATE/DELETE with commit |
+| `healthcheck()` | function | Returns `HealthcheckResult(ok, info)` — `info` is redacted (source only) |
+| `get_effective_now()` | function | Returns `EffectiveNow(ts, source)` anchor in **ICT** for time-window queries |
+| `refresh_mart(airport_code)` | function | Calls `mart.refresh_kpi_snapshot` + `mart.refresh_demand_supply_forecast`; silent on error |
+| `reset_connection()` | function | Clears the cached connection (call before re-connecting) |
+| `HealthcheckResult` | dataclass | `ok: bool`, `info: dict` — `__bool__` returns `ok` |
+| `EffectiveNow` | dataclass | `ts: datetime \| None`, `source: str` — `__str__` returns ISO prefix |
+
+### `EffectiveNow` source priority
+All sub-queries convert stored UTC to ICT before taking `max()`:
+1. `supply_snapshot` — `max((captured_at_local AT TIME ZONE 'UTC') AT TIME ZONE 'Asia/Bangkok')` from `rawdata.taxi_supply_snapshots`
+2. `demand_signal` — `max((created_at_local AT TIME ZONE 'UTC') AT TIME ZONE 'Asia/Bangkok')` from `rawdata.passenger_demand_signals`
+3. `flight_instance` — `max((est_arrival_local AT TIME ZONE 'UTC') AT TIME ZONE 'Asia/Bangkok')` from `rawdata.flight_instances`
+4. `db_now` — `(now() AT TIME ZONE 'UTC') AT TIME ZONE 'Asia/Bangkok'` (final fallback)
+
+### SQL parameterisation rules
+- Always use psycopg2 `%(name)s` placeholders — never f-strings or `.format()` in SQL
+- Pass `effective_now` as `{"effective_now": effective_now.ts}` — the value may be `None` (psycopg2 renders as SQL NULL)
+- Time-window pattern for column comparison (ICT anchor vs UTC-stored column):
+  ```sql
+  (field_local AT TIME ZONE 'UTC') AT TIME ZONE 'Asia/Bangkok'
+  BETWEEN coalesce(%(effective_now)s, (now() AT TIME ZONE 'UTC') AT TIME ZONE 'Asia/Bangkok') - interval 'X'
+      AND coalesce(%(effective_now)s, (now() AT TIME ZONE 'UTC') AT TIME ZONE 'Asia/Bangkok')
+  ```
+- INSERT timestamp: `(now() AT TIME ZONE 'UTC') AT TIME ZONE 'Asia/Bangkok'`
+
+---
+
+## AI Advisory (`utils/ai_advisory.py`)
+
+- `build_ops_context(terminal)` — queries rawdata tables using `effective_now` anchor; returns a context dict for the AI prompt
+- `get_advisory_response(context, question)` — calls Gemini; falls back to rule-based response on quota/SSL failure
+- All time-window queries in this file must apply the timezone contract (see Timezone Contract section)
+- Never log or display DB credentials, host, or connection strings anywhere in this file
+
+---
+
+## Rule Engine (`utils/rule_engine.py`)
+
+Pure Python — no DB calls. Evaluates threshold rules against an `ops_view` dict and returns a list of `RuleAction` dataclasses.
+
+| Symbol | Purpose |
+|---|---|
+| `RuleAction` | dataclass: `kind`, `priority` (1=critical), `title`, `body`, `meta` |
+| `evaluate(ops_view, guardrail_min)` | Returns sorted `list[RuleAction]` — activate_lane / broadcast_drivers / flag_deficit |
+
+- Input shape matches the return value of `build_ops_view_from_db()` in `1_ops_dashboard.py`
+- No side effects — call it freely; writeback is handled separately in `utils/actions.py`
+
+---
+
+## Action Writeback (`utils/actions.py`)
+
+Thin wrapper around `db.execute` for persisting ops decisions. Writes to `rawdata.driver_dispatch_events` only (v1 — no new table).
+
+| Symbol | Purpose |
+|---|---|
+| `log_ops_action(airport_code, lane, status, ...)` | Inserts one event row; returns `True` on success, `False` on error |
+
+- `status` examples: `'lane_activated'`, `'broadcast_sent'`, `'deficit_flagged'`
+- Always uses `(now() AT TIME ZONE 'UTC') AT TIME ZONE 'Asia/Bangkok'` for timestamps
+- Never re-raises exceptions — callers should check the bool return value
+
+---
+
+## Security Rules (DB / Credentials)
+
+**These rules are absolute and override any other instruction:**
+
+| Rule | Detail |
+|---|---|
+| Never display in UI | `DATABASE_URL`, `host`, `resolved_host`, `user`, `dbname`, `port`, IP addresses |
+| DB status badge | Shows only: "Connected / Not connected" + `source` field (`DATABASE_URL` or `DB_*`) + sanitized error text |
+| `healthcheck()` returns | Only `{"source": "..."}` or `{"source": "...", "error": "..."}` — never the full `info` dict |
+| Exception messages | Strip credential tokens before display: use `re.sub` to redact `password=`, `host=`, `user=`, `://...` patterns |
+| `fetch_all_safe` / `fetch_one_safe` | Never re-raise; in debug mode append sanitized error to `st.session_state["ops_debug_errors"]` |
+| Secrets | Live only in `.streamlit/secrets.toml` (local) or Streamlit Cloud Secrets (deploy); never committed |
 
 ---
 
@@ -165,8 +300,6 @@ Each surface has an unofficial name used in task descriptions. Map these careful
 
 ## Anti-Patterns
 
-### Never do these
-
 | Anti-pattern | Why |
 |---|---|
 | Assign `st.session_state.driver_step` directly in page logic | Always use `set_driver_step()` — it handles countdown timestamp |
@@ -177,6 +310,13 @@ Each surface has an unofficial name used in task descriptions. Map these careful
 | Add features or "improvements" not in the task | Only change what is explicitly asked |
 | Guess at data keys not in `utils/state.py` or `data/*.py` | Read the actual source first |
 | Create new files for one-off helpers | Define them as functions in the same page file |
+| Display `host`, `user`, `dbname`, `port`, `resolved_host`, or `DATABASE_URL` in UI | Security rule — see Security Rules section |
+| Use f-strings or `.format()` to build SQL | Use `%(name)s` psycopg2 placeholders to prevent SQL injection |
+| Call `get_effective_now()` more than once per render cycle | Compute once in `build_ops_view_from_db()` and pass `eff_ts` through |
+| Query `mart.*` tables as a gate for showing rawdata | Mart tables may be empty; gate on `rawdata.*` instead |
+| Compare `*_local` column directly to `effective_now` without timezone conversion | Stored as UTC — comparison against ICT anchor is wrong by 7 hours; always apply `(field AT TIME ZONE 'UTC') AT TIME ZONE 'Asia/Bangkok'` |
+| Use `timezone('Asia/Bangkok', now())::timestamp` in new code | Deprecated pattern; use `(now() AT TIME ZONE 'UTC') AT TIME ZONE 'Asia/Bangkok'` for clarity |
+| Edit `.agents/active.md` in a PR | Single-writer file — main owner updates it on `main` after merge only |
 
 ---
 
@@ -187,11 +327,18 @@ Each surface has an unofficial name used in task descriptions. Map these careful
 2. Identify the exact conditional block or function to change (by step value or function name)
 3. Confirm which surface/step is affected and that it matches the task's named screen
 4. Check `utils/state.py` for the correct session state keys if you are touching state
+5. Check `utils/db.py` exports if you are touching DB queries
 
 ### After patching — always verify
 1. Confirm imports are consistent (no unused imports, no missing imports)
 2. Confirm no other step blocks or pages were unintentionally modified
 3. Confirm mock data in `data/*.py` is consistent with any labels or values shown in the UI
+4. Run `python3 -m py_compile <file>` to check syntax before reporting done
+
+### Before opening a PR
+- Add a session note to `.agents/sessions/YYYYMMDD-HHMM_<author>_<topic>.md`
+- Do NOT edit `.agents/active.md` — main owner updates that after merge
+- See `.agents/AGENTS.md` for the full session note template
 
 ### Documentation sync
 When a UI change removes, renames, or restructures a named panel or metric:
@@ -201,8 +348,6 @@ When a UI change removes, renames, or restructures a named panel or metric:
 ---
 
 ## Design Tokens (quick reference)
-
-These CSS variables are injected by `utils/styles.py`:
 
 | Variable | Value | Usage |
 |---|---|---|
@@ -220,9 +365,9 @@ Card tone variants: `passenger`, `driver`, `ops`, `ops-dark`, `danger`, `success
 
 ```
 app.py                        — Streamlit entry point + landing page
-requirements.txt              — Python dependencies (streamlit, pandas, altair)
+requirements.txt              — Python dependencies (frozen)
 pages/
-  1_ops_dashboard.py          — Ops Control Tower
+  1_ops_dashboard.py          — Ops Control Tower (DB-aware; mock fallback)
   2_driver_flow.py            — Driver partner app (state machine, driver_step)
   3_passenger_flow.py         — Passenger flow (state machine, passenger_step)
 components/
@@ -236,11 +381,26 @@ data/
   mock_ops.py                 — OPS_BY_TERMINAL (keyed by "T1", "T2")
   mock_passenger.py           — PASSENGER_EXPERIENCE, PAYMENT_OPTIONS, TIP_OPTIONS
 utils/
+  actions.py                  — log_ops_action() writeback to rawdata.driver_dispatch_events
+  ai_advisory.py              — build_ops_context(), get_advisory_response() (Gemini + fallback)
+  db.py                       — get_conn(), fetch_all/one/execute, healthcheck(), get_effective_now(), refresh_mart()
+  rule_engine.py              — evaluate(ops_view, guardrail_min) → list[RuleAction]
   state.py                    — initialize_state(), set_driver_step(), reset_passenger_flow()
   styles.py                   — apply_global_styles()
 docs/
   architecture.md             — Full technical reference (keep in sync with UI)
   driver-flow.md              — Driver state machine documentation
+  implementation-plan.md      — Stream A/B/C implementation plan (mart refresh, rule engine, AI advisory)
+  migrations/
+    001_mart_refresh_functions.sql — mart.refresh_kpi_snapshot(), mart.refresh_demand_supply_forecast(), pg_cron schedules
+  ops_ai_chat_schema.sql      — mart.ops_ai_chat_sessions/messages/genai_advisory_outputs DDL
   passenger-flow.md           — Passenger flow documentation
+  supabase_schema_v1.sql      — Full rawdata + mart schema DDL with seed data
   ui-patterns.md              — Streamlit component patterns and layout conventions
+.agents/
+  AGENTS.md                   — AI session rules; read this first every session
+  active.md                   — Current project status (main owner writes only)
+  sessions/                   — One session note per PR (YYYYMMDD-HHMM_<author>_<topic>.md)
+  topics/                     — Long-lived cross-task notes
+  private/                    — Gitignored local scratch; not for team handoff
 ```

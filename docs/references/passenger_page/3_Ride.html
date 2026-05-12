@@ -1,0 +1,208 @@
+<!DOCTYPE html>
+
+<html class="light" lang="en"><head>
+<meta charset="utf-8"/>
+<meta content="width=device-width, initial-scale=1.0" name="viewport"/>
+<title>Hello Ride - Ride Tracking</title>
+<!-- Fonts -->
+<link href="https://fonts.googleapis.com" rel="preconnect"/>
+<link crossorigin="" href="https://fonts.gstatic.com" rel="preconnect"/>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&amp;family=Manrope:wght@700;800&amp;display=swap" rel="stylesheet"/>
+<!-- Icons -->
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<!-- Tailwind CSS -->
+<script src="https://cdn.tailwindcss.com?plugins=forms,container-queries"></script>
+<script id="tailwind-config">
+      tailwind.config = {
+        darkMode: "class",
+        theme: {
+          extend: {
+            colors: {
+              "surface-container": "#f0eded",
+              "on-surface": "#1b1c1c",
+              "on-secondary-fixed": "#002109",
+              "surface-container-high": "#eae7e7",
+              "on-secondary-container": "#376e41",
+              "on-primary-fixed": "#002109",
+              "error-container": "#ffdad6",
+              "on-secondary": "#ffffff",
+              "on-primary-container": "#003a15",
+              "surface": "#fcf9f8",
+              "on-error-container": "#93000a",
+              "on-tertiary-fixed": "#400013",
+              "tertiary": "#af294c",
+              "inverse-surface": "#303030",
+              "on-primary-fixed-variant": "#005321",
+              "error": "#ba1a1a",
+              "surface-tint": "#006e2e",
+              "primary-fixed": "#71fe91",
+              "on-error": "#ffffff",
+              "surface-variant": "#e5e2e1",
+              "inverse-on-surface": "#f3f0ef",
+              "primary": "#006e2e",
+              "on-tertiary-fixed-variant": "#8e0b36",
+              "on-tertiary": "#ffffff",
+              "tertiary-fixed-dim": "#ffb2bc",
+              "background": "#fcf9f8",
+              "on-primary": "#ffffff",
+              "on-surface-variant": "#3d4a3d",
+              "outline": "#6d7b6c",
+              "secondary-container": "#b2eeb6",
+              "on-tertiary-container": "#680024",
+              "surface-bright": "#fcf9f8",
+              "surface-container-lowest": "#ffffff",
+              "secondary-fixed-dim": "#99d59e",
+              "inverse-primary": "#52e078",
+              "primary-container": "#00b14f",
+              "surface-container-low": "#f6f3f2",
+              "tertiary-fixed": "#ffd9dd",
+              "outline-variant": "#bccbb9",
+              "surface-dim": "#dcd9d9",
+              "on-secondary-fixed-variant": "#195127",
+              "secondary": "#336a3d",
+              "surface-container-highest": "#e5e2e1",
+              "secondary-fixed": "#b5f1b9",
+              "tertiary-container": "#fd6584",
+              "primary-fixed-dim": "#52e078",
+              "on-background": "#1b1c1c"
+            },
+            fontFamily: {
+              "headline": ["Manrope"],
+              "body": ["Inter"],
+              "label": ["Inter"]
+            },
+            borderRadius: {"DEFAULT": "0.25rem", "lg": "0.5rem", "xl": "0.75rem", "full": "9999px"},
+          },
+        },
+      }
+    </script>
+<style>
+        .material-symbols-outlined {
+            font-variation-settings: 'FILL' 0, 'wght' 400, 'GRAD' 0, 'opsz' 24;
+            vertical-align: middle;
+        }
+        .map-gradient-overlay {
+            background: linear-gradient(to bottom, rgba(252, 249, 248, 0.8) 0%, rgba(252, 249, 248, 0) 20%, rgba(252, 249, 248, 0) 80%, rgba(252, 249, 248, 1) 100%);
+        }
+    </style>
+<style>
+    body {
+      min-height: max(884px, 100dvh);
+    }
+  </style>
+</head>
+<body class="bg-background font-body text-on-surface antialiased overflow-hidden">
+<!-- Top Navigation Bar (JSON Shell Implementation) -->
+<header class="fixed top-0 left-0 right-0 z-50 bg-[#fcf9f8] dark:bg-gray-900 transition-colors">
+<div class="flex justify-between items-center w-full px-6 py-4 max-w-screen-xl mx-auto">
+<div class="flex items-center gap-4">
+<button class="material-symbols-outlined text-on-surface p-2 hover:bg-gray-100 rounded-full transition-colors">arrow_back</button>
+<h1 class="text-2xl font-black text-[#006e2e] dark:text-[#00b14f] tracking-tight font-headline">Hello Ride</h1>
+</div>
+<div class="flex items-center gap-4">
+<div class="hidden md:flex gap-6 items-center">
+<span class="text-[#1b1c1c] dark:text-gray-400 font-medium hover:bg-gray-100 p-2 rounded-lg cursor-pointer">Activity</span>
+<span class="text-[#1b1c1c] dark:text-gray-400 font-medium hover:bg-gray-100 p-2 rounded-lg cursor-pointer">Payment</span>
+</div>
+<img alt="Profile" class="w-10 h-10 rounded-full object-cover border-2 border-primary-fixed shadow-sm" data-alt="portrait of a professional male user with friendly expression in high-key studio lighting" src="https://lh3.googleusercontent.com/aida-public/AB6AXuB1DP_r7SBDkBxuhVVE1ZsjaQEMCP5_o8CBpqAY4FBYS8-hDMtQP-m96T6AIk5TvX51ayA3ee2KM6DsB3QHAPxdbZz8sN-tpznZPVQ2RXTO0v55LYG1JTzVRdkxEDJMSEdE-Sl7_cYWLJu5j9J3I8hNcIGy4HPw-x5tY9kTODthcEFcA2ZI3qF1YJzrtLOHiu7o1puMXVmeVHqtVlurvtg23ya6WoHIc1C6V1ci3QB-SO3xWEjcpbMaVOAeAfkvmEP3ko8608qNaD8"/>
+</div>
+</div>
+</header>
+<!-- Main Map Canvas -->
+<main class="relative h-screen w-full pt-16">
+<div class="absolute inset-0 z-0">
+<img alt="City Map" class="w-full h-full object-cover" data-alt="high-angle satellite style map view of urban city streets with clean navigation aesthetics and soft color palette" data-location="Singapore" src="https://lh3.googleusercontent.com/aida-public/AB6AXuAKeEZIYVfvoox5GWMlA4BLMmdV2isqE3ur4YBkZItLtn1VI7H6_OPlNYRhNYTwQdJtdFR1CIZZrXVFxlPEBkF6LFE8_JKQIUhNRpNjbV60fIfUzyQEP_YMZHOgcng0zmvT6isPX5clGjJAZT51uiBA7BMXuWNUrUgJcXEyYqapL0yoc-nwOFzYStNkzKgi5rVliJk4EGQ-rqMCfEdq1MS27SeJBlWq_HeTuY0FD7R5LJqdlq-qDBD-Kmd3R2AR8IvfJa5FXew5JoE"/>
+<div class="absolute inset-0 map-gradient-overlay pointer-events-none"></div>
+<!-- Tracking Elements (Simulated) -->
+<div class="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-full h-full max-w-lg">
+<!-- User Location Dot -->
+<div class="absolute bottom-1/4 left-1/3 p-2 bg-white rounded-full shadow-lg border-4 border-primary">
+<div class="w-3 h-3 bg-primary rounded-full animate-pulse"></div>
+</div>
+<!-- Driver Position -->
+<div class="absolute top-1/3 right-1/4 flex flex-col items-center">
+<div class="bg-primary text-white p-2 rounded-xl shadow-xl flex items-center justify-center mb-2">
+<span class="material-symbols-outlined" style="font-variation-settings: 'FILL' 1;">directions_car</span>
+</div>
+<div class="bg-white px-3 py-1 rounded-full shadow-md border border-surface-container">
+<span class="text-xs font-bold text-on-surface">Driver Name</span>
+</div>
+</div>
+<!-- Route Ribbon -->
+<svg class="absolute inset-0 w-full h-full pointer-events-none opacity-60" viewbox="0 0 400 600">
+<path d="M300,200 Q250,300 150,450" fill="none" stroke="#006e2e" stroke-linecap="round" stroke-width="8"></path>
+<path d="M300,200 Q250,300 150,450" fill="none" stroke="#71fe91" stroke-dasharray="8 4" stroke-linecap="round" stroke-width="4"></path>
+</svg>
+</div>
+</div>
+<!-- Floating Driver Detail Card -->
+<div class="absolute bottom-12 left-0 right-0 px-6 z-40 max-w-md mx-auto">
+<!-- Glassmorphism Arrival Toast -->
+<div class="bg-surface/80 backdrop-blur-xl rounded-3xl shadow-[0_8px_24px_rgba(27,28,28,0.08)] mb-4 p-4 flex items-center justify-between">
+<div class="flex items-center gap-3">
+<div class="p-2 bg-primary-fixed rounded-xl">
+<span class="material-symbols-outlined text-on-primary-fixed" style="font-variation-settings: 'FILL' 1;">schedule</span>
+</div>
+<div>
+<p class="text-xs font-semibold text-on-surface-variant uppercase tracking-widest">Arriving in</p>
+<p class="text-xl font-headline font-extrabold text-on-surface">4 Minutes</p>
+</div>
+</div>
+<div class="text-right">
+<p class="text-xs font-medium text-on-surface-variant">Distance</p>
+<p class="text-sm font-bold text-primary">1.2 km</p>
+</div>
+</div>
+<!-- Main Info Bento Card -->
+<div class="bg-surface-container-lowest rounded-[2.5rem] p-6 shadow-[0_20px_50px_rgba(0,0,0,0.1)] border border-surface-container-low">
+<div class="flex items-start justify-between mb-6">
+<div class="flex gap-4">
+<div class="relative">
+<img alt="Driver" class="w-16 h-16 rounded-2xl object-cover ring-4 ring-surface-container-low" data-alt="headshot of a friendly professional driver in his 40s wearing a polo shirt, smiling warmly at the camera" src="https://lh3.googleusercontent.com/aida-public/AB6AXuCyafx9VdiUY5LUvu9Y9MCBXAc5d5jtDpVINyjHXpayqZzn3ThnEsZxeaZ1Hh84iB7CV2sos7pHBjvPHm9dxGJYx762iZ-5hskU7pH0Oy9o2jdrD3SyfDC7MA60CTCmr1hmm_BuB4TbiR_aKADKIH_5Zp3SzPX3hdvFqTkD7oIeuaOk5VI9MNmYK0PeKMOQ1ed82Um2aTEZKHsaO6mb_9NP4QUo3CqhVsCBuham6n2mWe3jBts5za9kHSLdbeZVNMq4y_yB-YQqayo"/>
+<div class="absolute -bottom-2 -right-2 bg-primary-fixed text-on-primary-fixed text-[10px] font-black px-2 py-0.5 rounded-full shadow-sm">
+                                PRO
+                            </div>
+</div>
+<div>
+<h3 class="text-lg font-bold font-headline leading-tight">Supriyadi Pratama</h3>
+<div class="flex items-center gap-1 mt-1">
+<span class="material-symbols-outlined text-sm text-tertiary-container" style="font-variation-settings: 'FILL' 1;">star</span>
+<span class="text-sm font-bold text-on-surface">4.9</span>
+<span class="mx-1 text-on-surface-variant/30">•</span>
+<span class="text-sm font-medium text-on-surface-variant">Silver Toyota Avanza</span>
+</div>
+<div class="mt-2 inline-block bg-surface-container-highest px-3 py-1 rounded-lg">
+<span class="text-xs font-black tracking-widest text-on-surface">ABC-1234</span>
+</div>
+</div>
+</div>
+</div>
+<!-- Action Grid -->
+<div class="grid grid-cols-2 gap-4 mb-6">
+<button class="flex items-center justify-center gap-2 bg-secondary-container text-on-secondary-container py-4 rounded-2xl font-bold transition-all hover:scale-95 active:scale-90">
+<span class="material-symbols-outlined">chat</span>
+                        Message
+                    </button>
+<button class="flex items-center justify-center gap-2 bg-secondary-container text-on-secondary-container py-4 rounded-2xl font-bold transition-all hover:scale-95 active:scale-90">
+<span class="material-symbols-outlined">call</span>
+                        Call
+                    </button>
+</div>
+<!-- Footer Actions -->
+<div class="flex items-center justify-between pt-4 border-t border-surface-container">
+<button class="text-error font-bold text-sm px-4 py-2 hover:bg-error-container rounded-xl transition-colors">
+                        Cancel Ride
+                    </button>
+<div class="flex items-center gap-2 bg-surface-container-low px-4 py-2 rounded-xl">
+<span class="material-symbols-outlined text-on-surface-variant text-sm">account_balance_wallet</span>
+<span class="text-sm font-bold text-on-surface">Hello Pay</span>
+</div>
+</div>
+</div>
+</div>
+</main>
+<!-- Bottom Navigation Bar (JSON Shell Implementation) -->
+<!-- Suppressed due to Task-Focused intent (Active Tracking) as per "Shell Visibility & Relevance" rule -->
+<script src="../../../shared-flow.js" data-page="passenger_2"></script>
+</body></html>

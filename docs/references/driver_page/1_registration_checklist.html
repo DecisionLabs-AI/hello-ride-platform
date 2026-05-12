@@ -1,0 +1,175 @@
+<!DOCTYPE html>
+
+<html class="light" lang="en"><head>
+<meta charset="utf-8"/>
+<meta content="width=device-width, initial-scale=1.0" name="viewport"/>
+<title>Hello Ride - Driver Partner Home</title>
+<script src="https://cdn.tailwindcss.com?plugins=forms,container-queries"></script>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800;900&amp;display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<script id="tailwind-config">
+      tailwind.config = {
+        darkMode: "class",
+        theme: {
+          extend: {
+            colors: {
+              "on-tertiary": "#ffffff",
+              "on-error-container": "#93000a",
+              "on-surface": "#161d16",
+              "surface-container-low": "#eef6ea",
+              "on-tertiary-fixed-variant": "#004494",
+              "surface-bright": "#f4fcef",
+              "surface-variant": "#dde5d9",
+              "secondary-fixed": "#b5f1b9",
+              "secondary": "#336a3d",
+              "primary": "#006e2e",
+              "tertiary-fixed-dim": "#adc6ff",
+              "on-secondary-container": "#376e41",
+              "error": "#ba1a1a",
+              "secondary-container": "#b2eeb6",
+              "tertiary": "#095bbe",
+              "on-primary-container": "#003a15",
+              "surface-container-high": "#e2ebde",
+              "on-primary-fixed": "#002109",
+              "on-error": "#ffffff",
+              "background": "#f4fcef",
+              "surface-tint": "#006e2e",
+              "on-secondary-fixed": "#002109",
+              "surface-container-lowest": "#ffffff",
+              "on-primary": "#ffffff",
+              "surface-container-highest": "#dde5d9",
+              "on-tertiary-container": "#00306b",
+              "on-secondary": "#ffffff",
+              "inverse-primary": "#52e078",
+              "primary-fixed-dim": "#52e078",
+              "on-primary-fixed-variant": "#005321",
+              "surface": "#f4fcef",
+              "outline": "#6d7b6c",
+              "tertiary-container": "#5f98ff",
+              "error-container": "#ffdad6",
+              "on-surface-variant": "#3d4a3d",
+              "outline-variant": "#bccbb9",
+              "on-background": "#161d16",
+              "primary-fixed": "#71fe91",
+              "surface-container": "#e8f0e4",
+              "on-secondary-fixed-variant": "#195127",
+              "on-tertiary-fixed": "#001a41",
+              "inverse-surface": "#2b322a",
+              "secondary-fixed-dim": "#99d59e",
+              "inverse-on-surface": "#ebf3e7",
+              "primary-container": "#00b14f",
+              "surface-dim": "#d4dcd0",
+              "tertiary-fixed": "#d8e2ff"
+            },
+            fontFamily: {
+              "headline": ["Inter"],
+              "body": ["Inter"],
+              "label": ["Inter"]
+            },
+            borderRadius: {"DEFAULT": "0.25rem", "lg": "0.5rem", "xl": "0.75rem", "full": "9999px"},
+          },
+        },
+      }
+    </script>
+<style>
+        .material-symbols-outlined {
+            font-variation-settings: 'FILL' 0, 'wght' 400, 'GRAD' 0, 'opsz' 24;
+        }
+        .kinetic-gradient {
+            background: linear-gradient(135deg, #006e2e 0%, #00b14f 100%);
+        }
+        .glass-header {
+            backdrop-filter: blur(20px);
+            -webkit-backdrop-filter: blur(20px);
+        }
+    </style>
+<style>
+    body {
+      min-height: max(884px, 100dvh);
+    }
+  </style>
+</head>
+<body class="bg-background text-on-surface font-body selection:bg-primary-container selection:text-on-primary-container">
+<!-- TopAppBar -->
+<header class="fixed top-0 w-full z-50 bg-[#fcf9f8]/80 dark:bg-[#1b1c1c]/80 glass-header flex items-center justify-between px-6 h-16 shadow-[0_32px_64px_-15px_rgba(27,28,28,0.06)]">
+<div class="flex items-center gap-4">
+<span class="material-symbols-outlined text-[#006e2e] dark:text-[#00b14f] active:scale-95 transition-all duration-200 cursor-pointer" data-icon="menu">menu</span>
+<h1 class="text-xl font-black tracking-tighter text-[#006e2e] dark:text-[#00b14f]">Hello Ride</h1>
+</div>
+<div class="flex items-center gap-3">
+<div class="hidden md:flex items-center gap-6 mr-6">
+<a class="text-[#006e2e] dark:text-[#00b14f] font-bold font-['Inter'] transition-opacity hover:opacity-80" href="#">Home</a>
+<a class="text-[#1b1c1c] dark:text-[#fcf9f8] font-bold font-['Inter'] transition-opacity hover:opacity-80" href="#">Benefits</a>
+<a class="text-[#1b1c1c] dark:text-[#fcf9f8] font-bold font-['Inter'] transition-opacity hover:opacity-80" href="#">Support</a>
+</div>
+<div class="w-10 h-10 rounded-full bg-surface-container-highest overflow-hidden active:scale-95 transition-all duration-200 border-2 border-primary-container">
+<img alt="Driver Profile" class="w-full h-full object-cover" data-alt="Close-up professional headshot of a friendly middle-aged man smiling, clean background, soft studio lighting" src="https://lh3.googleusercontent.com/aida-public/AB6AXuBXfHaDJh6BBLEtxnd36NpGBipoqcxMXKvKPCTMpN6cN3A9W0szJZ8HPMPF0kOPHLM3pH-FysWsc3_UtRhWQKh_pnaqtlbtTQ7vzp1K25GrtsKSmQHqeyL01ajq37d9B426Pn13qjD-hfyrSC4jt-dunAEBjfeCzkQKknybfHrohSs3iAUBIghdl4F9nIyyCsP8rD2iH03xAF2_SgvKwqRz8c__rl2A2BhEbiLkgTA9eX1mlMGV48P_27cm4Akw3M6V7TRnCBGYR8g"/>
+</div>
+</div>
+</header>
+<main class="pt-16 pb-24">
+<!-- Hero Section -->
+<section class="relative px-6 pt-12 pb-20 overflow-hidden">
+<div class="absolute top-0 right-0 w-3/4 h-full opacity-10 -z-10 translate-x-1/4">
+<span class="material-symbols-outlined text-[400px]" style="font-variation-settings: 'FILL' 1;">local_taxi</span>
+</div>
+<div class="max-w-4xl mx-auto text-center md:text-left">
+<span class="inline-block px-4 py-1 rounded-full bg-primary-fixed text-on-primary-fixed font-bold text-[10px] tracking-widest uppercase mb-6">Partner Program</span>
+<h2 class="text-[2.75rem] leading-tight font-black tracking-tight text-on-surface mb-6 md:max-w-2xl">
+                    Drive Your Career Forward with <span class="text-primary">Hello Ride</span>
+</h2>
+<p class="text-on-surface-variant text-lg mb-10 md:max-w-xl">
+                    Join the community of elite partners. Enjoy the freedom to earn on your terms with premium support every mile of the way.
+                </p>
+<div class="flex flex-col md:flex-row gap-4">
+<button class="kinetic-gradient text-white px-8 py-4 rounded-xl font-bold text-lg shadow-lg active:scale-[0.97] transition-all duration-150 flex items-center justify-center gap-2">
+                        Register as a Partner
+                        <span class="material-symbols-outlined" data-icon="arrow_forward">arrow_forward</span>
+</button>
+<button class="bg-surface-container-highest text-on-surface px-8 py-4 rounded-xl font-bold text-lg active:scale-[0.97] transition-all duration-150 flex items-center justify-center">
+                        Log In
+                    </button>
+</div>
+</div>
+</section>
+<!-- Dynamic Bento Benefits -->
+<!-- Call to Action Footer -->
+</main>
+<!-- NavigationDrawer (Simulated) -->
+<div class="fixed left-0 top-0 h-full w-80 p-6 flex flex-col bg-[#fcf9f8] dark:bg-[#1b1c1c] shadow-2xl -translate-x-full transition-transform duration-300 z-[100]" id="drawer">
+<div class="flex items-center gap-4 mb-10">
+<div class="w-12 h-12 rounded-full bg-primary-fixed flex items-center justify-center">
+<span class="material-symbols-outlined text-primary" data-icon="person">person</span>
+</div>
+<div>
+<h4 class="font-bold text-[#006e2e]">Partner Dashboard</h4>
+<p class="text-xs opacity-60">Verified Driver</p>
+</div>
+</div>
+<nav class="flex flex-col gap-y-4">
+<a class="flex items-center gap-4 p-3 bg-[#00b14f]/10 text-[#006e2e] font-bold rounded-xl font-['Inter'] text-sm" href="#">
+<span class="material-symbols-outlined" data-icon="history">history</span>
+                Shift History
+            </a>
+<a class="flex items-center gap-4 p-3 text-[#1b1c1c] dark:text-[#fcf9f8] hover:bg-[#f0eded] dark:hover:bg-[#2c2d2d] rounded-xl font-['Inter'] text-sm transition-all" href="#">
+<span class="material-symbols-outlined" data-icon="directions_car">directions_car</span>
+                Vehicle Info
+            </a>
+<a class="flex items-center gap-4 p-3 text-[#1b1c1c] dark:text-[#fcf9f8] hover:bg-[#f0eded] dark:hover:bg-[#2c2d2d] rounded-xl font-['Inter'] text-sm transition-all" href="#">
+<span class="material-symbols-outlined" data-icon="description">description</span>
+                Documents
+            </a>
+<a class="flex items-center gap-4 p-3 text-[#1b1c1c] dark:text-[#fcf9f8] hover:bg-[#f0eded] dark:hover:bg-[#2c2d2d] rounded-xl font-['Inter'] text-sm transition-all" href="#">
+<span class="material-symbols-outlined" data-icon="help_outline">help_outline</span>
+                Help Center
+            </a>
+<hr class="border-surface-container-highest my-4"/>
+<a class="flex items-center gap-4 p-3 text-error font-bold font-['Inter'] text-sm" href="#">
+<span class="material-symbols-outlined" data-icon="logout">logout</span>
+                Sign Out
+            </a>
+</nav>
+</div>
+<!-- BottomNavBar (Mobile only) -->
+</body></html>

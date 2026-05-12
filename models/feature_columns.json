@@ -1,0 +1,1 @@
+["hour_of_day", "day_of_week", "is_weekend", "confirmed_qr_count", "total_pax", "total_luggage", "arriving_flights", "pax_est", "delay_avg_min", "avg_taxis_in_holding", "avg_taxis_at_curb", "avg_active_lanes", "avg_lane_capacity", "rain_mm", "wind_kmh", "temp_c"]
