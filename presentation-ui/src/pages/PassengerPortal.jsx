@@ -37,19 +37,29 @@ function StepIndicator({ current }) {
 // ── Shared Mobile Header ──────────────────────────────────────────────────
 
 function MobileHeader({ title, backLabel, onBack, rightLabel, showAvatar }) {
+  const isBrand = title === "Hello Ride";
   return (
     <div className="flex items-center justify-between py-3 mb-4">
       <div className="w-16">
         {onBack && (
-          <button onClick={onBack} className="flex items-center justify-center hover:opacity-70 transition-opacity">
+          <button onClick={onBack} className="w-9 h-9 rounded-full bg-[#f6f3f2] flex items-center justify-center hover:bg-[#ede9e8] transition-colors">
             <span className="material-symbols-outlined text-[#006e2e] text-xl">arrow_back</span>
           </button>
         )}
       </div>
-      <p className="text-base font-bold text-slate-900">{title}</p>
+      {isBrand ? (
+        <div className="flex items-center gap-1.5">
+          <div className="w-5 h-5 rounded-full bg-gradient-to-br from-[#006e2e] to-[#00b14f] flex items-center justify-center shadow-sm">
+            <span className="material-symbols-outlined text-white text-[12px]">directions_car</span>
+          </div>
+          <p className="text-xl font-black text-[#006e2e] font-headline tracking-tight">Hello Ride</p>
+        </div>
+      ) : (
+        <p className="text-base font-bold text-slate-900">{title}</p>
+      )}
       <div className="w-16 flex justify-end">
         {showAvatar && (
-          <div className="w-8 h-8 rounded-full bg-brand/20 border border-brand/30 flex items-center justify-center text-xs font-bold text-brand">
+          <div className="w-8 h-8 rounded-full bg-[#006e2e]/15 border border-[#006e2e]/25 flex items-center justify-center text-xs font-bold text-[#006e2e]">
             NT
           </div>
         )}
@@ -240,9 +250,10 @@ function HomeScreen({ onNext }) {
       <button
         onClick={() => isValid && onNext({ dest, passengers, luggage, specialAssistance, notes })}
         disabled={!isValid}
-        className="w-full py-4 rounded-full bg-gradient-to-br from-[#006e2e] to-[#00b14f] text-white font-headline font-extrabold text-lg shadow-[0_8px_24px_rgba(0,110,46,0.25)] disabled:opacity-40 disabled:cursor-not-allowed active:scale-95 transition-transform"
+        className="w-full py-5 rounded-full bg-gradient-to-br from-[#006e2e] to-[#00b14f] text-white font-headline font-extrabold text-lg shadow-[0_12px_28px_rgba(0,110,46,0.3)] disabled:opacity-40 disabled:cursor-not-allowed active:scale-95 transition-transform flex items-center justify-center gap-2"
       >
-        Confirm Pick-up ⚡
+        Confirm Pick-up
+        <span className="material-symbols-outlined text-[20px]">bolt</span>
       </button>
     </div>
   );
@@ -250,16 +261,31 @@ function HomeScreen({ onNext }) {
 
 // ── Car Type Screen ────────────────────────────────────────────────────────
 
+const RIDE_BADGES = {
+  "hello-taxi": { label: "Cheapest", cls: "bg-[#003a15] text-white" },
+  "hello-car":  { label: "Popular",  cls: "bg-[#006e2e]/15 text-[#006e2e]" },
+  "hello-suv":  { label: "Most Space", cls: "bg-slate-200 text-slate-600" },
+};
+
+const RIDE_ICONS = {
+  "hello-taxi": "local_taxi",
+  "hello-car":  "directions_car",
+  "hello-suv":  "airport_shuttle",
+};
+
 function CarTypeScreen({ passengers, luggage, onBack, onNext }) {
   const [selectedRide, setSelectedRide] = useState(null);
   const [selectedPayment, setSelectedPayment] = useState(null);
+  const [showPaymentPicker, setShowPaymentPicker] = useState(false);
 
   function isEligible(ride) {
     return passengers <= ride.maxPassengers && luggage <= ride.maxLuggage;
   }
 
+  const activePay = PAYMENT_OPTIONS.find((p) => p.id === selectedPayment);
+
   return (
-    <div className="flex flex-col gap-4">
+    <div className="flex flex-col gap-5">
       <MobileHeader title="Hello Ride" backLabel="Back" onBack={onBack} />
 
       {/* Current journey card */}
@@ -267,72 +293,111 @@ function CarTypeScreen({ passengers, luggage, onBack, onNext }) {
 
       {/* Ride selection */}
       <div>
-        <p className="text-sm font-bold text-slate-900">Select ride</p>
-        <p className="text-xs text-muted mb-3">Estimated arrival: 4 mins</p>
-        <p className="text-xs text-muted mb-2">Tap one option to select your ride.</p>
-        <div className="flex flex-col gap-2">
+        <p className="text-xl font-extrabold font-headline text-slate-900 leading-tight">Select ride</p>
+        <p className="text-xs text-muted mt-0.5 mb-4">Estimated arrival: 4 mins</p>
+        <div className="flex flex-col gap-3">
           {RIDES.map((ride) => {
             const eligible = isEligible(ride);
             const selected = selectedRide === ride.id;
+            const badge = RIDE_BADGES[ride.id];
+            const icon = RIDE_ICONS[ride.id] ?? "local_taxi";
             return (
               <button
                 key={ride.id}
                 onClick={() => eligible && setSelectedRide(ride.id)}
                 disabled={!eligible}
-                className={`w-full text-left rounded-2xl p-4 flex items-center gap-4 transition-all ${
-                  !eligible ? "bg-slate-50 border border-slate-100 opacity-40 cursor-not-allowed" :
-                  selected ? "bg-[#71fe91] border-2 border-[#006e2e]" : "bg-white border border-slate-100 hover:border-slate-300 hover:shadow-md"
+                className={`w-full text-left rounded-[1.5rem] p-5 flex items-center gap-4 transition-all duration-200 ${
+                  !eligible
+                    ? "bg-slate-50 opacity-40 cursor-not-allowed"
+                    : selected
+                    ? "bg-[#71fe91] shadow-[0_6px_24px_rgba(0,177,79,0.22)]"
+                    : "bg-[#f6f3f2] hover:bg-[#ede9e8] hover:shadow-md"
                 }`}
               >
-                <div className={`w-16 h-16 rounded-xl flex items-center justify-center shrink-0 ${selected ? "bg-white/50" : "bg-[#f6f3f2]"}`}>
-                  <span className="material-symbols-outlined text-3xl text-[#006e2e]">local_taxi</span>
+                <div className={`w-16 h-16 rounded-2xl flex items-center justify-center shrink-0 ${
+                  selected ? "bg-white/50" : "bg-[#e5e2e1]"
+                }`}>
+                  <span className={`material-symbols-outlined text-4xl ${selected ? "text-[#003a15]" : "text-[#006e2e]"}`}>{icon}</span>
                 </div>
                 <div className="flex-1">
-                  <p className="text-sm font-bold text-slate-900">{ride.label}</p>
-                  <p className="text-xs text-muted mt-0.5">
+                  <div className="flex items-center gap-2 mb-0.5 flex-wrap">
+                    <p className={`text-base font-bold ${selected ? "text-[#002109]" : "text-slate-900"}`}>{ride.label}</p>
+                    {badge && (
+                      <span className={`text-[10px] px-2 py-0.5 rounded-full font-bold uppercase tracking-wider ${badge.cls}`}>
+                        {badge.label}
+                      </span>
+                    )}
+                  </div>
+                  <p className={`text-xs ${selected ? "text-[#005321]" : "text-muted"}`}>
                     {ride.description}
                     {!eligible && ` · Max ${ride.maxPassengers} pax, ${ride.maxLuggage} bags`}
                   </p>
                 </div>
-                <p className={`text-sm font-headline font-bold shrink-0 ${selected ? "text-[#006e2e]" : "text-slate-900"}`}>{ride.price}</p>
+                <div className="text-right shrink-0">
+                  <p className={`text-lg font-black font-headline ${selected ? "text-[#003a15]" : "text-slate-900"}`}>{ride.price}</p>
+                </div>
               </button>
             );
           })}
         </div>
       </div>
 
-      {/* Payment selection */}
+      {/* Payment — wallet card style */}
       <div>
-        <p className="text-sm font-bold text-slate-900 mb-3">Payment</p>
-        <div className="flex flex-col gap-2">
-          {PAYMENT_OPTIONS.map((pay) => {
-            const selected = selectedPayment === pay.id;
-            return (
+        <p className="text-base font-extrabold font-headline text-slate-900 mb-3">Payment</p>
+        {activePay && !showPaymentPicker ? (
+          <div className="flex items-center justify-between bg-white border-2 border-[#006e2e]/10 p-4 rounded-2xl shadow-sm">
+            <div className="flex items-center gap-3">
+              <div className="w-10 h-10 bg-[#003a15] rounded-xl flex items-center justify-center shrink-0">
+                <span className="material-symbols-outlined text-white text-lg"
+                  style={{ fontVariationSettings: "'FILL' 1" }}>
+                  {activePay.id === "card" ? "credit_card" : "account_balance_wallet"}
+                </span>
+              </div>
+              <div>
+                <p className="text-sm font-bold text-slate-900">{activePay.detail}</p>
+                <p className="text-xs text-muted">{activePay.value}</p>
+              </div>
+            </div>
+            <button
+              onClick={() => setShowPaymentPicker(true)}
+              className="text-[#006e2e] font-bold text-sm px-4 py-1.5 hover:bg-[#006e2e]/8 rounded-full transition-colors"
+            >
+              Change
+            </button>
+          </div>
+        ) : (
+          <div className="flex flex-col gap-2">
+            {PAYMENT_OPTIONS.map((pay) => (
               <button
                 key={pay.id}
-                onClick={() => setSelectedPayment(pay.id)}
-                className={`w-full text-left rounded-2xl p-3.5 flex items-center gap-3 transition-all ${
-                  selected ? "bg-[#71fe91] border-2 border-[#006e2e]" : "bg-[#f6f3f2] border border-transparent hover:border-slate-300"
-                }`}
+                onClick={() => { setSelectedPayment(pay.id); setShowPaymentPicker(false); }}
+                className="w-full text-left bg-white border border-slate-200 rounded-2xl p-4 flex items-center gap-3 hover:border-[#006e2e]/40 hover:shadow-sm transition-all"
               >
-                <span className="material-symbols-outlined text-[#006e2e] text-xl shrink-0">account_balance_wallet</span>
-                <div className="flex-1">
-                  <p className="text-sm font-semibold text-slate-900">{pay.label}</p>
-                  <p className="text-xs text-muted">{pay.detail}</p>
+                <div className="w-10 h-10 bg-[#003a15] rounded-xl flex items-center justify-center shrink-0">
+                  <span className="material-symbols-outlined text-white text-lg"
+                    style={{ fontVariationSettings: "'FILL' 1" }}>
+                    {pay.id === "card" ? "credit_card" : "account_balance_wallet"}
+                  </span>
                 </div>
-                {selected && <span className="text-[#006e2e] font-bold text-sm">✓</span>}
+                <div className="flex-1">
+                  <p className="text-sm font-bold text-slate-900">{pay.detail}</p>
+                  <p className="text-xs text-muted">{pay.value}</p>
+                </div>
+                <span className="material-symbols-outlined text-slate-300 text-lg">chevron_right</span>
               </button>
-            );
-          })}
-        </div>
+            ))}
+          </div>
+        )}
       </div>
 
       <button
         onClick={() => selectedRide && selectedPayment && onNext({ selectedRide, selectedPayment })}
         disabled={!selectedRide || !selectedPayment}
-        className="w-full py-4 rounded-full bg-gradient-to-br from-[#006e2e] to-[#00b14f] text-white font-headline font-extrabold text-lg shadow-[0_8px_24px_rgba(0,110,46,0.25)] disabled:opacity-40 disabled:cursor-not-allowed active:scale-95 transition-transform"
+        className="w-full py-5 rounded-full bg-gradient-to-br from-[#006e2e] to-[#00b14f] text-white font-headline font-extrabold text-lg shadow-[0_12px_28px_rgba(0,110,46,0.3)] disabled:opacity-40 disabled:cursor-not-allowed active:scale-95 transition-transform flex items-center justify-center gap-2"
       >
         Book ride
+        <span className="material-symbols-outlined text-[20px]">bolt</span>
       </button>
     </div>
   );

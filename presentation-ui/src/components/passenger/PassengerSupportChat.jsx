@@ -67,8 +67,8 @@ export default function PassengerSupportChat() {
       <button
         onClick={() => setIsOpen(true)}
         aria-label="Open support chat"
-        className={`absolute bottom-24 right-4 z-50 w-14 h-14 rounded-full bg-white border border-[#00b14f]/25
-          shadow-[0_4px_20px_rgba(0,177,79,0.22),0_2px_8px_rgba(0,0,0,0.08)]
+        className={`absolute bottom-28 right-4 z-50 w-13 h-13 rounded-full bg-white border border-[#00b14f]/20
+          shadow-[0_6px_24px_rgba(0,110,46,0.18),0_2px_8px_rgba(0,0,0,0.07)]
           flex items-center justify-center
           hover:scale-105 active:scale-95 transition-all duration-150
           ${isOpen ? "opacity-0 pointer-events-none" : "opacity-100"}`}

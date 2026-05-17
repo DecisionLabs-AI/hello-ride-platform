@@ -121,42 +121,56 @@ function LaneLoadCard({ load }) {
 // ── Main Health Card ────────────────────────────────────────────────────────
 
 function HealthCard({ d }) {
-  const laneColor = d.laneLoad > 85 ? "bg-[#154aa8]" : d.laneLoad > 70 ? "bg-amber-500" : "bg-[#154aa8]";
+  const loadTone = d.laneLoad >= 85
+    ? { bar: "bg-red-500",     pill: "bg-red-50 text-red-700 border border-red-200",       label: "Near Capacity", hint: "Capacity is near limit; activate mitigation if demand rises." }
+    : d.laneLoad >= 70
+    ? { bar: "bg-amber-400",   pill: "bg-amber-50 text-amber-700 border border-amber-200",  label: "High Load",     hint: "Lane capacity is tight; prepare overflow option." }
+    : { bar: "bg-brand",       pill: "bg-emerald-50 text-emerald-700 border border-emerald-200", label: "Normal Load", hint: "Lane capacity is stable." };
+
   return (
-    <div className="bg-white rounded-2xl border border-slate-200 shadow-sm p-7 flex flex-col gap-6 flex-1 min-w-0">
-      <div className="flex items-center gap-8">
+    <div className="bg-white rounded-2xl border border-slate-200 shadow-sm p-5 flex flex-col gap-4 flex-1 min-w-0">
+      {/* Gauge + KPI metrics row */}
+      <div className="flex items-center gap-6">
         <PWTGauge value={d.pwt} threshold={d.guardrailMin} />
-        <div className="flex gap-10 flex-1">
+        <div className="flex gap-8 flex-1">
           <div>
             <p className="text-xs font-bold text-slate-400 uppercase tracking-widest">Waiting Pax</p>
-            <div className="flex items-end gap-2 mt-2">
-              <p className="text-5xl font-bold text-[#1a2b5e] leading-none">{d.waitingPassengers.toLocaleString()}</p>
-              <span className={`text-sm font-bold mb-1 ${d.waitingTrend?.startsWith("+") ? "text-red-500" : "text-green-600"}`}>
+            <div className="flex items-end gap-1.5 mt-1.5">
+              <p className="text-4xl font-bold text-[#1a2b5e] leading-none">{d.waitingPassengers.toLocaleString()}</p>
+              <span className={`text-sm font-bold mb-0.5 ${d.waitingTrend?.startsWith("+") ? "text-red-500" : "text-green-600"}`}>
                 {d.waitingTrend}
               </span>
             </div>
-            <p className="text-xs text-slate-400 mt-1.5">Est. clearing in 45m</p>
+            <p className="text-xs text-slate-400 mt-1">Est. clearing in 45m</p>
           </div>
           <div>
             <p className="text-xs font-bold text-slate-400 uppercase tracking-widest">Holding Taxis</p>
-            <div className="flex items-end gap-2 mt-2">
-              <p className="text-5xl font-bold text-[#1a2b5e] leading-none">{d.holdingTaxis}</p>
-              <span className={`text-sm font-bold mb-1 ${d.taxiTrend?.startsWith("-") ? "text-red-500" : "text-green-600"}`}>
+            <div className="flex items-end gap-1.5 mt-1.5">
+              <p className="text-4xl font-bold text-[#1a2b5e] leading-none">{d.holdingTaxis}</p>
+              <span className={`text-sm font-bold mb-0.5 ${d.taxiTrend?.startsWith("-") ? "text-red-500" : "text-green-600"}`}>
                 {d.taxiTrend}
               </span>
             </div>
-            <p className="text-xs text-slate-400 mt-1.5">Queue throughput: 14/m</p>
+            <p className="text-xs text-slate-400 mt-1">Queue throughput: 14/m</p>
           </div>
         </div>
       </div>
-      <div>
+
+      {/* System load row */}
+      <div className="pt-3 border-t border-slate-100">
         <div className="flex items-center justify-between mb-2">
-          <p className="text-xs font-semibold text-slate-400 uppercase tracking-widest">Lane 1: High Capacity</p>
-          <p className="text-xs font-bold text-slate-600">System Load: {d.laneLoad}%</p>
+          <div className="flex items-center gap-2">
+            <p className="text-xs font-semibold text-slate-400 uppercase tracking-widest">Lane 1: System Load</p>
+            <span className={`text-[10px] font-bold px-2 py-0.5 rounded-full ${loadTone.pill}`}>
+              {loadTone.label}
+            </span>
+          </div>
+          <p className="text-xs font-bold text-slate-600">{d.laneLoad}%</p>
         </div>
         <div className="h-2 bg-slate-100 rounded-full overflow-hidden">
-          <div className={`h-full rounded-full transition-all ${laneColor}`} style={{ width: `${d.laneLoad}%` }} />
+          <div className={`h-full rounded-full transition-all ${loadTone.bar}`} style={{ width: `${d.laneLoad}%` }} />
         </div>
+        <p className="text-xs text-muted mt-1.5">{loadTone.hint}</p>
       </div>
     </div>
   );
@@ -166,31 +180,31 @@ function HealthCard({ d }) {
 
 function AlertCard({ d, laneActivated, setLaneActivated, broadcastSent, setBroadcastSent }) {
   return (
-    <div className="w-72 shrink-0 bg-[#7d1a1a] text-white rounded-2xl shadow-lg p-5 flex flex-col gap-4">
+    <div className="w-80 shrink-0 self-start bg-[#7d1a1a] text-white rounded-2xl shadow-lg p-3.5 flex flex-col gap-2.5">
       <div className="flex items-center gap-2.5">
         <div className="w-6 h-6 bg-white/20 rounded-full flex items-center justify-center shrink-0">
           <span className="material-symbols-outlined text-white leading-none" style={{ fontSize: '14px' }}>warning</span>
         </div>
         <p className="font-bold text-sm leading-tight">Projected Deficit Alert</p>
       </div>
-      <p className="text-sm text-red-200 leading-relaxed -mt-1">
+      <p className="text-xs text-red-200 leading-snug -mt-1">
         Arrival wave projected in T-15 mins. Predicted passenger influx will exceed current lane capacity by {d.projectedDeficit}%.
       </p>
-      <div className="bg-white/10 rounded-xl p-3.5">
-        <p className="text-xs font-bold uppercase tracking-widest text-red-300 mb-1.5">AI Advisory</p>
-        <p className="text-sm text-white/90 italic leading-relaxed">"{d.aiAdvice}"</p>
+      <div className="bg-white/10 rounded-xl p-3">
+        <p className="text-xs font-bold uppercase tracking-widest text-red-300 mb-1">AI Advisory</p>
+        <p className="text-xs text-white/90 italic leading-snug">"{d.aiAdvice}"</p>
       </div>
       <button
         onClick={() => setLaneActivated(true)}
         disabled={laneActivated}
-        className="w-full bg-white text-[#7d1a1a] font-bold py-3 rounded-xl text-sm transition-colors hover:bg-red-50 disabled:opacity-60 active:scale-95"
+        className="w-full bg-white text-[#7d1a1a] font-bold py-2 rounded-lg text-xs transition-colors hover:bg-red-50 disabled:opacity-60 active:scale-95"
       >
         {laneActivated ? "Overflow Lane Active ✓" : "Activate Extra Lane"}
       </button>
       <button
         onClick={() => setBroadcastSent(true)}
         disabled={broadcastSent}
-        className="w-full border-2 border-white/40 text-white font-bold py-3 rounded-xl text-sm transition-colors hover:bg-white/10 disabled:opacity-60 active:scale-95 flex items-center justify-center gap-2"
+        className="w-full border-2 border-white/40 text-white font-bold py-2 rounded-lg text-xs transition-colors hover:bg-white/10 disabled:opacity-60 active:scale-95 flex items-center justify-center gap-2"
       >
         <span className="material-symbols-outlined leading-none" style={{ fontSize: '16px' }}>broadcast_on_personal</span>
         {broadcastSent ? "Broadcast Sent ✓" : "Broadcast to Drivers"}
@@ -374,13 +388,25 @@ function ImpactSimulation({ sim }) {
 
 // ── ML Prediction ───────────────────────────────────────────────────────────
 
-function MLPredictionCard() {
-  const status = "Under control";
-  const isHighRisk = status === "High risk";
+const ML_MOCK = {
+  T1:  { predictedPWT: 19.0, breachProb: 78,   decision: "Activate extra lane and broadcast to drivers." },
+  T2:  { predictedPWT: 13.8, breachProb: 12.5, decision: "Monitor closely — no extra lane required yet." },
+  ALL: { predictedPWT: 16.4, breachProb: 49,   decision: "Stage overflow capacity and synchronize driver broadcast." },
+};
+
+function MLPredictionCard({ terminal }) {
+  const { predictedPWT, breachProb, decision } = ML_MOCK[terminal] ?? ML_MOCK.T1;
+  const SLA_THRESHOLD = 15;
+  const buffer = +(SLA_THRESHOLD - predictedPWT).toFixed(1);
+
+  const kpi = predictedPWT >= SLA_THRESHOLD
+    ? { label: "SLA Breached",   dot: "bg-red-500",     text: "text-red-700",     bg: "bg-red-50",    border: "border-red-200",    bar: "bg-red-500",     desc: "Predicted wait time exceeds the SLA. Immediate intervention required." }
+    : predictedPWT >= 12
+    ? { label: "Near Threshold", dot: "bg-amber-400",   text: "text-amber-700",   bg: "bg-amber-50",  border: "border-amber-200",  bar: "bg-amber-400",   desc: "Within 3 min of the SLA limit. Monitor closely and prepare actions." }
+    : { label: "Within SLA",     dot: "bg-emerald-500", text: "text-emerald-700", bg: "bg-emerald-50", border: "border-emerald-200", bar: "bg-emerald-500", desc: "Predicted wait time remains comfortably below the operational SLA threshold." };
+
   const modelInputs = ["Flight wave", "QR demand", "Taxi supply", "Lane capacity", "Weather", "Time"];
-  const decisionText = isHighRisk
-    ? "Decision: Prepare overflow lane and driver broadcast."
-    : "Decision: Monitor only — no extra lane required yet.";
+  const decisionText = `Decision: ${decision}`;
 
   return (
     <div>
@@ -425,26 +451,63 @@ function MLPredictionCard() {
             </div>
           </div>
 
-          <div className="mt-5">
-            <p className="text-xs text-slate-400 uppercase tracking-widest font-bold mb-2">Model Output Example</p>
-          </div>
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mt-2">
-            <div className="bg-slate-50 border border-slate-100 rounded-2xl p-5">
-              <p className="text-xs text-muted uppercase tracking-widest font-semibold">Predicted Wait Time</p>
-              <p className="text-4xl font-bold text-slate-900 mt-1">13.8 min</p>
-            </div>
-            <div className="bg-slate-50 border border-slate-100 rounded-2xl p-5">
-              <p className="text-xs text-muted uppercase tracking-widest font-semibold">Breach Risk Probability</p>
-              <p className="text-4xl font-bold text-slate-900 mt-1">12.5%</p>
-            </div>
-            <div className="bg-emerald-50 border border-emerald-200 rounded-2xl p-5">
-              <p className="text-xs text-emerald-700 uppercase tracking-widest font-semibold">Status</p>
-              <p className="text-2xl font-bold text-slate-900 mt-2">{status}</p>
+          {/* Output header row with live KPI state pill */}
+          <div className="mt-5 flex items-center justify-between gap-3 flex-wrap">
+            <p className="text-xs text-slate-400 uppercase tracking-widest font-bold">Model Output — KPI Interpretation</p>
+            <div className={`flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-bold border ${kpi.bg} ${kpi.text} ${kpi.border}`}>
+              <span className={`w-1.5 h-1.5 rounded-full ${kpi.dot}`} />
+              {kpi.label}
             </div>
           </div>
 
-          <div className="mt-4 rounded-2xl bg-emerald-50 border border-emerald-200 p-4">
-            <p className="text-xs text-emerald-700 uppercase tracking-widest font-bold mb-1">OPS DECISION</p>
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mt-3">
+            {/* Predicted Wait Time — with SLA context */}
+            <div className={`${kpi.bg} ${kpi.border} border rounded-2xl p-5`}>
+              <p className={`text-xs uppercase tracking-widest font-semibold ${kpi.text}`}>Predicted Wait Time</p>
+              <p className={`text-4xl font-black mt-1 ${kpi.text}`}>{predictedPWT} min</p>
+              <div className="mt-3 pt-3 border-t border-slate-200/60 flex flex-col gap-1.5">
+                <div className="flex items-center justify-between">
+                  <span className="text-xs text-muted">Target SLA</span>
+                  <span className="text-xs font-bold text-slate-600">&lt; {SLA_THRESHOLD} min</span>
+                </div>
+                <div className="flex items-center justify-between">
+                  <span className={`text-xs font-semibold ${kpi.text}`}>
+                    {buffer >= 0
+                      ? `${buffer} min headroom`
+                      : `${Math.abs(buffer)} min over SLA`}
+                  </span>
+                </div>
+              </div>
+              <div className="mt-3">
+                <div className="h-1.5 bg-slate-200 rounded-full overflow-hidden">
+                  <div
+                    className={`h-full rounded-full transition-all ${kpi.bar}`}
+                    style={{ width: `${Math.min((predictedPWT / SLA_THRESHOLD) * 100, 100)}%` }}
+                  />
+                </div>
+                <p className="text-xs text-muted mt-1">vs {SLA_THRESHOLD} min SLA limit</p>
+              </div>
+            </div>
+
+            {/* Breach Risk Probability */}
+            <div className="bg-slate-50 border border-slate-100 rounded-2xl p-5">
+              <p className="text-xs text-muted uppercase tracking-widest font-semibold">Breach Risk Probability</p>
+              <p className="text-4xl font-bold text-slate-900 mt-1">{breachProb}%</p>
+              <p className="text-xs text-muted mt-3 leading-relaxed">
+                Probability PWT exceeds {SLA_THRESHOLD} min SLA in the next demand window.
+              </p>
+            </div>
+
+            {/* SLA Status summary */}
+            <div className={`${kpi.bg} ${kpi.border} border rounded-2xl p-5`}>
+              <p className={`text-xs uppercase tracking-widest font-semibold ${kpi.text}`}>SLA Status</p>
+              <p className={`text-xl font-bold mt-2 ${kpi.text}`}>{kpi.label}</p>
+              <p className="text-xs text-muted mt-2 leading-relaxed">{kpi.desc}</p>
+            </div>
+          </div>
+
+          <div className={`mt-4 rounded-2xl ${kpi.bg} ${kpi.border} border p-4`}>
+            <p className={`text-xs uppercase tracking-widest font-bold mb-1 ${kpi.text}`}>OPS DECISION</p>
             <p className="text-sm font-semibold text-slate-900">{decisionText}</p>
             <p className="text-xs text-muted mt-1">
               If breach risk increases, OPS can trigger the control actions below.
@@ -550,7 +613,7 @@ function DataSection({ eyebrow, title, items }) {
 
 // ── Live Monitoring View ───────────────────────────────────────────────────
 
-function LiveMonitoring({ d, laneActivated, setLaneActivated, broadcastSent, setBroadcastSent, lane2Active, setLane2Active }) {
+function LiveMonitoring({ d, terminal, laneActivated, setLaneActivated, broadcastSent, setBroadcastSent, lane2Active, setLane2Active }) {
   const isAboveGuardrail = d.pwt > d.guardrailMin;
 
   const flightItems = d.flights.map((f) => ({
@@ -577,7 +640,7 @@ function LiveMonitoring({ d, laneActivated, setLaneActivated, broadcastSent, set
   return (
     <div className="flex flex-col gap-6">
       {/* Hero: Health Card + Alert Card side-by-side */}
-      <div className="flex gap-5 items-stretch flex-wrap">
+      <div className="flex gap-5 items-start flex-wrap">
         <HealthCard d={d} />
         {isAboveGuardrail && (
           <AlertCard
@@ -598,7 +661,7 @@ function LiveMonitoring({ d, laneActivated, setLaneActivated, broadcastSent, set
       <ImpactSimulation sim={d.impactSimulation} />
 
       {/* ML Prediction */}
-      <MLPredictionCard />
+      <MLPredictionCard terminal={terminal} />
 
       {/* OPS Control Actions */}
       <OpsControlActions
@@ -812,6 +875,7 @@ export default function OPSDashboard() {
           {workspace === "monitoring" && (
             <LiveMonitoring
               d={d}
+              terminal={terminal}
               laneActivated={laneActivated} setLaneActivated={setLaneActivated}
               broadcastSent={broadcastSent} setBroadcastSent={setBroadcastSent}
               lane2Active={lane2Active} setLane2Active={setLane2Active}

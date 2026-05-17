@@ -25,15 +25,28 @@ function AppHeader({ isOnline, onLogout }) {
 }
 
 function MobileHeader({ title, leftLabel, onLeft, rightLabel }) {
+  const isBrand = title === "Hello Ride";
   return (
     <div className="flex items-center justify-between py-3 mb-4">
-      <div className="w-16">
+      <div className="w-20">
         {onLeft && (
-          <button onClick={onLeft} className="text-sm text-slate-500 hover:text-slate-900">{leftLabel}</button>
+          <button onClick={onLeft} className="flex items-center gap-1 text-sm text-slate-500 hover:text-[#006e2e] transition-colors">
+            <span className="material-symbols-outlined text-base leading-none">arrow_back</span>
+            {leftLabel}
+          </button>
         )}
       </div>
-      <p className="text-base font-bold text-slate-900">{title}</p>
-      <p className="text-xs text-muted w-16 text-right">{rightLabel}</p>
+      {isBrand ? (
+        <div className="flex items-center gap-1.5">
+          <div className="w-5 h-5 rounded-full bg-gradient-to-br from-[#006e2e] to-[#00b14f] flex items-center justify-center shadow-sm">
+            <span className="material-symbols-outlined text-white text-[12px]">directions_car</span>
+          </div>
+          <p className="text-xl font-black text-[#006e2e] font-headline tracking-tight">Hello Ride</p>
+        </div>
+      ) : (
+        <p className="text-base font-bold text-slate-900">{title}</p>
+      )}
+      <p className="text-xs text-muted w-20 text-right">{rightLabel}</p>
     </div>
   );
 }
@@ -114,49 +127,78 @@ function LoginScreen({ onLogin, onRegister }) {
   }
 
   return (
-    <div className="flex flex-col gap-4">
-      <MobileHeader title="Hello Ride" />
-      <InfoCard
-        eyebrow="Driver Sign In"
-        title="Welcome back, partner."
-        body="Sign in to go online, accept the next airport queue, and track the best earning window."
-        tone="driver"
-      />
-      <div className="flex flex-col gap-3">
+    <div className="flex flex-col gap-5">
+      {/* Branded wordmark header */}
+      <div className="flex items-center justify-center pt-4 pb-2">
+        <div className="flex items-center gap-2">
+          <p className="text-2xl font-black text-[#006e2e] font-headline tracking-tight">Hello Ride</p>
+          <span className="text-[10px] font-extrabold text-[#006e2e] bg-[#71fe91]/40 border border-[#00b14f]/25 px-2 py-0.5 rounded-full uppercase tracking-wider">
+            Driver
+          </span>
+        </div>
+      </div>
+
+      {/* Hero sign-in card — mint gradient */}
+      <div className="bg-gradient-to-br from-[#e8f7ee] to-[#f0fbf4] border border-[#006e2e]/12 rounded-3xl p-6 shadow-[0_4px_24px_rgba(0,110,46,0.08)]">
+        <div className="flex items-center gap-3 mb-4">
+          <div className="w-11 h-11 rounded-2xl bg-[#006e2e] flex items-center justify-center shadow-md shrink-0">
+            <span className="material-symbols-outlined text-white text-2xl"
+              style={{ fontVariationSettings: "'FILL' 1" }}>local_taxi</span>
+          </div>
+          <div>
+            <span className="text-[10px] font-extrabold text-[#006e2e] uppercase tracking-widest">Driver Partner Sign In</span>
+            <p className="text-lg font-bold text-slate-900 leading-tight mt-0.5">Welcome back, partner.</p>
+          </div>
+        </div>
+        <p className="text-sm text-slate-600 leading-relaxed">
+          Sign in to go online, accept the next airport queue, and track the best earning window.
+        </p>
+      </div>
+
+      {/* Form inputs */}
+      <div className="flex flex-col gap-4">
         <div>
-          <p className="text-xs text-muted uppercase tracking-widest font-medium mb-2">Username</p>
+          <p className="text-xs text-muted uppercase tracking-widest font-bold mb-2">Username</p>
           <input
             type="text"
             value={username}
             onChange={(e) => { setUsername(e.target.value); setError(""); }}
             placeholder="somchai.driver"
-            className="w-full bg-white border border-slate-200 rounded-xl px-4 py-3 text-sm text-slate-900 placeholder:text-slate-400 focus:outline-none focus:border-brand focus:ring-2 focus:ring-brand/10 transition-all shadow-sm"
+            className="w-full bg-white border border-slate-200 rounded-2xl px-4 py-4 text-sm text-slate-900 placeholder:text-slate-400 focus:outline-none focus:border-[#00b14f] focus:ring-2 focus:ring-[#00b14f]/15 transition-all shadow-[0_2px_8px_rgba(0,0,0,0.06)]"
           />
         </div>
         <div>
-          <p className="text-xs text-muted uppercase tracking-widest font-medium mb-2">Password</p>
+          <p className="text-xs text-muted uppercase tracking-widest font-bold mb-2">Password</p>
           <input
             type="password"
             value={password}
             onChange={(e) => { setPassword(e.target.value); setError(""); }}
             placeholder="Enter password"
-            className="w-full bg-white border border-slate-200 rounded-xl px-4 py-3 text-sm text-slate-900 placeholder:text-slate-400 focus:outline-none focus:border-brand focus:ring-2 focus:ring-brand/10 transition-all shadow-sm"
+            className="w-full bg-white border border-slate-200 rounded-2xl px-4 py-4 text-sm text-slate-900 placeholder:text-slate-400 focus:outline-none focus:border-[#00b14f] focus:ring-2 focus:ring-[#00b14f]/15 transition-all shadow-[0_2px_8px_rgba(0,0,0,0.06)]"
           />
         </div>
       </div>
-      {error && <p className="text-xs text-danger">{error}</p>}
+
+      {error && <p className="text-xs text-danger -mt-1">{error}</p>}
+
+      {/* Primary CTA — saturated green gradient */}
       <button
         onClick={handleLogin}
-        className="w-full py-3.5 rounded-xl bg-brand text-white font-semibold text-sm hover:bg-brand-deep transition-colors active:scale-95"
+        className="w-full py-4 rounded-2xl bg-gradient-to-r from-[#22c55e] to-[#00a344] text-white font-headline font-extrabold text-base shadow-[0_8px_24px_rgba(0,163,68,0.3)] hover:shadow-[0_12px_28px_rgba(0,163,68,0.38)] active:scale-95 transition-all"
       >
         Log In
       </button>
-      <p className="text-xs text-muted text-center">
-        Demo credentials prefilled: driver_demo / 1234
-      </p>
+
+      {/* Demo credentials — subtle badge */}
+      <div className="flex items-center justify-center gap-2.5 px-4 py-2.5 bg-slate-50 border border-slate-100 rounded-xl">
+        <span className="text-[10px] font-extrabold text-slate-400 uppercase tracking-wider bg-slate-200 px-1.5 py-0.5 rounded">Demo</span>
+        <span className="text-xs text-slate-500">driver_demo / 1234</span>
+      </div>
+
+      {/* Secondary action — clean card button */}
       <button
         onClick={onRegister}
-        className="w-full py-3 rounded-xl border border-slate-200 text-slate-500 text-sm font-medium hover:border-slate-400 hover:text-slate-700 transition-colors"
+        className="w-full py-3.5 rounded-2xl bg-white border border-slate-200 text-slate-600 text-sm font-semibold hover:border-[#006e2e]/35 hover:text-[#006e2e] hover:shadow-sm transition-all"
       >
         Create Partner Account
       </button>
@@ -193,7 +235,7 @@ function RegistrationScreen({ onBack, onLogin }) {
         />
         <InfoCard eyebrow="Document Check" title="Verification review" body="Estimated completion: 3-7 days" />
         <InfoCard eyebrow="Academy Learning" title="Training progress" body="2/5 lessons completed" />
-        <button onClick={onLogin} className="w-full py-3.5 rounded-xl bg-brand text-white font-semibold text-sm">
+        <button onClick={onLogin} className="w-full py-4 rounded-2xl bg-gradient-to-r from-[#22c55e] to-[#00a344] text-white font-headline font-extrabold text-base shadow-[0_8px_24px_rgba(0,163,68,0.3)] active:scale-95 transition-all">
           Back to Log In
         </button>
       </div>
@@ -253,7 +295,7 @@ function RegistrationScreen({ onBack, onLogin }) {
       </div>
       <button
         onClick={() => setSubmitted(true)}
-        className="w-full py-3.5 rounded-xl bg-brand text-white font-semibold text-sm hover:bg-brand-deep transition-colors active:scale-95"
+        className="w-full py-4 rounded-2xl bg-gradient-to-r from-[#22c55e] to-[#00a344] text-white font-headline font-extrabold text-base shadow-[0_8px_24px_rgba(0,163,68,0.3)] active:scale-95 transition-all"
       >
         Continue Registration
       </button>
@@ -376,7 +418,7 @@ function GuideScreen({ isOnline, onOnlineToggle, onJoinQueue, inQueue, onAcceptJ
             <button
               onClick={onJoinQueue}
               disabled={!isOnline}
-              className="w-full py-3.5 rounded-xl bg-brand text-white font-semibold text-sm disabled:opacity-40 disabled:cursor-not-allowed hover:bg-brand-deep transition-colors active:scale-95"
+              className="w-full py-4 rounded-2xl bg-gradient-to-r from-[#22c55e] to-[#00a344] text-white font-headline font-extrabold text-base shadow-[0_8px_24px_rgba(0,163,68,0.28)] disabled:opacity-40 disabled:cursor-not-allowed active:scale-95 transition-all"
             >
               Join Airport Queue
             </button>
@@ -401,7 +443,7 @@ function GuideScreen({ isOnline, onOnlineToggle, onJoinQueue, inQueue, onAcceptJ
             />
             <button
               onClick={onAcceptJob}
-              className="w-full py-3.5 rounded-xl bg-brand text-white font-semibold text-sm hover:bg-brand-deep transition-colors active:scale-95"
+              className="w-full py-4 rounded-2xl bg-gradient-to-r from-[#22c55e] to-[#00a344] text-white font-headline font-extrabold text-base shadow-[0_8px_24px_rgba(0,163,68,0.28)] active:scale-95 transition-all"
             >
               Accept job
             </button>
