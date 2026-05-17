@@ -1402,6 +1402,209 @@ def render_passenger_review() -> None:
         st.session_state.passenger_review_submitted = True
 
 
+def render_support_chat() -> None:
+    components.html(
+        """<script>
+(function () {
+  'use strict';
+  var win = window.parent;
+  var doc = win.document;
+  var FAB_ID = 'hr-support-fab';
+
+  // Guard against double-init on Streamlit reruns
+  if (doc.getElementById(FAB_ID)) return;
+
+  // Persistent state survives reruns for this browser session
+  if (!win.__hrSupportState) win.__hrSupportState = { messages: [] };
+  var state = win.__hrSupportState;
+
+  var CHIPS = [
+    { label: 'Pickup point',       text: 'Where is my pickup zone?' },
+    { label: 'Luggage support',    text: 'I have large luggage' },
+    { label: 'Special assistance', text: 'I need special assistance' },
+    { label: 'Change destination', text: 'I want to change my destination' },
+    { label: 'Contact staff',      text: 'How do I contact airport staff?' }
+  ];
+
+  function getResponse(msg) {
+    var m = msg.toLowerCase();
+    if (m.indexOf('pickup') !== -1 || m.indexOf('zone') !== -1)
+      return 'Your pickup point is Pickup Zone C2 at Suvarnabhumi Airport, Terminal 1. Follow the taxi pickup signs after baggage claim.';
+    if (m.indexOf('luggage') !== -1 || m.indexOf('bag') !== -1)
+      return 'For large luggage, please update your luggage count before confirming. The system will recommend a larger vehicle if needed.';
+    if (m.indexOf('wheelchair') !== -1 || m.indexOf('assistance') !== -1 ||
+        m.indexOf('help') !== -1 || m.indexOf('staff') !== -1 || m.indexOf('contact') !== -1)
+      return 'We can flag your request for special assistance. Airport staff will be notified before pickup.';
+    if (m.indexOf('destination') !== -1 || m.indexOf('change') !== -1)
+      return 'You can update your destination before confirming pickup. After confirmation, please contact staff for changes.';
+    return 'I can help with pickup point, luggage, special assistance, or destination changes.';
+  }
+
+  // ── Styles ─────────────────────────────────────────────────────────────
+  var style = doc.createElement('style');
+  style.id = 'hr-support-styles';
+  style.textContent = [
+    '.hr-fab{position:fixed;bottom:5.5rem;z-index:99990;width:3.4rem;height:3.4rem;border-radius:999px;background:#fff;border:none;cursor:pointer;display:flex;align-items:center;justify-content:center;box-shadow:0 4px 20px rgba(0,177,79,.22),0 2px 8px rgba(0,0,0,.1);transition:transform .15s,box-shadow .15s}',
+    '.hr-fab:hover{transform:scale(1.07);box-shadow:0 6px 28px rgba(0,177,79,.3),0 3px 12px rgba(0,0,0,.12)}',
+    '.hr-fab:active{transform:scale(.94)}',
+    '.hr-overlay{position:fixed;inset:0;background:rgba(15,23,42,.38);z-index:99991;opacity:0;pointer-events:none;transition:opacity .25s}',
+    '.hr-overlay.hr-open{opacity:1;pointer-events:auto}',
+    '.hr-sheet{position:fixed;bottom:0;z-index:99992;background:#f8fafc;border-radius:1.5rem 1.5rem 0 0;box-shadow:0 -8px 40px rgba(15,23,42,.16);display:flex;flex-direction:column;max-height:80vh;transition:transform .3s cubic-bezier(.32,.72,0,1);transform:translateY(100%)}',
+    '.hr-sheet.hr-open{transform:translateY(0)}',
+    '.hr-sheet-hd{padding:1.1rem 1.1rem .75rem;border-bottom:1px solid rgba(217,228,238,.7);display:flex;align-items:flex-start;justify-content:space-between;flex-shrink:0}',
+    '.hr-sheet-title{font-size:1.05rem;font-weight:800;color:#0f172a;line-height:1.25;font-family:inherit}',
+    '.hr-sheet-sub{font-size:.78rem;color:#64748b;margin-top:.18rem;font-family:inherit}',
+    '.hr-x{width:2rem;height:2rem;border-radius:999px;background:rgba(100,116,139,.1);border:none;cursor:pointer;display:flex;align-items:center;justify-content:center;color:#475569;flex-shrink:0;font-size:1.15rem;line-height:1;transition:background .15s;font-family:inherit}',
+    '.hr-x:hover{background:rgba(100,116,139,.2)}',
+    '.hr-msgs{flex:1;overflow-y:auto;padding:.9rem 1rem;display:flex;flex-direction:column;gap:.65rem;min-height:7rem}',
+    '.hr-msg{max-width:82%;display:flex;flex-direction:column}',
+    '.hr-msg.u{align-self:flex-end;align-items:flex-end}',
+    '.hr-msg.b{align-self:flex-start;align-items:flex-start}',
+    '.hr-bub{padding:.62rem .88rem;border-radius:1.1rem;font-size:.88rem;line-height:1.45;font-weight:500;font-family:inherit}',
+    '.hr-msg.u .hr-bub{background:#00b14f;color:#fff;border-bottom-right-radius:.3rem}',
+    '.hr-msg.b .hr-bub{background:#fff;color:#0f172a;border:1px solid rgba(217,228,238,.8);border-bottom-left-radius:.3rem;box-shadow:0 1px 4px rgba(15,23,42,.06)}',
+    '.hr-hint{font-size:.82rem;color:#94a3b8;text-align:center;margin:auto;padding:1rem 0;font-family:inherit}',
+    '.hr-chips{padding:.55rem 1rem .4rem;display:flex;gap:.45rem;overflow-x:auto;flex-shrink:0;scrollbar-width:none}',
+    '.hr-chips::-webkit-scrollbar{display:none}',
+    '.hr-chip{flex-shrink:0;padding:.42rem .82rem;border-radius:999px;background:rgba(0,177,79,.09);border:1px solid rgba(0,177,79,.22);color:#067c37;font-size:.78rem;font-weight:700;cursor:pointer;white-space:nowrap;transition:background .12s;font-family:inherit}',
+    '.hr-chip:hover{background:rgba(0,177,79,.17)}',
+    '.hr-irow{display:flex;gap:.5rem;align-items:center;padding:.65rem .85rem .9rem;border-top:1px solid rgba(217,228,238,.7);flex-shrink:0;background:#f8fafc}',
+    '.hr-inp{flex:1;border:1px solid rgba(217,228,238,.9);border-radius:999px;padding:.58rem 1rem;font-size:.9rem;color:#0f172a;background:#fff;outline:none;font-family:inherit;transition:border-color .15s;min-height:unset!important;height:auto!important}',
+    '.hr-inp:focus{border-color:rgba(0,177,79,.5)}',
+    '.hr-send{width:2.6rem;height:2.6rem;border-radius:999px;background:#00b14f;border:none;cursor:pointer;display:flex;align-items:center;justify-content:center;flex-shrink:0;transition:background .15s;min-height:unset!important}',
+    '.hr-send:hover{background:#009942}',
+    '.hr-send:active{transform:scale(.92)}'
+  ].join('');
+  doc.head.appendChild(style);
+
+  // ── FAB ────────────────────────────────────────────────────────────────
+  var fab = doc.createElement('button');
+  fab.id = FAB_ID;
+  fab.className = 'hr-fab';
+  fab.setAttribute('aria-label', 'Open support chat');
+  fab.innerHTML = '<svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="#00b14f" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 18v-6a9 9 0 0 1 18 0v6"/><path d="M21 19a2 2 0 0 1-2 2h-1a2 2 0 0 1-2-2v-3a2 2 0 0 1 2-2h3z"/><path d="M3 19a2 2 0 0 0 2 2h1a2 2 0 0 0 2-2v-3a2 2 0 0 0-2-2H3z"/></svg>';
+  doc.body.appendChild(fab);
+
+  // ── Overlay ────────────────────────────────────────────────────────────
+  var overlay = doc.createElement('div');
+  overlay.id = 'hr-support-overlay';
+  overlay.className = 'hr-overlay';
+  doc.body.appendChild(overlay);
+
+  // ── Bottom sheet ───────────────────────────────────────────────────────
+  var sheet = doc.createElement('div');
+  sheet.id = 'hr-support-sheet';
+  sheet.className = 'hr-sheet';
+  sheet.innerHTML =
+    '<div class="hr-sheet-hd">' +
+      '<div><div class="hr-sheet-title">Hello Ride Support</div>' +
+      '<div class="hr-sheet-sub">Airport pickup assistance</div></div>' +
+      '<button class="hr-x" id="hr-close-btn" aria-label="Close">×</button>' +
+    '</div>' +
+    '<div class="hr-msgs" id="hr-msgs"></div>' +
+    '<div class="hr-chips" id="hr-chips"></div>' +
+    '<div class="hr-irow">' +
+      '<input class="hr-inp" id="hr-inp" type="text" placeholder="Type a message…" autocomplete="off" />' +
+      '<button class="hr-send" id="hr-send-btn" aria-label="Send">' +
+        '<svg width="16" height="16" viewBox="0 0 24 24" fill="white"><path d="M2.01 21L23 12 2.01 3 2 10l15 2-15 2z"/></svg>' +
+      '</button>' +
+    '</div>';
+  doc.body.appendChild(sheet);
+
+  var msgsEl = doc.getElementById('hr-msgs');
+  var chipsEl = doc.getElementById('hr-chips');
+  var inpEl = doc.getElementById('hr-inp');
+
+  // ── Positioning (relative to the 420px mobile container) ───────────────
+  function position(attempt) {
+    var c = doc.querySelector('[data-testid="stMainBlockContainer"]');
+    if (!c) {
+      if ((attempt || 0) < 25) win.requestAnimationFrame(function () { position((attempt || 0) + 1); });
+      return;
+    }
+    var r = c.getBoundingClientRect();
+    sheet.style.left = r.left + 'px';
+    sheet.style.width = r.width + 'px';
+    fab.style.right = (win.innerWidth - r.right + 10) + 'px';
+  }
+  position(0);
+  win.addEventListener('resize', function () { position(0); });
+
+  // ── Render helpers ─────────────────────────────────────────────────────
+  function renderMsgs() {
+    msgsEl.innerHTML = '';
+    if (!state.messages.length) {
+      var hint = doc.createElement('div');
+      hint.className = 'hr-hint';
+      hint.textContent = 'Hi! How can we help with your airport pickup?';
+      msgsEl.appendChild(hint);
+      return;
+    }
+    state.messages.forEach(function (m) {
+      var w = doc.createElement('div');
+      w.className = 'hr-msg ' + (m.role === 'user' ? 'u' : 'b');
+      var b = doc.createElement('div');
+      b.className = 'hr-bub';
+      b.textContent = m.text;
+      w.appendChild(b);
+      msgsEl.appendChild(w);
+    });
+    msgsEl.scrollTop = msgsEl.scrollHeight;
+  }
+
+  function renderChips() {
+    chipsEl.innerHTML = '';
+    CHIPS.forEach(function (chip) {
+      var btn = doc.createElement('button');
+      btn.className = 'hr-chip';
+      btn.textContent = chip.label;
+      btn.addEventListener('click', function () { send(chip.text); });
+      chipsEl.appendChild(btn);
+    });
+  }
+
+  function addMsg(role, text) {
+    state.messages.push({ role: role, text: text });
+    renderMsgs();
+  }
+
+  function send(text) {
+    var t = text.trim();
+    if (!t) return;
+    addMsg('user', t);
+    if (inpEl.value === t) inpEl.value = '';
+    win.setTimeout(function () { addMsg('bot', getResponse(t)); }, 400);
+  }
+
+  function openSheet() {
+    position(0);
+    overlay.classList.add('hr-open');
+    sheet.classList.add('hr-open');
+    fab.style.display = 'none';
+    renderMsgs();
+    renderChips();
+    win.setTimeout(function () { inpEl.focus(); }, 320);
+  }
+
+  function closeSheet() {
+    overlay.classList.remove('hr-open');
+    sheet.classList.remove('hr-open');
+    fab.style.display = '';
+  }
+
+  fab.addEventListener('click', openSheet);
+  overlay.addEventListener('click', closeSheet);
+  doc.getElementById('hr-close-btn').addEventListener('click', closeSheet);
+  doc.getElementById('hr-send-btn').addEventListener('click', function () { send(inpEl.value); });
+  inpEl.addEventListener('keydown', function (e) {
+    if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); send(inpEl.value); }
+  });
+})();
+</script>""",
+        height=0,
+    )
+
+
 SCREEN_MAP = {
     "home": render_passenger_home,
     "carType": render_passenger_car_type,
@@ -1420,3 +1623,4 @@ render_sidebar(active="passenger")
 render_passenger_request_draft_bridge(prefer_stored_on_boot=prefer_stored_on_boot)
 
 SCREEN_MAP[st.session_state.passenger_step]()
+render_support_chat()

@@ -1,5 +1,6 @@
 import { useState } from "react";
 import { PASSENGER, RIDES, PAYMENT_OPTIONS, TIP_OPTIONS, DESTINATION_PRESETS } from "../data/mockPassenger.js";
+import PassengerSupportChat from "../components/passenger/PassengerSupportChat.jsx";
 
 // ── Step Indicator ────────────────────────────────────────────────────────
 
@@ -542,41 +543,49 @@ export default function PassengerPortal() {
   }
 
   return (
-    <div className="max-w-md mx-auto px-6 py-6">
-      {step !== "home" && (
-        <div className="mb-4">
-          <StepIndicator current={step} />
-        </div>
-      )}
+    // Phone shell — relative + overflow-hidden scopes the absolute FAB/sheet/backdrop
+    <div className="relative max-w-md mx-auto overflow-hidden h-[calc(100vh-52px)]">
+      {/* Scrollable content — pb-28 keeps content clear of the FAB */}
+      <div className="overflow-y-auto h-full px-6 py-6 pb-28">
+        {step !== "home" && (
+          <div className="mb-4">
+            <StepIndicator current={step} />
+          </div>
+        )}
 
-      {step === "home" && <HomeScreen onNext={handleHomeNext} />}
-      {step === "carType" && (
-        <CarTypeScreen
-          passengers={tripData.passengers}
-          luggage={tripData.luggage}
-          onBack={() => setStep("home")}
-          onNext={handleCarTypeNext}
-        />
-      )}
-      {step === "ride" && (
-        <RideScreen
-          dest={tripData.dest}
-          passengers={tripData.passengers}
-          luggage={tripData.luggage}
-          selectedRide={tripData.selectedRide}
-          selectedPayment={tripData.selectedPayment}
-          specialAssistance={tripData.specialAssistance}
-          notes={tripData.notes}
-          onBack={() => setStep("carType")}
-          onNext={handleRideNext}
-        />
-      )}
-      {step === "review" && (
-        <ReviewScreen
-          onBack={() => setStep("ride")}
-          onHome={handleHome}
-        />
-      )}
+        {step === "home" && <HomeScreen onNext={handleHomeNext} />}
+        {step === "carType" && (
+          <CarTypeScreen
+            passengers={tripData.passengers}
+            luggage={tripData.luggage}
+            onBack={() => setStep("home")}
+            onNext={handleCarTypeNext}
+          />
+        )}
+        {step === "ride" && (
+          <RideScreen
+            dest={tripData.dest}
+            passengers={tripData.passengers}
+            luggage={tripData.luggage}
+            selectedRide={tripData.selectedRide}
+            selectedPayment={tripData.selectedPayment}
+            specialAssistance={tripData.specialAssistance}
+            notes={tripData.notes}
+            onBack={() => setStep("carType")}
+            onNext={handleRideNext}
+          />
+        )}
+        {step === "review" && (
+          <ReviewScreen
+            onBack={() => setStep("ride")}
+            onHome={handleHome}
+          />
+        )}
+      </div>
+
+      {/* Support chat rendered as a direct child of the shell so it positions
+          relative to the phone container, not the browser viewport */}
+      <PassengerSupportChat />
     </div>
   );
 }
