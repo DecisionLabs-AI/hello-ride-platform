@@ -129,30 +129,28 @@ function HealthCard({ d }) {
 
   return (
     <div className="bg-white rounded-2xl border border-slate-200 shadow-sm p-5 flex flex-col gap-4 flex-1 min-w-0">
-      {/* Gauge + KPI metrics row */}
-      <div className="flex items-center gap-6">
+      {/* Gauge + KPI metrics — 3-column grid: fixed gauge, then two equal metric cols */}
+      <div className="grid items-center gap-8" style={{ gridTemplateColumns: "auto 1fr 1fr" }}>
         <PWTGauge value={d.pwt} threshold={d.guardrailMin} />
-        <div className="flex gap-8 flex-1">
-          <div>
-            <p className="text-xs font-bold text-slate-400 uppercase tracking-widest">Waiting Pax</p>
-            <div className="flex items-end gap-1.5 mt-1.5">
-              <p className="text-4xl font-bold text-[#1a2b5e] leading-none">{d.waitingPassengers.toLocaleString()}</p>
-              <span className={`text-sm font-bold mb-0.5 ${d.waitingTrend?.startsWith("+") ? "text-red-500" : "text-green-600"}`}>
-                {d.waitingTrend}
-              </span>
-            </div>
-            <p className="text-xs text-slate-400 mt-1">Est. clearing in 45m</p>
+        <div>
+          <p className="text-xs font-bold text-slate-400 uppercase tracking-widest">Waiting Pax</p>
+          <div className="flex items-end gap-1.5 mt-1.5">
+            <p className="text-4xl font-bold text-[#1a2b5e] leading-none">{d.waitingPassengers.toLocaleString()}</p>
+            <span className={`text-sm font-bold mb-0.5 ${d.waitingTrend?.startsWith("+") ? "text-red-500" : "text-green-600"}`}>
+              {d.waitingTrend}
+            </span>
           </div>
-          <div>
-            <p className="text-xs font-bold text-slate-400 uppercase tracking-widest">Holding Taxis</p>
-            <div className="flex items-end gap-1.5 mt-1.5">
-              <p className="text-4xl font-bold text-[#1a2b5e] leading-none">{d.holdingTaxis}</p>
-              <span className={`text-sm font-bold mb-0.5 ${d.taxiTrend?.startsWith("-") ? "text-red-500" : "text-green-600"}`}>
-                {d.taxiTrend}
-              </span>
-            </div>
-            <p className="text-xs text-slate-400 mt-1">Queue throughput: 14/m</p>
+          <p className="text-xs text-slate-400 mt-1">Est. clearing in 45m</p>
+        </div>
+        <div>
+          <p className="text-xs font-bold text-slate-400 uppercase tracking-widest">Holding Taxis</p>
+          <div className="flex items-end gap-1.5 mt-1.5">
+            <p className="text-4xl font-bold text-[#1a2b5e] leading-none">{d.holdingTaxis}</p>
+            <span className={`text-sm font-bold mb-0.5 ${d.taxiTrend?.startsWith("-") ? "text-red-500" : "text-green-600"}`}>
+              {d.taxiTrend}
+            </span>
           </div>
+          <p className="text-xs text-slate-400 mt-1">Queue throughput: 14/m</p>
         </div>
       </div>
 
