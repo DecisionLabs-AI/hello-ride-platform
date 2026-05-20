@@ -36,30 +36,37 @@ function StepIndicator({ current }) {
 
 // ── Shared Mobile Header ──────────────────────────────────────────────────
 
+function BrandHeader() {
+  return (
+    <p className="text-lg font-black text-[#1a2b5e] font-headline tracking-tight">
+      Hello Ride
+    </p>
+  );
+}
+
 function MobileHeader({ title, backLabel, onBack, rightLabel, showAvatar }) {
   const isBrand = title === "Hello Ride";
   return (
-    <div className="flex items-center justify-between py-3 mb-4">
+    <div className="flex items-center justify-between py-2.5 mb-3">
       <div className="w-16">
         {onBack && (
-          <button onClick={onBack} className="w-9 h-9 rounded-full bg-[#f6f3f2] flex items-center justify-center hover:bg-[#ede9e8] transition-colors">
+          <button
+            onClick={onBack}
+            aria-label={backLabel || "Back"}
+            className="w-9 h-9 rounded-full bg-white border border-slate-200 shadow-sm flex items-center justify-center hover:bg-slate-50 transition-colors"
+          >
             <span className="material-symbols-outlined text-[#006e2e] text-xl">arrow_back</span>
           </button>
         )}
       </div>
       {isBrand ? (
-        <div className="flex items-center gap-1.5">
-          <div className="w-5 h-5 rounded-full bg-gradient-to-br from-[#006e2e] to-[#00b14f] flex items-center justify-center shadow-sm">
-            <span className="material-symbols-outlined text-white text-[12px]">directions_car</span>
-          </div>
-          <p className="text-xl font-black text-[#006e2e] font-headline tracking-tight">Hello Ride</p>
-        </div>
+        <BrandHeader />
       ) : (
-        <p className="text-base font-bold text-slate-900">{title}</p>
+        <p className="text-base font-bold text-[#1a2b5e]">{title}</p>
       )}
       <div className="w-16 flex justify-end">
         {showAvatar && (
-          <div className="w-8 h-8 rounded-full bg-[#006e2e]/15 border border-[#006e2e]/25 flex items-center justify-center text-xs font-bold text-[#006e2e]">
+          <div className="w-8 h-8 rounded-full bg-white border border-slate-200 shadow-sm flex items-center justify-center text-xs font-bold text-[#006e2e]">
             NT
           </div>
         )}
@@ -73,20 +80,21 @@ function MobileHeader({ title, backLabel, onBack, rightLabel, showAvatar }) {
 
 function RouteSummary({ pickup, destination }) {
   return (
-    <div className="bg-[#f6f3f2] rounded-2xl p-3.5 flex items-stretch gap-3">
-      <div className="flex flex-col items-center gap-1 pt-1">
-        <div className="w-3 h-3 rounded-full bg-[#006e2e]" />
-        <div className="w-0.5 flex-1 bg-[#c8c5c4]" />
-        <div className="w-3 h-3 rounded bg-[#d54b72]" />
+    <div className="bg-white rounded-2xl border border-slate-200 shadow-sm p-4 flex items-stretch gap-3">
+      <div className="flex flex-col items-center gap-1 pt-1.5">
+        <div className="w-2.5 h-2.5 rounded-full border-2 border-[#00b14f] bg-white" />
+        <div className="w-px flex-1 bg-slate-300" />
+        <div className="w-2.5 h-2.5 rounded-sm bg-[#154aa8]" />
       </div>
-      <div className="flex-1 flex flex-col gap-2">
-        <div className="bg-white rounded-xl px-3 py-2.5">
-          <p className="text-xs text-muted mb-0.5">Pickup</p>
-          <p className="text-sm font-medium text-slate-800">Suvarnabhumi Airport, Terminal 1</p>
+      <div className="flex-1 flex flex-col gap-3 min-w-0">
+        <div>
+          <p className="text-[10px] text-slate-400 uppercase tracking-widest font-black mb-0.5">From</p>
+          <p className="text-sm font-bold text-[#1a2b5e]">Suvarnabhumi Airport, Terminal 1</p>
+          {pickup && <p className="text-xs text-muted mt-0.5">{pickup}</p>}
         </div>
-        <div className="bg-white rounded-xl px-3 py-2.5">
-          <p className="text-xs text-muted mb-0.5">Destination</p>
-          <p className={`text-sm font-medium ${destination ? "text-slate-900" : "text-slate-400"}`}>
+        <div className="pt-3 border-t border-slate-100">
+          <p className="text-[10px] text-slate-400 uppercase tracking-widest font-black mb-0.5">To</p>
+          <p className={`text-sm font-bold ${destination ? "text-slate-900" : "text-slate-400"}`}>
             {destination || "Where to?"}
           </p>
         </div>
@@ -99,30 +107,48 @@ function RouteSummary({ pickup, destination }) {
 
 function Counter({ label, subtitle, value, onChange, min = 0, max = 10, icon }) {
   return (
-    <div className="bg-[#f6f3f2] p-3.5 rounded-2xl flex items-center justify-between">
-      <div className="flex items-center gap-2">
-        {icon && <span className="material-symbols-outlined text-[#006e2e] text-xl">{icon}</span>}
+    <div className="bg-white border border-slate-200 shadow-sm px-3.5 py-3 rounded-2xl flex items-center justify-between gap-3">
+      <div className="flex items-center gap-2.5 min-w-0">
+        {icon && (
+          <span className="w-8 h-8 rounded-xl bg-emerald-50 border border-emerald-100 text-[#006e2e] flex items-center justify-center material-symbols-outlined text-lg shrink-0">
+            {icon}
+          </span>
+        )}
         <div>
-          <p className="text-sm font-medium text-slate-900">{label}</p>
-          {subtitle && <p className="text-xs text-muted mt-0.5">{subtitle}</p>}
+          <p className="text-sm font-bold text-slate-900">{label}</p>
+          {subtitle && <p className="text-xs text-muted mt-0.5 leading-snug">{subtitle}</p>}
         </div>
       </div>
-      <div className="flex items-center gap-3">
+      <div className="flex items-center gap-2 shrink-0">
         <button
           onClick={() => onChange(Math.max(min, value - 1))}
-          className="w-7 h-7 rounded-full bg-[#e5e2e1] flex items-center justify-center font-bold text-slate-700 hover:bg-[#d5d2d1] transition-colors"
+          className="w-8 h-8 rounded-full bg-slate-100 border border-slate-200 flex items-center justify-center font-bold text-slate-600 hover:bg-slate-200 transition-colors"
         >
           −
         </button>
-        <span className="text-slate-900 font-bold w-8 text-center">{value}</span>
+        <span className="text-slate-900 font-black w-7 text-center">{value}</span>
         <button
           onClick={() => onChange(Math.min(max, value + 1))}
-          className="w-7 h-7 rounded-full bg-[#00b14f]/20 text-[#006e2e] flex items-center justify-center font-bold hover:bg-[#00b14f]/30 transition-colors"
+          className="w-8 h-8 rounded-full bg-[#00b14f] text-white flex items-center justify-center font-bold hover:bg-[#009942] transition-colors shadow-sm"
         >
           +
         </button>
       </div>
     </div>
+  );
+}
+
+function FlowSection({ step, title, children }) {
+  return (
+    <section className="flex flex-col gap-2.5">
+      <div className="flex items-center gap-2">
+        <span className="w-6 h-6 rounded-full bg-[#154aa8]/10 text-[#154aa8] flex items-center justify-center text-xs font-black">
+          {step}
+        </span>
+        <p className="text-xs text-slate-500 uppercase tracking-widest font-black">Step {step}: {title}</p>
+      </div>
+      {children}
+    </section>
   );
 }
 
@@ -147,29 +173,49 @@ function HomeScreen({ onNext }) {
     <div className="flex flex-col gap-4">
       <MobileHeader title="Hello Ride" showAvatar />
 
-      {/* Destination input */}
-      <div>
-        <p className="text-xs text-muted uppercase tracking-widest font-medium mb-2">Destination</p>
-        <div className="relative">
-          <input
-            type="text"
-            value={destInput}
-            onChange={(e) => {
-              setDestInput(e.target.value);
-              setDest("");
-              setShowSuggestions(true);
-            }}
-            onFocus={() => setShowSuggestions(true)}
-            placeholder="Search Bangkok destination"
-            className="w-full bg-white border border-slate-200 rounded-xl px-4 py-3 text-slate-900 placeholder:text-slate-400 text-sm focus:outline-none focus:border-brand focus:ring-2 focus:ring-brand/10 transition-all shadow-sm"
-          />
-          {showSuggestions && destInput && filtered.length > 0 && !dest && (
-            <div className="absolute z-10 top-full mt-1 w-full bg-white border border-slate-200 rounded-xl overflow-hidden shadow-lg">
-              {filtered.map((s) => (
+      <div className="bg-white border border-slate-200 rounded-3xl p-4 shadow-[0_14px_36px_rgba(21,74,168,0.08)]">
+        <p className="text-xs text-slate-400 uppercase tracking-widest font-black">Airport pickup companion</p>
+        <h1 className="text-xl font-black text-[#1a2b5e] font-headline mt-1">Plan your curb pickup before baggage claim.</h1>
+        <p className="text-sm text-muted mt-1.5">Hello Ride syncs your destination, party size, and luggage with airport dispatch.</p>
+      </div>
+
+      <FlowSection step="1" title="Destination">
+        <div className="bg-white border border-slate-200 rounded-2xl p-3.5 shadow-sm">
+          <div className="relative">
+            <span className="material-symbols-outlined absolute left-3 top-1/2 -translate-y-1/2 text-slate-400 text-xl">search</span>
+            <input
+              type="text"
+              value={destInput}
+              onChange={(e) => {
+                setDestInput(e.target.value);
+                setDest("");
+                setShowSuggestions(true);
+              }}
+              onFocus={() => setShowSuggestions(true)}
+              placeholder="Search Bangkok destination"
+              className="w-full bg-slate-50 border border-slate-200 rounded-2xl pl-10 pr-4 py-3 text-slate-900 placeholder:text-slate-400 text-sm focus:outline-none focus:border-brand focus:bg-white focus:ring-2 focus:ring-brand/10 transition-all"
+            />
+            {showSuggestions && destInput && filtered.length > 0 && !dest && (
+              <div className="absolute z-10 top-full mt-1.5 w-full bg-white border border-slate-200 rounded-2xl overflow-hidden shadow-lg">
+                {filtered.map((s) => (
+                  <button
+                    key={s}
+                    onClick={() => { setDest(s); setDestInput(s); setShowSuggestions(false); }}
+                    className="w-full text-left px-4 py-2.5 text-sm text-slate-600 hover:bg-slate-50 hover:text-slate-900 transition-colors"
+                  >
+                    {s}
+                  </button>
+                ))}
+              </div>
+            )}
+          </div>
+          {!destInput && (
+            <div className="flex flex-wrap gap-2 mt-3">
+              {DESTINATION_PRESETS.slice(0, 6).map((s) => (
                 <button
                   key={s}
-                  onClick={() => { setDest(s); setDestInput(s); setShowSuggestions(false); }}
-                  className="w-full text-left px-4 py-2.5 text-sm text-slate-600 hover:bg-slate-50 hover:text-slate-900 transition-colors"
+                  onClick={() => { setDest(s); setDestInput(s); }}
+                  className="text-xs px-3 py-1.5 rounded-full bg-slate-50 text-slate-600 hover:text-[#1a2b5e] hover:bg-emerald-50 border border-slate-200 hover:border-emerald-200 transition-colors"
                 >
                   {s}
                 </button>
@@ -177,32 +223,17 @@ function HomeScreen({ onNext }) {
             </div>
           )}
         </div>
-        {!destInput && (
-          <div className="flex flex-wrap gap-2 mt-2">
-            {DESTINATION_PRESETS.slice(0, 6).map((s) => (
-              <button
-                key={s}
-                onClick={() => { setDest(s); setDestInput(s); }}
-                className="text-xs px-3 py-1.5 rounded-lg bg-slate-100 text-slate-500 hover:text-slate-800 hover:bg-slate-200 border border-slate-200 transition-colors"
-              >
-                {s}
-              </button>
-            ))}
-          </div>
-        )}
-      </div>
+      </FlowSection>
 
-      {/* Route summary */}
-      <RouteSummary pickup={PASSENGER.route.pickup} destination={dest} />
+      <FlowSection step="2" title="Pickup route">
+        <RouteSummary pickup={PASSENGER.route.pickup} destination={dest} />
+      </FlowSection>
 
-      {/* Trip details */}
-      <div>
-        <p className="text-xs text-muted uppercase tracking-widest font-medium mb-2">Trip details</p>
-        <p className="text-sm text-muted mb-3">Configure your ride</p>
-        <div className="flex flex-col gap-2">
+      <FlowSection step="3" title="Trip details">
+        <div className="flex flex-col gap-2.5">
           <Counter
             label="Passengers"
-            subtitle="How many travelers are riding"
+            subtitle="Travelers in your party"
             value={passengers}
             onChange={setPassengers}
             min={1}
@@ -211,7 +242,7 @@ function HomeScreen({ onNext }) {
           />
           <Counter
             label="Luggage"
-            subtitle="Bags or suitcases to carry"
+            subtitle="Bags and suitcases"
             value={luggage}
             onChange={setLuggage}
             min={0}
@@ -219,42 +250,41 @@ function HomeScreen({ onNext }) {
             icon="luggage"
           />
         </div>
-        <p className="text-xs text-muted mt-2">
-          Adjust the party size and luggage count before confirming your airport pickup.
-        </p>
-      </div>
+      </FlowSection>
 
-      {/* Special assistance */}
-      <div className="bg-white shadow-sm border border-slate-100 rounded-2xl p-4 flex items-center justify-between">
-        <p className="text-sm text-slate-900">Special Assistance</p>
-        <button
-          onClick={() => setSpecialAssistance((v) => !v)}
-          className={`w-11 h-6 rounded-full transition-colors relative ${specialAssistance ? "bg-brand" : "bg-slate-200"}`}
-        >
-          <span className={`absolute top-0.5 w-5 h-5 bg-white rounded-full shadow transition-transform ${specialAssistance ? "translate-x-5.5 left-0.5" : "left-0.5"}`} />
-        </button>
-      </div>
+      <FlowSection step="4" title="Notes / Assistance">
+        <div className="bg-white shadow-sm border border-slate-200 rounded-2xl p-4 flex items-center justify-between gap-4">
+          <div>
+            <p className="text-sm font-bold text-slate-900">Special assistance</p>
+            <p className="text-xs text-muted mt-0.5">Notify airport staff before pickup.</p>
+          </div>
+          <button
+            onClick={() => setSpecialAssistance((v) => !v)}
+            className={`w-11 h-6 rounded-full transition-colors relative shrink-0 ${specialAssistance ? "bg-brand" : "bg-slate-200"}`}
+          >
+            <span className={`absolute top-0.5 w-5 h-5 bg-white rounded-full shadow transition-transform ${specialAssistance ? "translate-x-5.5 left-0.5" : "left-0.5"}`} />
+          </button>
+        </div>
 
-      {/* Additional notes */}
-      <div>
-        <p className="text-xs text-muted uppercase tracking-widest font-medium mb-2">Additional Notes</p>
         <textarea
           value={notes}
           onChange={(e) => setNotes(e.target.value)}
-          placeholder="e.g. In front of the building"
+          placeholder="Optional note for airport staff or driver"
           rows={2}
-          className="w-full bg-white border border-slate-200 rounded-xl px-4 py-3 text-sm text-slate-900 placeholder:text-slate-400 focus:outline-none focus:border-brand focus:ring-2 focus:ring-brand/10 transition-all resize-none shadow-sm"
+          className="w-full bg-white border border-slate-200 rounded-2xl px-4 py-3 text-sm text-slate-900 placeholder:text-slate-400 focus:outline-none focus:border-brand focus:ring-2 focus:ring-brand/10 transition-all resize-none shadow-sm"
         />
-      </div>
+      </FlowSection>
 
-      <button
-        onClick={() => isValid && onNext({ dest, passengers, luggage, specialAssistance, notes })}
-        disabled={!isValid}
-        className="w-full py-5 rounded-full bg-gradient-to-br from-[#006e2e] to-[#00b14f] text-white font-headline font-extrabold text-lg shadow-[0_12px_28px_rgba(0,110,46,0.3)] disabled:opacity-40 disabled:cursor-not-allowed active:scale-95 transition-transform flex items-center justify-center gap-2"
-      >
-        Confirm Pick-up
-        <span className="material-symbols-outlined text-[20px]">bolt</span>
-      </button>
+      <div className="sticky bottom-0 z-40 -mx-5 mt-1 px-5 pt-3 pb-4 bg-gradient-to-t from-[#f5f8fb] via-[#f5f8fb]/95 to-transparent">
+        <button
+          onClick={() => isValid && onNext({ dest, passengers, luggage, specialAssistance, notes })}
+          disabled={!isValid}
+          className="w-full py-4 rounded-2xl bg-gradient-to-r from-[#22c55e] to-[#00a344] text-white font-headline font-extrabold text-base shadow-[0_12px_28px_rgba(0,163,68,0.34)] disabled:opacity-100 disabled:from-slate-300 disabled:to-slate-300 disabled:text-white disabled:shadow-none disabled:cursor-not-allowed active:scale-95 transition-all flex items-center justify-center gap-2"
+        >
+          Confirm Pick-up
+          <span className="material-symbols-outlined text-[20px]">arrow_forward</span>
+        </button>
+      </div>
     </div>
   );
 }
@@ -609,9 +639,9 @@ export default function PassengerPortal() {
 
   return (
     // Phone shell — relative + overflow-hidden scopes the absolute FAB/sheet/backdrop
-    <div className="relative max-w-md mx-auto overflow-hidden h-[calc(100vh-52px)]">
+    <div className="relative max-w-[420px] mx-auto overflow-hidden h-[calc(100vh-52px)] bg-[#f5f8fb]">
       {/* Scrollable content — pb-28 keeps content clear of the FAB */}
-      <div className="overflow-y-auto h-full px-6 py-6 pb-28">
+      <div className="overflow-y-auto h-full px-5 py-4 pb-28">
         {step !== "home" && (
           <div className="mb-4">
             <StepIndicator current={step} />

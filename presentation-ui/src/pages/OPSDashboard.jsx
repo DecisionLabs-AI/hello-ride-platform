@@ -1,6 +1,15 @@
 import { useState } from "react";
 import { getOpsData, ADVISORY_RESPONSES } from "../data/mockOps.js";
 
+const OPS_AUTH_KEY = "helloRideOpsAuth";
+const OPS_DEMO_USERNAME = "ops_demo";
+const OPS_DEMO_PASSWORD = "1234";
+
+function getStoredOpsAuth() {
+  if (typeof window === "undefined") return false;
+  return window.localStorage.getItem(OPS_AUTH_KEY) === "true";
+}
+
 // ── Shared sub-components ───────────────────────────────────────────────────
 
 function Eyebrow({ children }) {
@@ -128,9 +137,19 @@ function HealthCard({ d }) {
     : { bar: "bg-brand",       pill: "bg-emerald-50 text-emerald-700 border border-emerald-200", label: "Normal Load", hint: "Lane capacity is stable." };
 
   return (
-    <div className="bg-white rounded-2xl border border-slate-200 shadow-sm p-5 flex flex-col gap-4 flex-1 min-w-0">
-      {/* Gauge + KPI metrics — 3-column grid: fixed gauge, then two equal metric cols */}
-      <div className="grid items-center gap-8" style={{ gridTemplateColumns: "auto 1fr 1fr" }}>
+    <div className="bg-white rounded-2xl border border-slate-200 shadow-sm p-5 flex flex-col gap-4 min-w-0">
+      <div className="flex items-start justify-between gap-4">
+        <div>
+          <Eyebrow>Live Situation</Eyebrow>
+          <h2 className="text-xl font-black text-[#1a2b5e] mt-0.5">Curb load and queue health</h2>
+        </div>
+        <span className={`text-[10px] font-bold px-2.5 py-1 rounded-full ${loadTone.pill}`}>
+          {loadTone.label}
+        </span>
+      </div>
+
+      {/* Gauge + KPI metrics: fixed gauge, then two equal metric cols on larger screens */}
+      <div className="grid grid-cols-1 sm:grid-cols-[auto_1fr_1fr] items-center gap-5">
         <PWTGauge value={d.pwt} threshold={d.guardrailMin} />
         <div>
           <p className="text-xs font-bold text-slate-400 uppercase tracking-widest">Waiting Pax</p>
@@ -159,9 +178,6 @@ function HealthCard({ d }) {
         <div className="flex items-center justify-between mb-2">
           <div className="flex items-center gap-2">
             <p className="text-xs font-semibold text-slate-400 uppercase tracking-widest">Lane 1: System Load</p>
-            <span className={`text-[10px] font-bold px-2 py-0.5 rounded-full ${loadTone.pill}`}>
-              {loadTone.label}
-            </span>
           </div>
           <p className="text-xs font-bold text-slate-600">{d.laneLoad}%</p>
         </div>
@@ -178,31 +194,35 @@ function HealthCard({ d }) {
 
 function AlertCard({ d, laneActivated, setLaneActivated, broadcastSent, setBroadcastSent }) {
   return (
-    <div className="w-80 shrink-0 self-start bg-[#7d1a1a] text-white rounded-2xl shadow-lg p-3.5 flex flex-col gap-2.5">
+    <div className="bg-[#7d1a1a] text-white rounded-2xl shadow-lg p-4 flex flex-col gap-3 min-w-0">
       <div className="flex items-center gap-2.5">
         <div className="w-6 h-6 bg-white/20 rounded-full flex items-center justify-center shrink-0">
           <span className="material-symbols-outlined text-white leading-none" style={{ fontSize: '14px' }}>warning</span>
         </div>
-        <p className="font-bold text-sm leading-tight">Projected Deficit Alert</p>
+        <div>
+          <p className="font-bold text-sm leading-tight">Critical Alert / Action</p>
+          <p className="text-[10px] uppercase tracking-widest text-red-200 font-bold mt-0.5">Recommended now</p>
+        </div>
       </div>
       <p className="text-xs text-red-200 leading-snug -mt-1">
         Arrival wave projected in T-15 mins. Predicted passenger influx will exceed current lane capacity by {d.projectedDeficit}%.
       </p>
       <div className="bg-white/10 rounded-xl p-3">
-        <p className="text-xs font-bold uppercase tracking-widest text-red-300 mb-1">AI Advisory</p>
-        <p className="text-xs text-white/90 italic leading-snug">"{d.aiAdvice}"</p>
+        <p className="text-xs font-bold uppercase tracking-widest text-red-300 mb-1">Single action</p>
+        <p className="text-sm text-white font-bold leading-snug">{d.impactSimulation.action}</p>
+        <p className="text-xs text-white/75 leading-snug mt-1">AI advisory: {d.aiAdvice}</p>
       </div>
       <button
         onClick={() => setLaneActivated(true)}
         disabled={laneActivated}
-        className="w-full bg-white text-[#7d1a1a] font-bold py-2 rounded-lg text-xs transition-colors hover:bg-red-50 disabled:opacity-60 active:scale-95"
+        className="w-full bg-white text-[#7d1a1a] font-bold py-2.5 rounded-xl text-sm transition-colors hover:bg-red-50 disabled:bg-emerald-50 disabled:text-brand active:scale-95"
       >
-        {laneActivated ? "Overflow Lane Active ✓" : "Activate Extra Lane"}
+        {laneActivated ? "Overflow Lane Active ✓" : "Activate Overflow Lane"}
       </button>
       <button
         onClick={() => setBroadcastSent(true)}
         disabled={broadcastSent}
-        className="w-full border-2 border-white/40 text-white font-bold py-2 rounded-lg text-xs transition-colors hover:bg-white/10 disabled:opacity-60 active:scale-95 flex items-center justify-center gap-2"
+        className="w-full border border-white/45 text-white font-bold py-2 rounded-xl text-xs transition-colors hover:bg-white/10 disabled:bg-white/10 disabled:text-white/60 active:scale-95 flex items-center justify-center gap-2"
       >
         <span className="material-symbols-outlined leading-none" style={{ fontSize: '16px' }}>broadcast_on_personal</span>
         {broadcastSent ? "Broadcast Sent ✓" : "Broadcast to Drivers"}
@@ -288,46 +308,69 @@ function DemandChart({ series, criticalWindow }) {
 // ── Deficit Breakdown ──────────────────────────────────────────────────────
 
 function DeficitBreakdown({ breakdown }) {
-  const demand = breakdown.filter((b) => b.type === "demand");
-  const supply = breakdown.filter((b) => b.type === "supply");
+  function signalMeta(item) {
+    const factor = item.factor.toLowerCase();
+    if (factor.includes("qr")) {
+      return {
+        label: "QR surge",
+        icon: "qr_code_scanner",
+        accent: "border-red-200 bg-red-50/70 text-red-700",
+        value: `+${item.impact} pax`,
+      };
+    }
+    if (factor.includes("driver shortage")) {
+      return {
+        label: "Driver shortage",
+        icon: "local_taxi",
+        accent: "border-amber-200 bg-amber-50/70 text-amber-700",
+        value: `${item.impact} taxis`,
+      };
+    }
+    if (factor.includes("holding lane")) {
+      return {
+        label: "Holding lane congestion",
+        icon: "traffic",
+        accent: "border-amber-200 bg-amber-50/70 text-amber-700",
+        value: `${item.impact} taxis`,
+      };
+    }
+    return {
+      label: "Flight wave",
+      icon: "flight_land",
+      accent: item.type === "demand"
+        ? "border-red-200 bg-red-50/70 text-red-700"
+        : "border-amber-200 bg-amber-50/70 text-amber-700",
+      value: item.type === "demand" ? `+${item.impact} pax` : `${item.impact} taxis`,
+    };
+  }
 
   return (
-    <div>
-      <SectionHeading eyebrow="Deficit Breakdown" title="Why is there a projected gap?" />
-      <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-        <div className="bg-white shadow-sm border border-slate-100 rounded-2xl overflow-hidden">
-          <div className="h-0.5 bg-danger" />
-          <div className="p-5">
-            <Eyebrow>Demand Pressure</Eyebrow>
-            <ul className="flex flex-col gap-3 mt-3">
-              {demand.map((item, i) => (
-                <li key={i} className="flex items-start justify-between gap-3 py-2 border-b border-slate-50 last:border-0">
-                  <p className="text-sm text-slate-600">{item.factor}</p>
-                  <div className="text-right shrink-0">
-                    <p className="text-xs text-muted">forecast pax</p>
-                    <p className="text-sm font-bold text-danger">↑ +{item.impact}</p>
-                  </div>
-                </li>
-              ))}
-            </ul>
-          </div>
+    <div className="bg-white shadow-sm border border-slate-100 rounded-2xl overflow-hidden">
+      <div className="h-0.5 bg-danger" />
+      <div className="p-5">
+        <div className="mb-3">
+          <Eyebrow>Root Cause</Eyebrow>
+          <h2 className="text-lg font-bold text-slate-900 mt-0.5">Why the gap is forming</h2>
         </div>
-        <div className="bg-white shadow-sm border border-slate-100 rounded-2xl overflow-hidden">
-          <div className="h-0.5 bg-amber-400" />
-          <div className="p-5">
-            <Eyebrow>Supply Constraints</Eyebrow>
-            <ul className="flex flex-col gap-3 mt-3">
-              {supply.map((item, i) => (
-                <li key={i} className="flex items-start justify-between gap-3 py-2 border-b border-slate-50 last:border-0">
-                  <p className="text-sm text-slate-600">{item.factor}</p>
-                  <div className="text-right shrink-0">
-                    <p className="text-xs text-muted">taxis short</p>
-                    <p className="text-sm font-bold text-amber-600">↓ {item.impact}</p>
+
+        <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-4 gap-3">
+          {breakdown.map((item) => {
+            const meta = signalMeta(item);
+            return (
+              <div key={item.factor} className={`rounded-xl border p-3.5 ${meta.accent}`}>
+                <div className="flex items-start justify-between gap-3">
+                  <div className="flex items-center gap-2 min-w-0">
+                    <span className="material-symbols-outlined leading-none shrink-0" style={{ fontSize: "18px" }}>
+                      {meta.icon}
+                    </span>
+                    <p className="text-sm font-black leading-tight">{meta.label}</p>
                   </div>
-                </li>
-              ))}
-            </ul>
-          </div>
+                  <p className="text-sm font-black shrink-0">{meta.value}</p>
+                </div>
+                <p className="text-xs text-slate-600 leading-snug mt-2">{item.factor}</p>
+              </div>
+            );
+          })}
         </div>
       </div>
     </div>
@@ -338,45 +381,52 @@ function DeficitBreakdown({ breakdown }) {
 
 function ImpactSimulation({ sim }) {
   return (
-    <div>
-      <SectionHeading eyebrow="Impact Simulation" title="If we act now — projected outcome" />
-      <div className="bg-white shadow-sm border border-slate-100 rounded-2xl overflow-hidden mb-4">
-        <div className="h-0.5 bg-brand" />
-        <div className="p-5">
-          <Eyebrow>Recommended Action</Eyebrow>
-          <p className="text-sm font-semibold text-slate-900 mt-1">{sim.action}</p>
+    <div className="bg-white shadow-sm border border-slate-100 rounded-2xl overflow-hidden h-full">
+      <div className="h-0.5 bg-brand" />
+      <div className="p-5 flex flex-col gap-4 h-full">
+        <div>
+          <Eyebrow>Impact Simulation</Eyebrow>
+          <h2 className="text-xl font-bold text-[#1a2b5e] mt-0.5">If we act now</h2>
         </div>
-      </div>
-      <div className="grid grid-cols-1 md:grid-cols-2 gap-4 items-start">
-        {/* Current State */}
-        <div className="flex flex-col gap-3">
-          <Eyebrow>Current State</Eyebrow>
-          <div className="bg-red-50 border border-red-200 rounded-2xl p-5">
-            <p className="text-xs text-red-600 uppercase tracking-widest font-semibold">PWT</p>
-            <p className="text-4xl font-bold text-danger mt-1">{sim.currentPwt} min</p>
+
+        <div className="bg-emerald-50 border border-emerald-200 rounded-xl px-4 py-3">
+          <p className="text-xs text-emerald-700 uppercase tracking-widest font-bold">Recommended Action</p>
+          <p className="text-sm font-bold text-slate-900 mt-0.5 leading-snug">{sim.action}</p>
+        </div>
+
+        <div className="rounded-xl border border-slate-200 overflow-hidden">
+          <div className="grid grid-cols-[1fr_auto_1fr] items-center gap-3 p-4 border-b border-slate-100 bg-slate-50/80">
+            <div>
+              <p className="text-xs text-muted uppercase tracking-widest font-bold">Current PWT</p>
+              <p className="text-3xl font-black text-danger mt-0.5">{sim.currentPwt} min</p>
+            </div>
+            <span className="material-symbols-outlined text-slate-300">arrow_forward</span>
+            <div className="text-right">
+              <p className="text-xs text-muted uppercase tracking-widest font-bold">After Action</p>
+              <p className="text-3xl font-black text-brand mt-0.5">{sim.projectedPwt} min</p>
+            </div>
           </div>
-          <div className="bg-red-50 border border-red-200 rounded-2xl p-5">
-            <p className="text-xs text-red-600 uppercase tracking-widest font-semibold">Projected Deficit</p>
-            <p className="text-4xl font-bold text-danger mt-1">{sim.currentDeficit}%</p>
+          <div className="grid grid-cols-[1fr_auto_1fr] items-center gap-3 p-4">
+            <div>
+              <p className="text-xs text-muted uppercase tracking-widest font-bold">Deficit</p>
+              <p className="text-3xl font-black text-danger mt-0.5">{sim.currentDeficit}%</p>
+            </div>
+            <span className="material-symbols-outlined text-slate-300">arrow_forward</span>
+            <div className="text-right">
+              <p className="text-xs text-muted uppercase tracking-widest font-bold">After Action</p>
+              <p className="text-3xl font-black text-brand mt-0.5">{sim.projectedDeficit}%</p>
+            </div>
           </div>
         </div>
 
-        {/* After Action */}
-        <div className="flex flex-col gap-3">
-          <Eyebrow>After Action</Eyebrow>
-          <div className="bg-emerald-50 border border-emerald-200 rounded-2xl p-5">
-            <p className="text-xs text-emerald-700 uppercase tracking-widest font-semibold">PWT</p>
-            <div className="flex items-end gap-2 mt-1">
-              <p className="text-4xl font-bold text-slate-900">{sim.projectedPwt} min</p>
-              <p className="text-xs text-brand font-semibold pb-1">−{sim.pwtReductionPct}%</p>
-            </div>
+        <div className="grid grid-cols-2 gap-3 mt-auto">
+          <div className="rounded-xl bg-emerald-50 border border-emerald-200 px-4 py-3">
+            <p className="text-xs text-emerald-700 uppercase tracking-widest font-bold">PWT Improvement</p>
+            <p className="text-2xl font-black text-brand mt-0.5">−{sim.pwtReductionPct}%</p>
           </div>
-          <div className="bg-emerald-50 border border-emerald-200 rounded-2xl p-5">
-            <p className="text-xs text-emerald-700 uppercase tracking-widest font-semibold">Projected Deficit</p>
-            <div className="flex items-end gap-2 mt-1">
-              <p className="text-4xl font-bold text-slate-900">{sim.projectedDeficit}%</p>
-              <p className="text-xs text-brand font-semibold pb-1">−{sim.queueTimeReduction} min</p>
-            </div>
+          <div className="rounded-xl bg-emerald-50 border border-emerald-200 px-4 py-3">
+            <p className="text-xs text-emerald-700 uppercase tracking-widest font-bold">Queue Time</p>
+            <p className="text-2xl font-black text-brand mt-0.5">−{sim.queueTimeReduction} min</p>
           </div>
         </div>
       </div>
@@ -405,11 +455,24 @@ function MLPredictionCard({ terminal }) {
 
   const modelInputs = ["Flight wave", "QR demand", "Taxi supply", "Lane capacity", "Weather", "Time"];
   const decisionText = `Decision: ${decision}`;
+  const modelStatus = "Offline model";
 
   return (
-    <div>
-      <SectionHeading eyebrow="ML Prediction" title="ML Prediction Logic" />
-      <div className="bg-white shadow-sm border border-slate-100 rounded-2xl overflow-hidden">
+    <details className="group bg-white shadow-sm border border-slate-100 rounded-2xl overflow-hidden">
+      <summary className="flex cursor-pointer list-none items-center justify-between gap-4 px-5 py-4 hover:bg-slate-50 transition-colors">
+        <div>
+          <Eyebrow>ML Prediction Details</Eyebrow>
+          <h2 className="text-lg font-bold text-slate-900 mt-0.5">Supporting model evidence</h2>
+        </div>
+        <div className="flex items-center gap-3">
+          <span className={`hidden sm:inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-bold border ${kpi.bg} ${kpi.text} ${kpi.border}`}>
+            <span className={`w-1.5 h-1.5 rounded-full ${kpi.dot}`} />
+            {predictedPWT} min · {breachProb}% risk
+          </span>
+          <span className="material-symbols-outlined text-slate-400 group-open:rotate-180 transition-transform">expand_more</span>
+        </div>
+      </summary>
+      <div>
         <div className="h-0.5 bg-brand" />
         <div className="p-5">
           <div className="flex items-start justify-between gap-4 flex-wrap">
@@ -420,7 +483,7 @@ function MLPredictionCard({ terminal }) {
               </p>
             </div>
             <span className="px-3 py-1 rounded-full bg-emerald-50 text-brand text-xs font-bold border border-brand/20">
-              {status}
+              {modelStatus}
             </span>
           </div>
 
@@ -513,7 +576,7 @@ function MLPredictionCard({ terminal }) {
           </div>
         </div>
       </div>
-    </div>
+    </details>
   );
 }
 
@@ -526,6 +589,7 @@ function OpsControlActions({ laneActivated, setLaneActivated, broadcastSent, set
     {
       title: "Overflow Lane",
       subtitle: "Activate high-capacity overflow routing for Terminal 1 pickup zone",
+      priority: "primary",
       activated: laneActivated,
       onActivate: () => setLaneActivated(true),
       activeLabel: "Overflow Lane Active ✓",
@@ -534,6 +598,7 @@ function OpsControlActions({ laneActivated, setLaneActivated, broadcastSent, set
     {
       title: "Driver Broadcast",
       subtitle: "Push a 6-minute head-start message to all holding and inbound drivers",
+      priority: "secondary",
       activated: broadcastSent,
       onActivate: () => setBroadcastSent(true),
       activeLabel: `Sent ${now} ✓`,
@@ -542,6 +607,7 @@ function OpsControlActions({ laneActivated, setLaneActivated, broadcastSent, set
     {
       title: "Lane 2",
       subtitle: "Open secondary pickup lane to relieve primary lane congestion",
+      priority: "tertiary",
       activated: lane2Active,
       onActivate: () => setLane2Active(true),
       activeLabel: "Lane 2 Open ✓",
@@ -556,24 +622,54 @@ function OpsControlActions({ laneActivated, setLaneActivated, broadcastSent, set
         <div className="h-0.5 bg-danger" />
         <div className="p-5">
           <Eyebrow>Dispatch Controls</Eyebrow>
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-px mt-4 bg-slate-100 rounded-xl overflow-hidden">
-            {actions.map((action, i) => (
-              <div key={action.title} className="flex flex-col gap-2 bg-white p-4">
-                <p className="text-sm font-semibold text-slate-900">{action.title}</p>
-                <p className="text-xs text-muted leading-relaxed">{action.subtitle}</p>
-                <button
-                  onClick={action.onActivate}
-                  disabled={action.activated}
-                  className={`mt-auto w-full py-2.5 rounded-xl text-sm font-semibold transition-all ${
-                    action.activated
-                      ? "bg-emerald-50 text-brand border border-brand/30 cursor-default"
-                      : "bg-danger text-white hover:bg-red-700 active:scale-95 shadow-sm"
-                  }`}
-                >
-                  {action.activated ? action.activeLabel : action.inactiveLabel}
-                </button>
-              </div>
-            ))}
+          <div className="grid grid-cols-1 lg:grid-cols-[1.45fr_1fr_0.85fr] gap-3 mt-4">
+            {actions.map((action) => {
+              const buttonClass = action.activated
+                ? "bg-emerald-50 text-brand border border-brand/30 cursor-default"
+                : action.priority === "primary"
+                ? "bg-danger text-white hover:bg-red-700 active:scale-95 shadow-sm"
+                : action.priority === "secondary"
+                ? "bg-white text-[#154aa8] border border-[#154aa8]/30 hover:bg-[#154aa8]/5 active:scale-95"
+                : "bg-slate-100 text-slate-600 border border-slate-200 hover:bg-slate-200 active:scale-95";
+              const cardClass = action.priority === "primary"
+                ? "bg-red-50/70 border-red-200 shadow-sm"
+                : action.priority === "secondary"
+                ? "bg-white border-[#154aa8]/20"
+                : "bg-slate-50 border-slate-200 opacity-85";
+              const labelClass = action.priority === "primary"
+                ? "bg-danger text-white"
+                : action.priority === "secondary"
+                ? "bg-[#154aa8]/10 text-[#154aa8]"
+                : "bg-slate-200 text-slate-500";
+              const priorityLabel = action.priority === "primary"
+                ? "Primary"
+                : action.priority === "secondary"
+                ? "Secondary"
+                : "Optional";
+
+              return (
+                <div key={action.title} className={`flex flex-col gap-3 rounded-xl border p-4 ${cardClass}`}>
+                  <div className="flex items-start justify-between gap-3">
+                    <div>
+                      <p className={`text-sm font-bold ${action.priority === "tertiary" ? "text-slate-600" : "text-slate-900"}`}>
+                        {action.title}
+                      </p>
+                      <p className="text-xs text-muted leading-relaxed mt-1">{action.subtitle}</p>
+                    </div>
+                    <span className={`shrink-0 rounded-full px-2 py-0.5 text-[10px] font-black uppercase tracking-wider ${labelClass}`}>
+                      {priorityLabel}
+                    </span>
+                  </div>
+                  <button
+                    onClick={action.onActivate}
+                    disabled={action.activated}
+                    className={`mt-auto w-full py-2.5 rounded-xl text-sm font-semibold transition-all ${buttonClass}`}
+                  >
+                    {action.activated ? action.activeLabel : action.inactiveLabel}
+                  </button>
+                </div>
+              );
+            })}
           </div>
         </div>
       </div>
@@ -609,11 +705,92 @@ function DataSection({ eyebrow, title, items }) {
   );
 }
 
+function StickyActionBar({ terminal, d, laneActivated, setLaneActivated, broadcastSent, setBroadcastSent }) {
+  const isCritical = d.pwt > d.guardrailMin;
+
+  return (
+    <div className={`sticky top-0 z-30 -mx-8 px-8 py-2 border-y backdrop-blur ${
+      isCritical
+        ? "bg-red-50/95 border-red-200"
+        : "bg-white/95 border-slate-200"
+    }`}>
+      <div className="max-w-6xl mx-auto flex items-center justify-between gap-3 flex-wrap">
+        <div className="flex items-center gap-2 min-w-0">
+          <span className={`w-2 h-2 rounded-full shrink-0 ${isCritical ? "bg-danger" : "bg-brand"}`} />
+          <p className={`text-xs sm:text-sm font-black tracking-wide ${isCritical ? "text-red-800" : "text-slate-700"}`}>
+            {isCritical ? "CRITICAL" : "LIVE"} · {terminal} SLA breach projected in 15 min
+          </p>
+          <span className="hidden md:inline text-xs text-slate-500 truncate">
+            PWT {d.pwt} min · {d.waitingPassengers.toLocaleString()} waiting pax
+          </span>
+        </div>
+        <div className="flex items-center gap-2">
+          <button
+            onClick={() => setLaneActivated(true)}
+            disabled={laneActivated}
+            className={`px-3 py-1.5 rounded-lg text-xs font-bold transition-all ${
+              laneActivated
+                ? "bg-emerald-50 text-brand border border-brand/30"
+                : "bg-danger text-white hover:bg-red-700 active:scale-95 shadow-sm"
+            }`}
+          >
+            {laneActivated ? "Overflow Active" : "Activate Overflow Lane"}
+          </button>
+          <button
+            onClick={() => setBroadcastSent(true)}
+            disabled={broadcastSent}
+            className={`px-3 py-1.5 rounded-lg text-xs font-bold transition-all ${
+              broadcastSent
+                ? "bg-emerald-50 text-brand border border-brand/30"
+                : "bg-white text-[#154aa8] border border-[#154aa8]/30 hover:bg-[#154aa8]/5 active:scale-95"
+            }`}
+          >
+            {broadcastSent ? "Broadcast Sent" : "Broadcast Drivers"}
+          </button>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+function CommandCenter({ d, laneActivated, setLaneActivated, broadcastSent, setBroadcastSent }) {
+  return (
+    <section className="grid grid-cols-1 lg:grid-cols-[minmax(0,1fr)_360px] gap-5 items-stretch">
+      <HealthCard d={d} />
+      <AlertCard
+        d={d}
+        laneActivated={laneActivated} setLaneActivated={setLaneActivated}
+        broadcastSent={broadcastSent} setBroadcastSent={setBroadcastSent}
+      />
+    </section>
+  );
+}
+
+function ForecastImpactSection({ d }) {
+  return (
+    <section className="grid grid-cols-1 xl:grid-cols-[minmax(0,1.45fr)_minmax(340px,0.8fr)] gap-5 items-stretch">
+      <DemandChart series={d.forecastSeries} criticalWindow={d.criticalWindow} />
+      <ImpactSimulation sim={d.impactSimulation} />
+    </section>
+  );
+}
+
+function RootCauseTelemetry({ d, flightItems, signalItems, supplyItems }) {
+  return (
+    <section className="flex flex-col gap-4">
+      <DeficitBreakdown breakdown={d.deficitBreakdown} />
+      <div className="grid grid-cols-1 lg:grid-cols-3 gap-4">
+        <DataSection eyebrow="Flight wave" title="Arrivals driving demand" items={flightItems} />
+        <DataSection eyebrow="Demand capture" title="QR scans in the last 20 minutes" items={signalItems} />
+        <DataSection eyebrow="Supply telemetry" title="Driver response pulse" items={supplyItems} />
+      </div>
+    </section>
+  );
+}
+
 // ── Live Monitoring View ───────────────────────────────────────────────────
 
 function LiveMonitoring({ d, terminal, laneActivated, setLaneActivated, broadcastSent, setBroadcastSent, lane2Active, setLane2Active }) {
-  const isAboveGuardrail = d.pwt > d.guardrailMin;
-
   const flightItems = d.flights.map((f) => ({
     primary: `${f.code} · ${f.origin}`,
     secondary: `${f.status} · ${f.terminal} · ETA ${f.eta}`,
@@ -636,30 +813,31 @@ function LiveMonitoring({ d, terminal, laneActivated, setLaneActivated, broadcas
   }));
 
   return (
-    <div className="flex flex-col gap-6">
-      {/* Hero: Health Card + Alert Card side-by-side */}
-      <div className="flex gap-5 items-start flex-wrap">
-        <HealthCard d={d} />
-        {isAboveGuardrail && (
-          <AlertCard
-            d={d}
-            laneActivated={laneActivated} setLaneActivated={setLaneActivated}
-            broadcastSent={broadcastSent} setBroadcastSent={setBroadcastSent}
-          />
-        )}
-      </div>
+    <div className="flex flex-col gap-5">
+      <StickyActionBar
+        terminal={terminal}
+        d={d}
+        laneActivated={laneActivated} setLaneActivated={setLaneActivated}
+        broadcastSent={broadcastSent} setBroadcastSent={setBroadcastSent}
+      />
 
-      {/* Arrival Wave Analysis chart */}
-      <DemandChart series={d.forecastSeries} criticalWindow={d.criticalWindow} />
+      {/* Command Center */}
+      <CommandCenter
+        d={d}
+        laneActivated={laneActivated} setLaneActivated={setLaneActivated}
+        broadcastSent={broadcastSent} setBroadcastSent={setBroadcastSent}
+      />
 
-      {/* Deficit Breakdown */}
-      <DeficitBreakdown breakdown={d.deficitBreakdown} />
+      {/* Forecast + Impact Simulation */}
+      <ForecastImpactSection d={d} />
 
-      {/* Impact Simulation */}
-      <ImpactSimulation sim={d.impactSimulation} />
-
-      {/* ML Prediction */}
-      <MLPredictionCard terminal={terminal} />
+      {/* Root Cause / Telemetry */}
+      <RootCauseTelemetry
+        d={d}
+        flightItems={flightItems}
+        signalItems={signalItems}
+        supplyItems={supplyItems}
+      />
 
       {/* OPS Control Actions */}
       <OpsControlActions
@@ -668,12 +846,8 @@ function LiveMonitoring({ d, terminal, laneActivated, setLaneActivated, broadcas
         lane2Active={lane2Active} setLane2Active={setLane2Active}
       />
 
-      {/* Three-column supporting data */}
-      <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-        <DataSection eyebrow="Flight wave" title="Arrivals driving demand" items={flightItems} />
-        <DataSection eyebrow="Demand capture" title="QR scans in the last 20 minutes" items={signalItems} />
-        <DataSection eyebrow="Supply telemetry" title="Driver response pulse" items={supplyItems} />
-      </div>
+      {/* ML Prediction Details */}
+      <MLPredictionCard terminal={terminal} />
     </div>
   );
 }
@@ -806,14 +980,120 @@ function AIAdvisoryWorkspace({ d }) {
   );
 }
 
+// ── Demo OPS Login ─────────────────────────────────────────────────────────
+
+function OPSLoginScreen({ onLogin }) {
+  const [username, setUsername] = useState(OPS_DEMO_USERNAME);
+  const [password, setPassword] = useState(OPS_DEMO_PASSWORD);
+  const [error, setError] = useState("");
+
+  function handleSubmit(event) {
+    event.preventDefault();
+
+    if (username === OPS_DEMO_USERNAME && password === OPS_DEMO_PASSWORD) {
+      window.localStorage.setItem(OPS_AUTH_KEY, "true");
+      onLogin();
+      return;
+    }
+
+    setError("Use the demo OPS credentials to continue.");
+  }
+
+  return (
+    <div className="min-h-[calc(100vh-56px)] bg-[#f5f8fb] flex items-center justify-center px-4 py-10">
+      <div className="w-full max-w-md">
+        <div className="text-center mb-5">
+          <div className="inline-flex items-center gap-2 mb-3">
+            <div className="w-9 h-9 rounded-2xl bg-[#154aa8] flex items-center justify-center shadow-sm">
+              <span className="material-symbols-outlined text-white text-xl">admin_panel_settings</span>
+            </div>
+            <p className="text-2xl font-black text-[#1a2b5e] font-headline tracking-tight">Hello Ride</p>
+          </div>
+          <h1 className="text-2xl font-black text-[#1a2b5e] font-headline">OPS Control Sign In</h1>
+          <p className="text-sm text-muted mt-1">Airport operations access for Hello Ride console</p>
+        </div>
+
+        <form
+          onSubmit={handleSubmit}
+          className="bg-white border border-slate-200 rounded-2xl shadow-[0_18px_50px_rgba(21,74,168,0.12)] overflow-hidden"
+        >
+          <div className="h-1 bg-[#154aa8]" />
+          <div className="p-6 flex flex-col gap-4">
+            <div className="bg-[#154aa8]/5 border border-[#154aa8]/10 rounded-2xl p-4">
+              <p className="text-[10px] font-extrabold text-[#154aa8] uppercase tracking-widest">OPS Console</p>
+              <p className="text-sm text-slate-600 mt-1 leading-relaxed">
+                Sign in to monitor airport queues, arrival waves, and dispatch controls.
+              </p>
+            </div>
+
+            <div>
+              <label htmlFor="ops-username" className="block text-xs text-muted uppercase tracking-widest font-bold mb-2">
+                Username
+              </label>
+              <input
+                id="ops-username"
+                type="text"
+                value={username}
+                onChange={(event) => { setUsername(event.target.value); setError(""); }}
+                className="w-full bg-white border border-slate-200 rounded-2xl px-4 py-3.5 text-sm text-slate-900 placeholder:text-slate-400 focus:outline-none focus:border-[#00b14f] focus:ring-2 focus:ring-[#00b14f]/15 transition-all shadow-[0_2px_8px_rgba(0,0,0,0.05)]"
+              />
+            </div>
+
+            <div>
+              <label htmlFor="ops-password" className="block text-xs text-muted uppercase tracking-widest font-bold mb-2">
+                Password
+              </label>
+              <input
+                id="ops-password"
+                type="password"
+                value={password}
+                onChange={(event) => { setPassword(event.target.value); setError(""); }}
+                className="w-full bg-white border border-slate-200 rounded-2xl px-4 py-3.5 text-sm text-slate-900 placeholder:text-slate-400 focus:outline-none focus:border-[#00b14f] focus:ring-2 focus:ring-[#00b14f]/15 transition-all shadow-[0_2px_8px_rgba(0,0,0,0.05)]"
+              />
+            </div>
+
+            {error && <p className="text-xs font-semibold text-danger">{error}</p>}
+
+            <button
+              type="submit"
+              className="w-full py-3.5 rounded-2xl bg-gradient-to-r from-[#22c55e] to-[#00a344] text-white font-headline font-extrabold text-base shadow-[0_8px_24px_rgba(0,163,68,0.28)] hover:shadow-[0_12px_28px_rgba(0,163,68,0.36)] active:scale-95 transition-all"
+            >
+              Login
+            </button>
+
+            <div className="flex items-center justify-center gap-2.5 px-4 py-2.5 bg-slate-50 border border-slate-100 rounded-xl">
+              <span className="text-[10px] font-extrabold text-slate-400 uppercase tracking-wider bg-slate-200 px-1.5 py-0.5 rounded">Demo</span>
+              <span className="text-xs text-slate-500">ops_demo / 1234</span>
+            </div>
+
+            <p className="text-[11px] text-center text-slate-400">
+              Demo access only — not production authentication.
+            </p>
+          </div>
+        </form>
+      </div>
+    </div>
+  );
+}
+
 // ── Main OPS Dashboard ─────────────────────────────────────────────────────
 
 export default function OPSDashboard() {
+  const [opsLoggedIn, setOpsLoggedIn] = useState(getStoredOpsAuth);
   const [terminal, setTerminal] = useState("T1");
   const [workspace, setWorkspace] = useState("monitoring");
   const [laneActivated, setLaneActivated] = useState(false);
   const [broadcastSent, setBroadcastSent] = useState(false);
   const [lane2Active, setLane2Active] = useState(false);
+
+  function handleSignOut() {
+    window.localStorage.removeItem(OPS_AUTH_KEY);
+    setOpsLoggedIn(false);
+  }
+
+  if (!opsLoggedIn) {
+    return <OPSLoginScreen onLogin={() => setOpsLoggedIn(true)} />;
+  }
 
   const d = getOpsData(terminal);
 
@@ -866,9 +1146,24 @@ export default function OPSDashboard() {
       {/* Main content */}
       <main className="flex-1 overflow-y-auto bg-[#f5f8fb]">
         <div className="px-8 py-7 max-w-6xl mx-auto flex flex-col gap-8">
-          <div>
-            <h1 className="font-headline font-black text-2xl text-[#1a2b5e]">Hello Ride Console</h1>
-            <p className="text-xs text-muted mt-1">{d.title} · {workspace === "advisory" ? "AI Advisory" : "Live Monitoring"}</p>
+          <div className="flex items-start justify-between gap-4">
+            <div>
+              <div className="flex items-center gap-3 flex-wrap">
+                <h1 className="font-headline font-black text-2xl text-[#1a2b5e]">Hello Ride Console</h1>
+                <span className="inline-flex items-center gap-1.5 rounded-full bg-emerald-50 border border-emerald-200 px-2.5 py-1 text-xs font-bold text-brand">
+                  <span className="w-1.5 h-1.5 rounded-full bg-brand" />
+                  Live · Last updated 14:35
+                </span>
+              </div>
+              <p className="text-xs text-muted mt-1">{d.title} · {workspace === "advisory" ? "AI Advisory" : "Live Monitoring"}</p>
+            </div>
+            <button
+              onClick={handleSignOut}
+              className="shrink-0 inline-flex items-center gap-1.5 rounded-xl border border-slate-200 bg-white px-3 py-2 text-xs font-semibold text-slate-500 shadow-sm hover:border-[#154aa8]/30 hover:text-[#154aa8] transition-colors"
+            >
+              <span className="material-symbols-outlined leading-none" style={{ fontSize: "16px" }}>logout</span>
+              Sign out
+            </button>
           </div>
           {workspace === "monitoring" && (
             <LiveMonitoring

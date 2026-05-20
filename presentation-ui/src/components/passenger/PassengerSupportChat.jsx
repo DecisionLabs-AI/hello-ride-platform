@@ -67,13 +67,13 @@ export default function PassengerSupportChat() {
       <button
         onClick={() => setIsOpen(true)}
         aria-label="Open support chat"
-        className={`absolute bottom-28 right-4 z-50 w-13 h-13 rounded-full bg-white border border-[#00b14f]/20
-          shadow-[0_6px_24px_rgba(0,110,46,0.18),0_2px_8px_rgba(0,0,0,0.07)]
+        className={`absolute bottom-24 right-5 z-50 w-12 h-12 rounded-full bg-white border border-emerald-200
+          shadow-[0_10px_26px_rgba(15,23,42,0.14),0_2px_8px_rgba(0,110,46,0.08)]
           flex items-center justify-center
           hover:scale-105 active:scale-95 transition-all duration-150
           ${isOpen ? "opacity-0 pointer-events-none" : "opacity-100"}`}
       >
-        <span className="material-symbols-outlined text-[#006e2e] text-[1.5rem]">support_agent</span>
+        <span className="material-symbols-outlined text-[#006e2e] text-[1.35rem]">support_agent</span>
       </button>
 
       {/* Backdrop — absolute inset-0 covers exactly the phone shell */}
@@ -90,12 +90,12 @@ export default function PassengerSupportChat() {
           ${isOpen ? "translate-y-0" : "translate-y-full"}`}
       >
         {/* No max-w-md needed — the shell is already max-w-md */}
-        <div className="bg-[#f8fafc] rounded-t-3xl shadow-[0_-8px_40px_rgba(15,23,42,0.16)] flex flex-col max-h-[80%]">
+        <div className="bg-[#f5f8fb] rounded-t-3xl shadow-[0_-8px_40px_rgba(15,23,42,0.16)] border-t border-slate-200 flex flex-col max-h-[80%]">
 
           {/* Header */}
           <div className="flex items-start justify-between px-5 pt-5 pb-3 border-b border-slate-200/70 shrink-0">
             <div>
-              <p className="text-[1.05rem] font-extrabold text-slate-900 leading-tight">Hello Ride Support</p>
+              <p className="text-[1.05rem] font-extrabold text-[#1a2b5e] leading-tight">Hello Ride Support</p>
               <p className="text-xs text-muted mt-0.5">Airport pickup assistance</p>
             </div>
             <button
@@ -153,7 +153,7 @@ export default function PassengerSupportChat() {
           </div>
 
           {/* Input row */}
-          <div className="flex gap-2 items-center px-4 pt-2 pb-5 border-t border-slate-200/70 shrink-0 bg-[#f8fafc]">
+          <div className="flex gap-2 items-center px-4 pt-2 pb-5 border-t border-slate-200/70 shrink-0 bg-[#f5f8fb]">
             <input
               ref={inputRef}
               type="text"
