@@ -28,20 +28,28 @@ export default function PassengerSupportChat() {
   const [isOpen, setIsOpen] = useState(false);
   const [messages, setMessages] = useState([]);
   const [inputValue, setInputValue] = useState("");
-  const msgsRef = useRef(null);
+  const messagesEndRef = useRef(null);
   const inputRef = useRef(null);
 
   useEffect(() => {
-    if (msgsRef.current) {
-      msgsRef.current.scrollTop = msgsRef.current.scrollHeight;
-    }
-  }, [messages]);
+    if (!isOpen) return;
+    messagesEndRef.current?.scrollIntoView({ behavior: "smooth", block: "end" });
+  }, [messages, isOpen]);
 
   useEffect(() => {
     if (isOpen) {
       const t = setTimeout(() => inputRef.current?.focus(), 320);
       return () => clearTimeout(t);
     }
+  }, [isOpen]);
+
+  useEffect(() => {
+    if (!isOpen) return;
+    const previousOverflow = document.body.style.overflow;
+    document.body.style.overflow = "hidden";
+    return () => {
+      document.body.style.overflow = previousOverflow;
+    };
   }, [isOpen]);
 
   function send(text) {
@@ -67,13 +75,13 @@ export default function PassengerSupportChat() {
       <button
         onClick={() => setIsOpen(true)}
         aria-label="Open support chat"
-        className={`absolute bottom-24 right-5 z-50 w-12 h-12 rounded-full bg-white border border-emerald-200
-          shadow-[0_10px_26px_rgba(15,23,42,0.14),0_2px_8px_rgba(0,110,46,0.08)]
+        className={`absolute bottom-24 right-5 z-50 w-12 h-12 rounded-full bg-white border border-brand/15
+          shadow-[0_10px_26px_rgba(15,23,42,0.14),0_2px_8px_rgba(21,74,168,0.08)]
           flex items-center justify-center
           hover:scale-105 active:scale-95 transition-all duration-150
           ${isOpen ? "opacity-0 pointer-events-none" : "opacity-100"}`}
       >
-        <span className="material-symbols-outlined text-[#006e2e] text-[1.35rem]">support_agent</span>
+        <span className="material-symbols-outlined text-brand text-[1.35rem]">support_agent</span>
       </button>
 
       {/* Backdrop — absolute inset-0 covers exactly the phone shell */}
@@ -90,28 +98,27 @@ export default function PassengerSupportChat() {
           ${isOpen ? "translate-y-0" : "translate-y-full"}`}
       >
         {/* No max-w-md needed — the shell is already max-w-md */}
-        <div className="bg-[#f5f8fb] rounded-t-3xl shadow-[0_-8px_40px_rgba(15,23,42,0.16)] border-t border-slate-200 flex flex-col max-h-[80%]">
+        <div className="flex h-[70vh] max-h-[70vh] min-h-0 flex-col overflow-hidden rounded-t-3xl border-t border-slate-200 bg-[#f5f8fb] shadow-[0_-8px_40px_rgba(15,23,42,0.16)]">
 
           {/* Header */}
-          <div className="flex items-start justify-between px-5 pt-5 pb-3 border-b border-slate-200/70 shrink-0">
-            <div>
-              <p className="text-[1.05rem] font-extrabold text-[#1a2b5e] leading-tight">Hello Ride Support</p>
-              <p className="text-xs text-muted mt-0.5">Airport pickup assistance</p>
+          <div className="flex-none border-b border-slate-200/70 bg-[#f5f8fb] px-5 pb-3 pt-5">
+            <div className="flex items-start justify-between">
+              <div>
+                <p className="text-[1.05rem] font-extrabold text-[#1a2b5e] leading-tight">Hello Ride Support</p>
+                <p className="text-xs text-muted mt-0.5">Airport pickup assistance</p>
+              </div>
+              <button
+                onClick={() => setIsOpen(false)}
+                aria-label="Close support chat"
+                className="w-8 h-8 rounded-full bg-slate-100 hover:bg-slate-200 flex items-center justify-center text-slate-500 text-xl leading-none transition-colors"
+              >
+                ×
+              </button>
             </div>
-            <button
-              onClick={() => setIsOpen(false)}
-              aria-label="Close support chat"
-              className="w-8 h-8 rounded-full bg-slate-100 hover:bg-slate-200 flex items-center justify-center text-slate-500 text-xl leading-none transition-colors"
-            >
-              ×
-            </button>
           </div>
 
           {/* Messages */}
-          <div
-            ref={msgsRef}
-            className="flex-1 overflow-y-auto px-4 py-4 flex flex-col gap-2.5 min-h-28"
-          >
+          <div className="flex min-h-0 flex-1 flex-col gap-2.5 overflow-y-auto overscroll-contain py-4 pl-4 pr-2">
             {messages.length === 0 ? (
               <p className="text-xs text-muted text-center m-auto py-4">
                 Hi! How can we help with your airport pickup?
@@ -125,7 +132,7 @@ export default function PassengerSupportChat() {
                   <div
                     className={`max-w-[82%] px-3.5 py-2.5 rounded-2xl text-sm font-medium leading-relaxed ${
                       msg.role === "user"
-                        ? "bg-[#00b14f] text-white rounded-br-[0.3rem]"
+                        ? "bg-brand text-white rounded-br-[0.3rem]"
                         : "bg-white text-slate-900 border border-slate-200/80 shadow-sm rounded-bl-[0.3rem]"
                     }`}
                   >
@@ -134,43 +141,48 @@ export default function PassengerSupportChat() {
                 </div>
               ))
             )}
+            <div ref={messagesEndRef} />
           </div>
 
           {/* Quick chips */}
-          <div
-            className="flex gap-2 px-4 pb-2 overflow-x-auto shrink-0"
-            style={{ scrollbarWidth: "none" }}
-          >
-            {CHIPS.map((chip) => (
-              <button
-                key={chip.label}
-                onClick={() => send(chip.text)}
-                className="shrink-0 px-3 py-1.5 rounded-full bg-[#00b14f]/10 border border-[#00b14f]/25 text-[#0c7d35] text-xs font-bold whitespace-nowrap hover:bg-[#00b14f]/20 transition-colors"
-              >
-                {chip.label}
-              </button>
-            ))}
+          <div className="flex-none overflow-hidden bg-[#f5f8fb]">
+            <div
+              className="flex gap-2 overflow-x-auto px-4 pb-2"
+              style={{ scrollbarWidth: "none" }}
+            >
+              {CHIPS.map((chip) => (
+                <button
+                  key={chip.label}
+                  onClick={() => send(chip.text)}
+                  className="shrink-0 whitespace-nowrap rounded-full border border-brand-mid/25 bg-brand-mid/10 px-3 py-1.5 text-xs font-bold text-brand hover:bg-brand-mid/20 transition-colors"
+                >
+                  {chip.label}
+                </button>
+              ))}
+            </div>
           </div>
 
           {/* Input row */}
-          <div className="flex gap-2 items-center px-4 pt-2 pb-5 border-t border-slate-200/70 shrink-0 bg-[#f5f8fb]">
-            <input
-              ref={inputRef}
-              type="text"
-              value={inputValue}
-              onChange={(e) => setInputValue(e.target.value)}
-              onKeyDown={handleKeyDown}
-              placeholder="Type a message…"
-              autoComplete="off"
-              className="flex-1 bg-white border border-slate-200 rounded-full px-4 py-2.5 text-sm text-slate-900 placeholder:text-slate-400 focus:outline-none focus:border-[#00b14f]/50 focus:ring-2 focus:ring-[#00b14f]/10 transition-all"
-            />
-            <button
-              onClick={() => send(inputValue)}
-              aria-label="Send"
-              className="w-10 h-10 rounded-full bg-[#00b14f] flex items-center justify-center shrink-0 hover:bg-[#009942] active:scale-90 transition-all"
-            >
-              <span className="material-symbols-outlined text-white text-[1.1rem]">send</span>
-            </button>
+          <div className="flex-none border-t border-slate-200/70 bg-[#f5f8fb] px-4 pb-5 pt-2">
+            <div className="flex items-center gap-2">
+              <input
+                ref={inputRef}
+                type="text"
+                value={inputValue}
+                onChange={(e) => setInputValue(e.target.value)}
+                onKeyDown={handleKeyDown}
+                placeholder="Type a message…"
+                autoComplete="off"
+                className="flex-1 bg-white border border-slate-200 rounded-full px-4 py-2.5 text-sm text-slate-900 placeholder:text-slate-400 focus:outline-none focus:border-brand/50 focus:ring-2 focus:ring-brand/10 transition-all"
+              />
+              <button
+                onClick={() => send(inputValue)}
+                aria-label="Send"
+                className="w-10 h-10 rounded-full bg-brand flex items-center justify-center shrink-0 hover:bg-brand-deep active:scale-90 transition-all"
+              >
+                <span className="material-symbols-outlined text-white text-[1.1rem]">send</span>
+              </button>
+            </div>
           </div>
 
         </div>

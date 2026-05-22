@@ -1,3 +1,5 @@
+import { HelloRideWordmark } from "./MobileShell.jsx";
+
 export default function NavBar({ page, setPage }) {
   const navItems = [
     { id: "ops", label: "OPS Dashboard" },
@@ -8,7 +10,7 @@ export default function NavBar({ page, setPage }) {
   return (
     <nav className="sticky top-0 z-50 bg-white/95 backdrop-blur border-b border-slate-200 px-6 py-3.5 flex items-center justify-between shadow-sm">
       <div className="flex items-center gap-3">
-        <span className="text-[#006e2e] font-black text-base font-headline tracking-tight">Hello Ride</span>
+        <HelloRideWordmark size="sm" />
         <div className="h-4 w-px bg-slate-200" />
         <span className="text-xs text-muted bg-slate-100 px-2 py-0.5 rounded-full font-medium tracking-wide">BKK Demo</span>
       </div>

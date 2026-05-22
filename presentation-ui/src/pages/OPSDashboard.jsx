@@ -1,5 +1,6 @@
 import { useState } from "react";
 import { getOpsData, ADVISORY_RESPONSES } from "../data/mockOps.js";
+import { useDemoMatching } from "../context/useDemoMatching.js";
 
 const OPS_AUTH_KEY = "helloRideOpsAuth";
 const OPS_DEMO_USERNAME = "ops_demo";
@@ -73,56 +74,6 @@ function PWTGauge({ value, threshold = 10 }) {
         <span className={`w-1.5 h-1.5 rounded-full ${isAbove ? "bg-red-500" : "bg-green-500"}`} />
         {isAbove ? "CRITICAL DELAY" : "WITHIN GUARDRAIL"}
       </span>
-    </div>
-  );
-}
-
-// ── KPI Metric Card ────────────────────────────────────────────────────────
-
-function MetricCard({ label, value, sub, trend, tone = "default" }) {
-  const valueColor =
-    tone === "danger" ? "text-danger" :
-    tone === "brand" ? "text-brand" :
-    tone === "ops" ? "text-ops" : "text-slate-900";
-  const trendColor = trend && trend.startsWith("+") ? "text-brand" : "text-danger";
-  const accentColor =
-    tone === "danger" ? "bg-danger" :
-    tone === "brand" ? "bg-brand" :
-    tone === "ops" ? "bg-ops" : "bg-transparent";
-
-  return (
-    <div className="bg-white shadow-sm border border-slate-100 rounded-2xl overflow-hidden flex flex-col h-full">
-      <div className={`h-0.5 ${accentColor}`} />
-      <div className="p-5 flex flex-col gap-1 flex-1">
-        <Eyebrow>{label}</Eyebrow>
-        <div className="flex items-end gap-2 mt-1">
-          <p className={`text-3xl font-bold leading-none ${valueColor}`}>{value}</p>
-          {trend && <p className={`text-xs font-semibold pb-0.5 ${trendColor}`}>{trend}</p>}
-        </div>
-        {sub && <p className="text-xs text-muted mt-1">{sub}</p>}
-      </div>
-    </div>
-  );
-}
-
-// ── Lane Load Progress ─────────────────────────────────────────────────────
-
-function LaneLoadCard({ load }) {
-  const color = load > 85 ? "bg-danger" : load > 70 ? "bg-amber-500" : "bg-brand";
-  const textColor = load > 85 ? "text-danger" : load > 70 ? "text-amber-600" : "text-brand";
-  return (
-    <div className="bg-white shadow-sm border border-slate-100 rounded-2xl overflow-hidden">
-      <div className="h-0.5 bg-amber-400" />
-      <div className="p-5">
-        <Eyebrow>Lane 1 high-capacity mode</Eyebrow>
-        <div className="flex items-center justify-between mt-1 mb-3">
-          <p className="text-sm text-slate-600">System load</p>
-          <p className={`text-sm font-bold ${textColor}`}>{load}%</p>
-        </div>
-        <div className="h-3 bg-slate-100 rounded-full overflow-hidden">
-          <div className={`h-full rounded-full transition-all ${color}`} style={{ width: `${load}%` }} />
-        </div>
-      </div>
     </div>
   );
 }
@@ -228,6 +179,43 @@ function AlertCard({ d, laneActivated, setLaneActivated, broadcastSent, setBroad
         {broadcastSent ? "Broadcast Sent ✓" : "Broadcast to Drivers"}
       </button>
     </div>
+  );
+}
+
+// ── AI Situation Brief ─────────────────────────────────────────────────────
+
+function AISituationBrief({ d }) {
+  const sim = d.impactSimulation;
+  const terminalLabel = d.title || d.code;
+  const guardrailMin = 15;
+
+  return (
+    <section className="rounded-2xl border border-[#154aa8]/15 bg-[#e8f0fe] px-4 py-3 shadow-sm">
+      <div className="flex items-start gap-3">
+        <div className="mt-0.5 flex h-8 w-8 shrink-0 items-center justify-center rounded-xl bg-white text-[#154aa8] shadow-sm">
+          <span className="material-symbols-outlined leading-none" style={{ fontSize: "18px" }}>auto_awesome</span>
+        </div>
+        <div className="min-w-0 flex-1">
+          <div className="mb-2 flex items-center gap-2">
+            <p className="text-xs font-black uppercase tracking-widest text-[#154aa8]">AI Situation Brief</p>
+            <span className="rounded-full bg-white/75 px-2 py-0.5 text-[10px] font-bold text-slate-500">
+              Mock advisory
+            </span>
+          </div>
+          <div className="grid gap-2 text-sm leading-snug text-slate-700 lg:grid-cols-[1.1fr_0.9fr_0.9fr]">
+            <p>
+              <span className="font-bold text-slate-900">{terminalLabel}</span> {terminalLabel === "All terminals" ? "are" : "is"} entering a queue pressure window. PWT is <span className="font-bold">{d.pwt} min</span>, above the <span className="font-bold">{guardrailMin}-min guardrail</span>, with <span className="font-bold">{d.waitingPassengers.toLocaleString()}</span> waiting passengers and <span className="font-bold">{d.laneLoad}%</span> lane load.
+            </p>
+            <p>
+              <span className="font-black text-[#154aa8]">Recommended next action:</span> Activate Overflow Lane and broadcast to drivers with a 6-minute head start.
+            </p>
+            <p>
+              <span className="font-bold text-slate-900">Expected impact:</span> PWT improves from <span className="font-bold">{sim.currentPwt}</span> → <span className="font-bold">{sim.projectedPwt} min</span>; projected deficit drops from <span className="font-bold">{sim.currentDeficit}%</span> → <span className="font-bold">{sim.projectedDeficit}%</span>.
+            </p>
+          </div>
+        </div>
+      </div>
+    </section>
   );
 }
 
@@ -753,6 +741,201 @@ function StickyActionBar({ terminal, d, laneActivated, setLaneActivated, broadca
   );
 }
 
+function DemoAssignmentStatus() {
+  const { activeTrip, resetMatch } = useDemoMatching();
+
+  if (activeTrip.status === "idle") return null;
+
+  return (
+    <div className="flex flex-wrap items-center justify-between gap-3 rounded-2xl border border-emerald-200 bg-emerald-50 px-4 py-3">
+      <div className="flex items-center gap-2">
+        <span className="material-symbols-outlined text-brand leading-none" style={{ fontSize: "18px" }}>hub</span>
+        <p className="text-sm font-bold text-slate-900">
+          Assigned: {activeTrip.passengerId} → {activeTrip.driverId} · ETA {activeTrip.etaMin} min
+        </p>
+        <span className="rounded-full bg-white/80 px-2 py-0.5 text-[10px] font-black uppercase text-brand">
+          {activeTrip.status}
+        </span>
+      </div>
+      <button
+        onClick={resetMatch}
+        className="rounded-lg border border-brand/20 bg-white px-2.5 py-1.5 text-xs font-bold text-brand hover:bg-white/70 transition-colors"
+      >
+        Reset demo
+      </button>
+    </div>
+  );
+}
+
+// ── Passenger–Driver Matching Simulation ───────────────────────────────────
+
+const SECONDARY_MATCHING_PASSENGERS = [
+  { id: "P002", waitMin: 12, partySize: 2, bags: 1, flight: "TG401", priorityScore: 78 },
+  { id: "P003", waitMin: 7, partySize: 1, bags: 2, flight: "QR833", priorityScore: 64 },
+];
+
+const SECONDARY_MATCHING_DRIVERS = [
+  { id: "D118", vehicle: "Sedan", etaMin: 6, acceptanceRate: 88, capacityFit: "2 pax / 2 bags", score: 81 },
+  { id: "D124", vehicle: "Taxi", etaMin: 8, acceptanceRate: 91, capacityFit: "4 pax / 2 bags", score: 73 },
+];
+
+function MatchingSimulation({ d }) {
+  const { activeTrip, assignMatch, resetMatch } = useDemoMatching();
+  const isCritical = d.pwt > 15;
+  const mode = isCritical ? "Critical Matching" : "Normal Matching";
+  const modeTone = isCritical
+    ? "bg-red-50 text-red-700 border-red-200"
+    : "bg-emerald-50 text-brand border-brand/20";
+  const reason = isCritical
+    ? `PWT ${d.pwt} min exceeds 15-min SLA, prioritizing long-waiting passengers.`
+    : `PWT ${d.pwt} min is within 15-min SLA, using first-come matching with capacity fit.`;
+  const bestPassenger = {
+    id: activeTrip.passengerId,
+    waitMin: 18,
+    partySize: activeTrip.passengerCount,
+    bags: activeTrip.luggageCount,
+    flight: activeTrip.flightCode,
+    priorityScore: 96,
+  };
+  const bestDriver = {
+    id: activeTrip.driverId,
+    vehicle: activeTrip.vehicleType,
+    etaMin: activeTrip.etaMin,
+    acceptanceRate: 94,
+    capacityFit: `${activeTrip.passengerCount} pax / ${activeTrip.luggageCount} bags`,
+    score: 92,
+  };
+  const matchingPassengers = [bestPassenger, ...SECONDARY_MATCHING_PASSENGERS];
+  const matchingDrivers = [bestDriver, ...SECONDARY_MATCHING_DRIVERS];
+
+  return (
+    <section>
+      <SectionHeading eyebrow="Dispatch Intelligence" title="Passenger–Driver Matching Simulation" />
+      <div className="mb-4 flex flex-wrap items-center justify-between gap-3 rounded-2xl border border-slate-200 bg-white px-4 py-3 shadow-sm">
+        <div>
+          <p className="text-sm font-bold text-slate-900">
+            {activeTrip.status === "idle"
+              ? "No active demo assignment"
+              : `Assigned: ${activeTrip.passengerId} → ${activeTrip.driverId} · ETA ${activeTrip.etaMin} min`}
+          </p>
+          <p className="text-xs text-muted mt-0.5">Local demo state persists across OPS, Driver, and Passenger tabs.</p>
+        </div>
+        <div className="flex items-center gap-2">
+          <button
+            onClick={() => assignMatch()}
+            className="rounded-xl bg-[#154aa8] px-3 py-2 text-xs font-bold text-white shadow-sm transition-colors hover:bg-[#0f2f68] active:scale-95"
+          >
+            Run Matching
+          </button>
+          <button
+            onClick={resetMatch}
+            className="rounded-xl border border-slate-200 bg-white px-3 py-2 text-xs font-bold text-slate-500 transition-colors hover:border-slate-300 hover:text-slate-700 active:scale-95"
+          >
+            Reset demo
+          </button>
+        </div>
+      </div>
+      <div className="grid grid-cols-1 xl:grid-cols-[0.85fr_1fr_1fr] gap-4">
+        <div className="bg-white rounded-2xl border border-slate-100 shadow-sm overflow-hidden">
+          <div className={`h-0.5 ${isCritical ? "bg-danger" : "bg-brand"}`} />
+          <div className="p-5 flex flex-col gap-4">
+            <div>
+              <Eyebrow>Matching Mode</Eyebrow>
+              <div className="mt-2 flex flex-wrap items-center gap-2">
+                <span className={`rounded-full border px-3 py-1 text-xs font-black ${modeTone}`}>
+                  {mode}
+                </span>
+                <span className="text-xs text-muted">{d.title}</span>
+              </div>
+              <p className="mt-3 text-sm leading-relaxed text-slate-600">{reason}</p>
+            </div>
+            <div className="rounded-xl border border-slate-200 bg-slate-50 px-4 py-3">
+              <p className="text-xs font-bold uppercase tracking-widest text-slate-400">Mode logic</p>
+              <p className="mt-1 text-sm text-slate-700">
+                <span className="font-bold text-slate-900">Critical:</span> Priority + ETA + Acceptance + Capacity Fit
+              </p>
+              <p className="mt-1 text-sm text-slate-700">
+                <span className="font-bold text-slate-900">Normal:</span> First-Come, First-Served + Capacity Fit
+              </p>
+            </div>
+            <div className="rounded-xl border border-emerald-200 bg-emerald-50 px-4 py-3">
+              <p className="text-xs font-bold uppercase tracking-widest text-emerald-700">Best Match</p>
+              <p className="mt-1 text-lg font-black text-slate-900">{bestPassenger.id} → {bestDriver.id}</p>
+              <div className="mt-2 grid grid-cols-3 gap-2 text-xs">
+                <div>
+                  <p className="text-muted">ETA</p>
+                  <p className="font-bold text-slate-900">{bestDriver.etaMin} min</p>
+                </div>
+                <div>
+                  <p className="text-muted">Vehicle</p>
+                  <p className="font-bold text-slate-900">{bestDriver.vehicle}</p>
+                </div>
+                <div>
+                  <p className="text-muted">Score</p>
+                  <p className="font-bold text-brand">{bestDriver.score}</p>
+                </div>
+              </div>
+              <p className="mt-3 text-xs leading-relaxed text-slate-600">
+                {activeTrip.matchingReason}
+              </p>
+            </div>
+          </div>
+        </div>
+
+        <div className="bg-white rounded-2xl border border-slate-100 shadow-sm p-5">
+          <div className="mb-3 flex items-center justify-between">
+            <Eyebrow>Passenger Queue</Eyebrow>
+            <span className="rounded-full bg-slate-100 px-2 py-0.5 text-xs text-muted">{matchingPassengers.length}</span>
+          </div>
+          <div className="flex flex-col divide-y divide-slate-100">
+            {matchingPassengers.map((passenger) => (
+              <div key={passenger.id} className="grid grid-cols-[auto_1fr_auto] gap-3 py-3 first:pt-0 last:pb-0">
+                <div className="flex h-9 w-9 items-center justify-center rounded-xl bg-[#154aa8]/8 text-xs font-black text-[#154aa8]">
+                  {passenger.id}
+                </div>
+                <div className="min-w-0">
+                  <p className="text-sm font-bold text-slate-900">{passenger.waitMin} min wait · {passenger.partySize} pax / {passenger.bags} bags</p>
+                  <p className="text-xs text-muted mt-0.5">Flight {passenger.flight}</p>
+                </div>
+                <div className="text-right">
+                  <p className="text-xs text-muted">Priority</p>
+                  <p className={`text-sm font-black ${passenger.priorityScore >= 90 ? "text-danger" : "text-slate-700"}`}>
+                    {passenger.priorityScore}
+                  </p>
+                </div>
+              </div>
+            ))}
+          </div>
+        </div>
+
+        <div className="bg-white rounded-2xl border border-slate-100 shadow-sm p-5">
+          <div className="mb-3 flex items-center justify-between">
+            <Eyebrow>Driver Pool</Eyebrow>
+            <span className="rounded-full bg-slate-100 px-2 py-0.5 text-xs text-muted">{matchingDrivers.length}</span>
+          </div>
+          <div className="flex flex-col divide-y divide-slate-100">
+            {matchingDrivers.map((driver) => (
+              <div key={driver.id} className="grid grid-cols-[auto_1fr_auto] gap-3 py-3 first:pt-0 last:pb-0">
+                <div className="flex h-9 w-9 items-center justify-center rounded-xl bg-emerald-50 text-xs font-black text-brand">
+                  {driver.id}
+                </div>
+                <div className="min-w-0">
+                  <p className="text-sm font-bold text-slate-900">{driver.vehicle} · ETA {driver.etaMin} min</p>
+                  <p className="text-xs text-muted mt-0.5">{driver.acceptanceRate}% accept · fits {driver.capacityFit}</p>
+                </div>
+                <div className="text-right">
+                  <p className="text-xs text-muted">Score</p>
+                  <p className="text-sm font-black text-brand">{driver.score}</p>
+                </div>
+              </div>
+            ))}
+          </div>
+        </div>
+      </div>
+    </section>
+  );
+}
+
 function CommandCenter({ d, laneActivated, setLaneActivated, broadcastSent, setBroadcastSent }) {
   return (
     <section className="grid grid-cols-1 lg:grid-cols-[minmax(0,1fr)_360px] gap-5 items-stretch">
@@ -821,6 +1004,9 @@ function LiveMonitoring({ d, terminal, laneActivated, setLaneActivated, broadcas
         broadcastSent={broadcastSent} setBroadcastSent={setBroadcastSent}
       />
 
+      <AISituationBrief d={d} />
+      <DemoAssignmentStatus />
+
       {/* Command Center */}
       <CommandCenter
         d={d}
@@ -845,9 +1031,6 @@ function LiveMonitoring({ d, terminal, laneActivated, setLaneActivated, broadcas
         broadcastSent={broadcastSent} setBroadcastSent={setBroadcastSent}
         lane2Active={lane2Active} setLane2Active={setLane2Active}
       />
-
-      {/* ML Prediction Details */}
-      <MLPredictionCard terminal={terminal} />
     </div>
   );
 }
@@ -860,12 +1043,10 @@ const DEFAULT_AI_MSG = {
 };
 
 const QUICK_PROMPTS = [
-  "What is causing the projected deficit?",
-  "Should we activate overflow capacity now?",
-  "Summarize Terminal 1 status",
-  "What should ops do in the next 15 minutes?",
-  "Explain the arrival wave risk",
-  "Are drivers sufficient for current demand?",
+  { label: "Why is PWT high?", text: "What is causing the projected deficit?" },
+  { label: "What should we do next?", text: "What should ops do in the next 15 minutes?" },
+  { label: "Are drivers sufficient?", text: "Are drivers sufficient for current demand?" },
+  { label: "Explain arrival wave risk", text: "Explain the arrival wave risk" },
 ];
 
 function AIAdvisoryWorkspace({ d }) {
@@ -888,94 +1069,114 @@ function AIAdvisoryWorkspace({ d }) {
     }, 800);
   }
 
+  const latestAssistant = [...history].reverse().find((msg) => msg.role === "assistant");
+
   return (
-    <div className="flex flex-col gap-6">
-      {/* Context Strip */}
-      <div className="bg-white shadow-sm border border-slate-100 rounded-2xl overflow-hidden">
-        <div className="h-0.5 bg-ops" />
-        <div className="p-5">
-          <Eyebrow>Advisory context</Eyebrow>
-          <p className="text-xs text-muted mt-0.5 mb-4">Live OPS context used by the assistant</p>
-          <div className="grid grid-cols-2 md:grid-cols-5 gap-4">
-            {[
-              ["Current terminal", d.title],
-              ["PWT", `${d.pwt} min`],
-              ["Projected deficit", `${d.projectedDeficit}%`],
-              ["Waiting pax", String(d.waitingPassengers)],
-              ["Holding taxis", String(d.holdingTaxis)],
-            ].map(([label, value]) => (
-              <div key={label} className="bg-slate-50 rounded-xl p-3">
-                <Eyebrow>{label}</Eyebrow>
-                <p className="text-lg font-bold text-slate-900 mt-0.5">{value}</p>
-              </div>
+    <div className="grid grid-cols-1 xl:grid-cols-[minmax(0,0.8fr)_minmax(420px,1.2fr)] gap-5 items-start">
+      <section className="flex flex-col gap-4">
+        <div className="bg-white rounded-2xl border border-slate-100 shadow-sm overflow-hidden">
+          <div className="h-0.5 bg-[#154aa8]" />
+          <div className="p-5">
+            <Eyebrow>Advisory context</Eyebrow>
+            <h2 className="text-xl font-bold text-slate-900 mt-0.5">Current terminal context</h2>
+            <p className="text-sm text-muted mt-1">The assistant answers from the active terminal snapshot and existing mock advisory rules.</p>
+            <div className="grid grid-cols-2 gap-3 mt-4">
+              {[
+                ["Terminal", d.title],
+                ["PWT", `${d.pwt} min`],
+                ["Projected deficit", `${d.projectedDeficit}%`],
+                ["Waiting pax", d.waitingPassengers.toLocaleString()],
+                ["Holding taxis", String(d.holdingTaxis)],
+                ["Lane load", `${d.laneLoad}%`],
+              ].map(([label, value]) => (
+                <div key={label} className="rounded-xl bg-slate-50 border border-slate-100 px-3 py-2.5">
+                  <p className="text-[10px] text-slate-400 uppercase tracking-widest font-bold">{label}</p>
+                  <p className="text-base font-black text-slate-900 mt-0.5">{value}</p>
+                </div>
+              ))}
+            </div>
+          </div>
+        </div>
+
+        <div className="bg-[#e8f0fe] rounded-2xl border border-[#154aa8]/15 p-5">
+          <div className="flex items-center gap-2 mb-3">
+            <span className="material-symbols-outlined text-[#154aa8] leading-none" style={{ fontSize: "18px" }}>auto_awesome</span>
+            <p className="text-sm font-black text-[#154aa8]">Suggested questions</p>
+          </div>
+          <div className="flex flex-col gap-2">
+            {QUICK_PROMPTS.map((prompt) => (
+              <button
+                key={prompt.label}
+                onClick={() => handleSend(prompt.text)}
+                className="text-left rounded-xl border border-white/70 bg-white/70 px-3 py-2.5 text-sm font-semibold text-slate-700 hover:border-[#154aa8]/30 hover:text-[#154aa8] transition-colors"
+              >
+                {prompt.label}
+              </button>
             ))}
           </div>
         </div>
-      </div>
+      </section>
 
-      {/* Quick Prompts */}
-      <div className="bg-white shadow-sm border border-slate-100 rounded-2xl p-5">
-        <Eyebrow>Quick prompts</Eyebrow>
-        <div className="grid grid-cols-1 md:grid-cols-3 gap-2 mt-3">
-          {QUICK_PROMPTS.map((prompt) => (
+      <section className="bg-white rounded-2xl border border-slate-100 shadow-sm overflow-hidden">
+        <div className="h-0.5 bg-[#154aa8]" />
+        <div className="p-5 flex flex-col gap-4">
+          <div className="flex items-start justify-between gap-3">
+            <div>
+              <div className="flex items-center gap-2">
+                <span className="material-symbols-outlined text-[#154aa8] leading-none" style={{ fontSize: "18px" }}>support_agent</span>
+                <h2 className="text-xl font-bold text-slate-900">AI Advisory</h2>
+              </div>
+              <p className="text-sm text-muted mt-1">Ask about deficits, arrival waves, driver supply, and next actions.</p>
+            </div>
+            <span className="rounded-full bg-[#154aa8]/8 px-2.5 py-1 text-xs font-bold text-[#154aa8]">
+              Mock
+            </span>
+          </div>
+
+          <div className="rounded-2xl bg-slate-50 border border-slate-100 p-4 min-h-[180px] max-h-[360px] overflow-y-auto">
+            {loading && (
+              <p className="text-sm text-muted animate-pulse">Generating advisory...</p>
+            )}
+            {!loading && latestAssistant && (
+              <p className="text-sm leading-relaxed text-slate-700">{latestAssistant.text}</p>
+            )}
+          </div>
+
+          <div className="flex gap-2">
+            <input
+              type="text"
+              value={input}
+              onChange={(e) => setInput(e.target.value)}
+              onKeyDown={(e) => e.key === "Enter" && handleSend(input)}
+              placeholder="Ask the AI advisory..."
+              className="min-w-0 flex-1 rounded-xl border border-slate-200 bg-slate-50 px-4 py-3 text-sm text-slate-900 placeholder:text-slate-400 focus:outline-none focus:border-[#154aa8] focus:bg-white focus:ring-2 focus:ring-[#154aa8]/10 transition-all"
+            />
             <button
-              key={prompt}
-              onClick={() => handleSend(prompt)}
-              className="text-left text-sm text-slate-600 px-4 py-3 rounded-xl border border-slate-200 bg-slate-50 hover:border-brand/40 hover:text-slate-900 hover:bg-brand/5 transition-all leading-snug"
+              onClick={() => handleSend(input)}
+              disabled={!input.trim()}
+              className="rounded-xl bg-[#154aa8] px-5 py-3 text-sm font-bold text-white shadow-sm transition-colors hover:bg-[#0f2f68] disabled:opacity-40"
             >
-              {prompt}
+              Send
             </button>
-          ))}
+          </div>
         </div>
-      </div>
+      </section>
+    </div>
+  );
+}
 
-      {/* Chat */}
-      <div className="bg-white shadow-sm border border-slate-100 rounded-2xl p-5 flex flex-col gap-4">
-        <Eyebrow>Advisory chat</Eyebrow>
-        <div className="flex flex-col gap-3 max-h-80 overflow-y-auto pr-1">
-          {history.map((msg, i) => (
-            <div key={i} className={`flex gap-2 ${msg.role === "user" ? "flex-row-reverse" : ""}`}>
-              <div className={`w-7 h-7 rounded-full flex items-center justify-center text-xs font-bold shrink-0 ${
-                msg.role === "assistant" ? "bg-ops text-white" : "bg-brand text-white"
-              }`}>
-                {msg.role === "assistant" ? "AI" : "You"}
-              </div>
-              <div className={`max-w-[80%] rounded-2xl px-4 py-2.5 text-sm leading-relaxed ${
-                msg.role === "assistant"
-                  ? "bg-slate-100 text-slate-700"
-                  : "bg-brand/15 text-brand-deep font-medium"
-              }`}>
-                {msg.text}
-              </div>
-            </div>
-          ))}
-          {loading && (
-            <div className="flex gap-2">
-              <div className="w-7 h-7 rounded-full bg-ops text-white flex items-center justify-center text-xs font-bold">AI</div>
-              <div className="bg-slate-100 rounded-2xl px-4 py-2.5 text-muted text-sm animate-pulse">
-                Generating advisory...
-              </div>
-            </div>
-          )}
-        </div>
-        <div className="flex gap-2 mt-1">
-          <input
-            type="text"
-            value={input}
-            onChange={(e) => setInput(e.target.value)}
-            onKeyDown={(e) => e.key === "Enter" && handleSend(input)}
-            placeholder="Ask about deficits, arrivals, supply, or the next actions"
-            className="flex-1 bg-slate-50 border border-slate-200 rounded-xl px-4 py-2.5 text-sm text-slate-900 placeholder:text-slate-400 focus:outline-none focus:border-brand focus:bg-white focus:ring-2 focus:ring-brand/10 transition-all"
-          />
-          <button
-            onClick={() => handleSend(input)}
-            disabled={!input.trim()}
-            className="px-5 py-2.5 rounded-xl bg-brand text-white text-sm font-semibold disabled:opacity-40 hover:bg-brand-deep transition-colors shadow-sm"
-          >
-            Send
-          </button>
-        </div>
+function SystemIntelligenceWorkspace({ d, terminal }) {
+  return (
+    <div className="flex flex-col gap-5">
+      <div className="rounded-2xl border border-slate-100 bg-white p-5 shadow-sm">
+        <Eyebrow>System Intelligence</Eyebrow>
+        <h2 className="text-xl font-bold text-slate-900 mt-0.5">Technical explainability and demo evidence</h2>
+        <p className="text-sm text-muted mt-1 max-w-3xl">
+          This workspace explains why Hello Ride recommends actions: passenger-driver matching evidence, dispatch mode logic, and model interpretation.
+        </p>
       </div>
+      <MatchingSimulation d={d} />
+      <MLPredictionCard terminal={terminal} />
     </div>
   );
 }
@@ -1079,6 +1280,7 @@ function OPSLoginScreen({ onLogin }) {
 // ── Main OPS Dashboard ─────────────────────────────────────────────────────
 
 export default function OPSDashboard() {
+  const { assignMatch } = useDemoMatching();
   const [opsLoggedIn, setOpsLoggedIn] = useState(getStoredOpsAuth);
   const [terminal, setTerminal] = useState("T1");
   const [workspace, setWorkspace] = useState("monitoring");
@@ -1091,6 +1293,11 @@ export default function OPSDashboard() {
     setOpsLoggedIn(false);
   }
 
+  function handleActivateOverflow() {
+    setLaneActivated(true);
+    assignMatch();
+  }
+
   if (!opsLoggedIn) {
     return <OPSLoginScreen onLogin={() => setOpsLoggedIn(true)} />;
   }
@@ -1101,7 +1308,9 @@ export default function OPSDashboard() {
   const workspaceOptions = [
     { id: "monitoring", label: "Live Monitoring" },
     { id: "advisory", label: "AI Advisory" },
+    { id: "intelligence", label: "System Intelligence" },
   ];
+  const workspaceTitle = workspaceOptions.find((item) => item.id === workspace)?.label ?? "Live Monitoring";
 
   return (
     <div className="flex h-[calc(100vh-56px)] bg-[#f5f8fb]">
@@ -1155,7 +1364,7 @@ export default function OPSDashboard() {
                   Live · Last updated 14:35
                 </span>
               </div>
-              <p className="text-xs text-muted mt-1">{d.title} · {workspace === "advisory" ? "AI Advisory" : "Live Monitoring"}</p>
+              <p className="text-xs text-muted mt-1">{d.title} · {workspaceTitle}</p>
             </div>
             <button
               onClick={handleSignOut}
@@ -1169,12 +1378,13 @@ export default function OPSDashboard() {
             <LiveMonitoring
               d={d}
               terminal={terminal}
-              laneActivated={laneActivated} setLaneActivated={setLaneActivated}
+              laneActivated={laneActivated} setLaneActivated={handleActivateOverflow}
               broadcastSent={broadcastSent} setBroadcastSent={setBroadcastSent}
               lane2Active={lane2Active} setLane2Active={setLane2Active}
             />
           )}
           {workspace === "advisory" && <AIAdvisoryWorkspace d={d} />}
+          {workspace === "intelligence" && <SystemIntelligenceWorkspace d={d} terminal={terminal} />}
         </div>
       </main>
     </div>

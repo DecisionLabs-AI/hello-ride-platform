@@ -1,12 +1,12 @@
 @import "tailwindcss";
 
 @theme {
-  --color-brand: #006e2e;
-  --color-brand-mid: #00b14f;
-  --color-brand-deep: #0c7d35;
+  --color-brand: #154aa8;
+  --color-brand-mid: #00a36c;
+  --color-brand-deep: #0f2f68;
   --color-ops: #154aa8;
   --color-danger: #dc2626;
-  --color-surface: #fcf9f8;
+  --color-surface: #f5f8fb;
   --color-card: #ffffff;
   --color-muted: #64748b;
   --font-headline: 'Manrope', sans-serif;
