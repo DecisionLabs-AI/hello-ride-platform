@@ -511,82 +511,50 @@ function JobOfferHome({ activeTrip, onAccept, onReject }) {
 
 function NavigationHome({ activeTrip, onArrived }) {
   return (
-    <div className="-mx-5 -mb-4 -mt-4 flex min-h-[calc(100vh-164px)] flex-col">
-
-      {/* ── Airport schematic map ── */}
-      <div className="relative overflow-hidden" style={{ height: "232px" }}>
-        <svg
-          className="absolute inset-0 w-full h-full"
-          viewBox="0 0 390 232"
-          preserveAspectRatio="xMidYMid slice"
-          aria-hidden="true"
-        >
-          <defs>
-            <pattern id="nav-grid" width="36" height="36" patternUnits="userSpaceOnUse">
-              <path d="M 36 0 L 0 0 0 36" fill="none" stroke="#d8e1ea" strokeWidth="0.5" />
-            </pattern>
-          </defs>
-
-          {/* Base layer */}
-          <rect width="390" height="232" fill="#edf1f5" />
-          <rect width="390" height="232" fill="url(#nav-grid)" />
-
-          {/* Main approach road */}
-          <rect x="0" y="180" width="390" height="24" fill="#e2e8ef" />
-          <line x1="0" y1="192" x2="390" y2="192" stroke="white" strokeWidth="1" strokeDasharray="22 14" opacity="0.7" />
-
-          {/* Terminal access road (vertical) */}
-          <rect x="137" y="97" width="26" height="83" fill="#e2e8ef" />
-
-          {/* Terminal 1 building block */}
-          <rect x="22" y="18" width="258" height="54" rx="5" fill="white" stroke="#cdd5de" strokeWidth="1" />
-          <text x="151" y="44" textAnchor="middle" fontSize="9" fill="#90a0b0" fontFamily="system-ui,sans-serif" fontWeight="700" letterSpacing="2">TERMINAL 1</text>
-          <text x="151" y="60" textAnchor="middle" fontSize="8" fill="#b8c8d4" fontFamily="system-ui,sans-serif">Suvarnabhumi Airport · BKK</text>
-
-          {/* Pickup zone strip */}
-          <rect x="88" y="77" width="126" height="20" rx="3" fill="#dbeafe" stroke="#93c5fd" strokeWidth="0.75" />
-          <text x="151" y="91" textAnchor="middle" fontSize="8" fill="#3b82f6" fontFamily="system-ui,sans-serif" fontWeight="600" letterSpacing="0.5">PICKUP ZONE</text>
-
-          {/* Route: driver position → left along road → up access road → pickup zone */}
+    <div className="-mx-5 -mb-4 -mt-4 flex min-h-[calc(100vh-164px)] flex-col bg-[#edf3f7]">
+      <div className="relative h-[300px] overflow-hidden bg-[#e7efed]">
+        <div className="absolute inset-0 bg-[radial-gradient(circle_at_18%_20%,rgba(0,177,79,0.12),transparent_28%),radial-gradient(circle_at_82%_18%,rgba(21,74,168,0.10),transparent_30%),linear-gradient(135deg,#edf4f2_0%,#e7eef4_100%)]" />
+        <div className="absolute -left-12 top-16 h-20 w-[520px] rotate-[-18deg] rounded-full bg-white/85 shadow-sm" />
+        <div className="absolute left-2 top-[156px] h-16 w-[460px] rotate-[14deg] rounded-full bg-white/85 shadow-sm" />
+        <div className="absolute left-32 -top-14 h-[390px] w-16 rotate-[8deg] rounded-full bg-white/80 shadow-sm" />
+        <div className="absolute right-[-72px] top-36 h-20 w-[360px] rotate-[-32deg] rounded-full bg-white/65 shadow-sm" />
+        <svg className="absolute inset-0 h-full w-full" viewBox="0 0 390 300" aria-hidden="true">
           <path
-            d="M 298 192 L 150 192 L 150 97"
+            d="M 88 224 C 124 188, 132 145, 180 132 S 250 116, 286 72"
             fill="none"
-            stroke="#93c5fd"
-            strokeWidth="3"
-            strokeDasharray="6 5"
+            stroke="#154aa8"
+            strokeWidth="13"
             strokeLinecap="round"
-            strokeLinejoin="round"
+            opacity="0.14"
           />
-
-          {/* Driver position dot */}
-          <circle cx="298" cy="192" r="9" fill="#154aa8" />
-          <circle cx="298" cy="192" r="15" fill="none" stroke="#154aa8" strokeWidth="1.5" opacity="0.18" />
-          <text x="298" y="196" textAnchor="middle" fontSize="9" fill="white" fontFamily="system-ui,sans-serif" fontWeight="bold">▲</text>
-
-          {/* Destination pin at pickup zone */}
-          <circle cx="150" cy="88" r="6" fill="white" stroke="#154aa8" strokeWidth="2" />
-          <circle cx="150" cy="88" r="2.5" fill="#154aa8" />
+          <path
+            d="M 88 224 C 124 188, 132 145, 180 132 S 250 116, 286 72"
+            fill="none"
+            stroke="#154aa8"
+            strokeWidth="5"
+            strokeLinecap="round"
+          />
         </svg>
-
-        {/* ETA pill — compact two-line overlay */}
-        <div className="absolute top-3 left-3 rounded-xl bg-white/97 px-3.5 py-2.5 shadow-md border border-slate-200/60 backdrop-blur-sm">
-          <p className="text-sm font-black text-slate-900 leading-none">{activeTrip.etaMin} min · 200 m</p>
-          <p className="mt-1 text-xs text-slate-500 leading-none">to {activeTrip.pickupGate}</p>
+        <div className="absolute left-[68px] top-[204px] flex h-11 w-11 items-center justify-center rounded-full bg-brand text-white shadow-lg ring-4 ring-white">
+          <span className="material-symbols-outlined text-[24px]">navigation</span>
+        </div>
+        <div className="absolute right-[76px] top-[46px] flex h-12 w-12 items-center justify-center rounded-full bg-danger text-white shadow-lg ring-4 ring-white">
+          <span className="material-symbols-outlined text-[25px]">location_on</span>
+        </div>
+        <div className="absolute left-5 top-5 rounded-2xl border border-slate-200/70 bg-white/95 px-4 py-3 shadow-lg backdrop-blur">
+          <p className="text-sm font-black leading-none text-slate-900">{activeTrip.etaMin} min · 200 m to pickup</p>
+          <p className="mt-1 text-xs leading-none text-slate-500">{activeTrip.pickupGate}</p>
         </div>
       </div>
 
-      {/* ── Bottom sheet ── */}
-      <div className="relative -mt-5 flex-1 rounded-t-[2rem] bg-white px-5 pb-6 pt-4 shadow-[0_-10px_28px_rgba(15,35,68,0.10)]">
-        <div className="mx-auto mb-3 h-1 w-10 rounded-full bg-slate-200" />
+      <div className="relative -mt-7 flex-1 rounded-t-[2rem] bg-white px-5 pb-6 pt-5 shadow-[0_-18px_42px_rgba(15,35,68,0.16)]">
+        <div className="mx-auto mb-4 h-1 w-10 rounded-full bg-slate-200" />
 
-        <div className="flex items-center gap-2 mb-2.5">
-          <div className="w-1.5 h-1.5 rounded-full bg-brand-mid" />
-          <p className="text-xs font-extrabold uppercase tracking-widest text-brand">En route to pickup</p>
-        </div>
-        <h2 className="text-xl font-black text-slate-900 leading-snug">Head to pickup zone</h2>
+        <p className="text-xs font-black uppercase tracking-widest text-brand">Navigation</p>
+        <h2 className="mt-1 text-2xl font-black leading-snug text-slate-900">Head to pickup zone</h2>
+        <p className="mt-1 text-sm text-muted">{activeTrip.etaMin} min to {activeTrip.pickupGate}</p>
 
-        {/* Compact route card */}
-        <div className="mt-3 rounded-2xl border border-slate-100 bg-slate-50/80 p-4">
+        <div className="mt-4 rounded-2xl border border-slate-100 bg-slate-50 p-4">
           <div className="flex gap-3">
             <div className="flex flex-col items-center pt-1">
               <div className="w-2.5 h-2.5 rounded-full border-2 border-brand flex-shrink-0" />
@@ -597,6 +565,7 @@ function NavigationHome({ activeTrip, onArrived }) {
               <div>
                 <p className="text-[10px] font-bold text-muted uppercase tracking-wider">Pickup</p>
                 <p className="text-sm font-bold text-slate-900 mt-0.5">{activeTrip.pickupGate}</p>
+                <p className="mt-0.5 text-xs leading-relaxed text-muted">{activeTrip.pickupAddress}</p>
               </div>
               <div>
                 <p className="text-[10px] font-bold text-muted uppercase tracking-wider">Destination</p>
@@ -606,7 +575,6 @@ function NavigationHome({ activeTrip, onArrived }) {
           </div>
         </div>
 
-        {/* Passenger strip */}
         <div className="mt-2.5 flex items-center gap-3 rounded-2xl border border-slate-100 bg-white px-4 py-3 shadow-sm">
           <div className="w-8 h-8 rounded-full bg-slate-100 flex items-center justify-center flex-shrink-0">
             <span className="material-symbols-outlined text-slate-400 text-[18px]" style={{ fontVariationSettings: "'FILL' 1" }}>person</span>
@@ -617,7 +585,6 @@ function NavigationHome({ activeTrip, onArrived }) {
           </div>
         </div>
 
-        {/* Message / Call */}
         <div className="mt-2.5 grid grid-cols-2 gap-2.5">
           <button className="flex items-center justify-center gap-1.5 rounded-2xl border border-slate-200 bg-white py-3 text-sm font-semibold text-slate-600 hover:bg-slate-50 transition-colors">
             <span className="material-symbols-outlined text-[17px]">chat</span>
