@@ -1,6 +1,11 @@
 import { useState, useRef, useEffect } from "react";
+import { matchProtocol } from "../../lib/protocolMatcher.js";
+
+const ESCALATION_STORAGE_KEY = "helloride_activeEscalation";
 
 const CHIPS = [
+  { label: "🚨 ขอความช่วยเหลือด่วน", text: "ช่วยด้วย" },
+  { label: "🤒 ผู้โดยสารไม่สบาย", text: "ป่วย" },
   { label: "Pickup point",       text: "Where is my pickup zone?" },
   { label: "Luggage support",    text: "I have large luggage" },
   { label: "Special assistance", text: "I need special assistance" },
@@ -8,7 +13,30 @@ const CHIPS = [
   { label: "Contact staff",      text: "How do I contact airport staff?" },
 ];
 
+function createPassengerEscalation(protocol, message) {
+  const escalation = {
+    id: `ESC-${Date.now()}`,
+    protocolId: protocol.id,
+    protocolName: protocol.name,
+    severity: protocol.severity,
+    sourceRole: "Passenger Support Chat",
+    message,
+    recommendedAction: protocol.recommendedAction,
+    opsAction: protocol.opsAction,
+    status: "open",
+    createdAt: new Date().toISOString(),
+  };
+  window.localStorage.setItem(ESCALATION_STORAGE_KEY, JSON.stringify(escalation));
+}
+
 function getBotResponse(msg) {
+  const protocol = matchProtocol(msg);
+  if (protocol) {
+    createPassengerEscalation(protocol, msg);
+    const urgency = protocol.severity === "HIGH" ? "เร่งด่วน" : "ปกติ";
+    return `รับทราบแล้ว · กำลังแจ้งเจ้าหน้าที่ · โปรดรอสักครู่ · ระดับ${urgency}`;
+  }
+
   const m = msg.toLowerCase();
   if (m.includes("pickup") || m.includes("zone"))
     return "Your pickup point is Pickup Zone C2 at Suvarnabhumi Airport, Terminal 1. Follow the taxi pickup signs after baggage claim.";

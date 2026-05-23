@@ -1,28 +1,41 @@
 import { useState, useEffect } from "react";
 import { DRIVER, DEFAULT_CREDENTIALS } from "../data/mockDriver.js";
+import { demandChartData, kpiSummary } from "../data/index.js";
 import { HelloRideWordmark, MobileScrollArea, MobileShell } from "../components/shared/MobileShell.jsx";
 import { useDemoMatching } from "../context/useDemoMatching.js";
+import { OPS_ACTION, canRecommendIncentive, getPwtSeverity } from "../lib/businessLogic.js";
+import { useLanguage } from "../context/useLanguage.js";
 
 const D = DRIVER;
+
+const FORECAST_HOURS = new Set([14, 16, 18, 20, 22, 0]);
+const forecastBars = demandChartData
+  .filter((item) => FORECAST_HOURS.has(item.hour))
+  .map((item) => ({
+    time: item.label,
+    height: Math.min(Math.round((item.confirmedQR / 70) * 100), 100),
+    type: item.avgWaitMin > 60 ? "peak" : item.avgWaitMin > 45 ? "surge" : "normal",
+    label: item.avgWaitMin > 60 ? "ช่วงพีค" : item.avgWaitMin > 45 ? "ช่วงหนาแน่น" : null,
+  }));
 
 function fareLabel(activeTrip) {
   return `THB ${activeTrip.fareTHB}`;
 }
 
 function fullPickup(activeTrip) {
-  return `${activeTrip.pickupGate}, ${activeTrip.pickupTerminal}`;
+  return activeTrip.pickupGate;
 }
 
 function fullDestination(activeTrip) {
-  return activeTrip.destinationName || activeTrip.selectedDestination || "Destination not selected";
+  return activeTrip.destinationName || activeTrip.selectedDestination || "ยังไม่ได้เลือกปลายทาง";
 }
 
 // ── Shared ─────────────────────────────────────────────────────────────────
 
 function AppHeader({ isOnline, onLogout }) {
+  const { t } = useLanguage();
   return (
     <header className="sticky top-0 z-50 flex items-center gap-3 px-5 py-3 bg-white/95 backdrop-blur border-b border-slate-100 -mx-5 mb-4">
-      <span className="material-symbols-outlined text-slate-500 text-2xl">menu</span>
       <div className="flex-1">
         <HelloRideWordmark />
       </div>
@@ -30,7 +43,7 @@ function AppHeader({ isOnline, onLogout }) {
         isOnline ? "bg-brand-mid/15 text-brand" : "bg-slate-100 text-slate-500"
       }`}>
         <div className={`w-1.5 h-1.5 rounded-full ${isOnline ? "bg-brand-mid" : "bg-slate-400"}`} />
-        {isOnline ? "Online" : "Offline"}
+        {isOnline ? t("driver.online") : t("driver.offline")}
       </div>
       <button onClick={onLogout} className="flex items-center justify-center hover:opacity-70 transition-opacity">
         <span className="material-symbols-outlined text-slate-500 text-2xl">account_circle</span>
@@ -87,12 +100,12 @@ function RouteTimeline({ pickup, pickupAddress, dropoff, dropoffAddress }) {
 
 function StatusStrip({ steps }) {
   const completed = steps.filter((step) => step.done).length;
-  const next = steps.find((step) => !step.done)?.label ?? "Active";
+  const next = steps.find((step) => !step.done)?.label ?? "เริ่มงาน";
 
   return (
     <div className="rounded-2xl border border-slate-200 bg-white px-4 py-3 shadow-sm">
       <p className="text-xs text-muted">
-        Application progress: {completed}/{steps.length} complete · Next: {next}
+        ความคืบหน้า: {completed}/{steps.length} · ถัดไป: {next}
       </p>
     </div>
   );
@@ -107,7 +120,7 @@ function LoginScreen({ onLogin, onRegister }) {
 
   function handleLogin() {
     if (!username || !password) {
-      setError("Enter both username and password to continue.");
+      setError("กรุณากรอกชื่อผู้ใช้และรหัสผ่าน");
       return;
     }
     onLogin();
@@ -126,19 +139,18 @@ function LoginScreen({ onLogin, onRegister }) {
               style={{ fontVariationSettings: "'FILL' 1" }}>local_taxi</span>
           </div>
           <div>
-            <span className="text-[10px] font-extrabold text-brand uppercase tracking-widest">Driver partner sign in</span>
-            <p className="text-lg font-bold text-slate-900 leading-tight mt-0.5">Welcome back, partner.</p>
+            <span className="text-[10px] font-extrabold text-brand uppercase tracking-widest">ลงชื่อเข้าใช้สำหรับคนขับ</span>
+            <p className="text-lg font-bold text-slate-900 leading-tight mt-0.5">ยินดีต้อนรับกลับ, พาร์ทเนอร์</p>
           </div>
         </div>
         <p className="text-sm text-slate-600 leading-relaxed">
-          Sign in to go online, accept the next airport queue, and track the best earning window.
+          เข้าสู่ระบบเพื่อออนไลน์ รับคิวสนามบิน และติดตามช่วงเวลาทำเงินที่ดีที่สุด
         </p>
       </div>
 
-      {/* Form inputs */}
       <div className="flex flex-col gap-4">
         <div>
-          <p className="text-xs text-muted uppercase tracking-widest font-bold mb-2">Username</p>
+          <p className="text-xs text-muted uppercase tracking-widest font-bold mb-2">ชื่อผู้ใช้</p>
           <input
             type="text"
             value={username}
@@ -148,12 +160,12 @@ function LoginScreen({ onLogin, onRegister }) {
           />
         </div>
         <div>
-          <p className="text-xs text-muted uppercase tracking-widest font-bold mb-2">Password</p>
+          <p className="text-xs text-muted uppercase tracking-widest font-bold mb-2">รหัสผ่าน</p>
           <input
             type="password"
             value={password}
             onChange={(e) => { setPassword(e.target.value); setError(""); }}
-            placeholder="Enter password"
+            placeholder="กรอกรหัสผ่าน"
             className="w-full bg-white border border-slate-200 rounded-2xl px-4 py-4 text-sm text-slate-900 placeholder:text-slate-400 focus:outline-none focus:border-brand focus:ring-2 focus:ring-brand/10 transition-all shadow-[0_2px_8px_rgba(0,0,0,0.06)]"
           />
         </div>
@@ -165,10 +177,9 @@ function LoginScreen({ onLogin, onRegister }) {
         onClick={handleLogin}
         className="w-full py-4 rounded-2xl bg-gradient-to-r from-brand to-brand-deep text-white font-headline font-extrabold text-base shadow-[0_8px_24px_rgba(21,74,168,0.28)] hover:shadow-[0_12px_28px_rgba(21,74,168,0.34)] active:scale-95 transition-all"
       >
-        Log In
+        เข้าสู่ระบบ
       </button>
 
-      {/* Demo credentials — subtle badge */}
       <div className="flex items-center justify-center gap-2.5 px-4 py-2.5 bg-slate-50 border border-slate-100 rounded-xl">
         <span className="text-[10px] font-extrabold text-slate-400 uppercase tracking-wider bg-slate-200 px-1.5 py-0.5 rounded">Demo</span>
         <span className="text-xs text-slate-500">driver_demo / 1234</span>
@@ -178,7 +189,7 @@ function LoginScreen({ onLogin, onRegister }) {
         onClick={onRegister}
         className="w-full py-3.5 rounded-2xl bg-white border border-slate-200 text-slate-600 text-sm font-semibold hover:border-brand/35 hover:text-brand hover:shadow-sm transition-all"
       >
-        Create Partner Account
+        สมัครบัญชีพาร์ทเนอร์
       </button>
     </div>
   );
@@ -190,31 +201,31 @@ function RegistrationScreen({ onBack, onLogin }) {
   const [form, setForm] = useState({ firstName: "", lastName: "", phone: "" });
   const [submitted, setSubmitted] = useState(false);
 
-  const eligibility = ["Thai nationality", "18–70 years old", "No criminal record", "Car under 9 years old"];
-  const documents = ["National ID card", "Car registration", "Insurance / ACT", "Driver's license", "Bank book"];
+  const eligibility = ["สัญชาติไทย", "อายุ 18–70 ปี", "ไม่มีประวัติอาชญากรรม", "รถยนต์อายุไม่เกิน 9 ปี"];
+  const documents = ["บัตรประชาชน", "ทะเบียนรถ", "ประกันภัย / พ.ร.บ.", "ใบขับขี่", "สมุดบัญชีธนาคาร"];
 
   if (submitted) {
     return (
       <div className="flex flex-col gap-4">
         <div className="flex items-center justify-between py-3 mb-2">
-          <button onClick={onLogin} className="text-sm text-slate-500 hover:text-slate-900">← Log In</button>
+          <button onClick={onLogin} className="text-sm text-slate-500 hover:text-slate-900">← เข้าสู่ระบบ</button>
           <HelloRideWordmark size="sm" />
           <div className="w-16" />
         </div>
-        <InfoCard eyebrow="Application Status" title="You're almost there, Partner." body="Complete your training to unlock the road." tone="driver" />
+        <InfoCard eyebrow="สถานะใบสมัคร" title="เกือบเสร็จแล้ว พาร์ทเนอร์" body="ทำการฝึกอบรมให้เสร็จเพื่อเริ่มงาน" tone="driver" />
         <StatusStrip
           steps={[
-            { label: "Submitted", done: true },
-            { label: "Verifying", done: false },
-            { label: "Training", done: false },
-            { label: "Background", done: false },
-            { label: "Active", done: false },
+            { label: "ยื่นใบสมัคร", done: true },
+            { label: "ตรวจสอบ", done: false },
+            { label: "ฝึกอบรม", done: false },
+            { label: "ตรวจสอบประวัติ", done: false },
+            { label: "เริ่มงาน", done: false },
           ]}
         />
-        <InfoCard eyebrow="Document Check" title="Verification review" body="Estimated completion: 3-7 days" />
-        <InfoCard eyebrow="Academy Learning" title="Training progress" body="2/5 lessons completed" />
+        <InfoCard eyebrow="ตรวจสอบเอกสาร" title="รีวิวการตรวจสอบ" body="ประมาณ 3-7 วัน" />
+        <InfoCard eyebrow="การเรียนรู้ Academy" title="ความคืบหน้าการฝึกอบรม" body="เสร็จ 2/5 บทเรียน" />
         <button onClick={onLogin} className="w-full py-4 rounded-2xl bg-gradient-to-r from-brand to-brand-deep text-white font-headline font-extrabold text-base shadow-[0_8px_24px_rgba(21,74,168,0.28)] active:scale-95 transition-all">
-          Back to Log In
+          กลับไปหน้าเข้าสู่ระบบ
         </button>
       </div>
     );
@@ -223,21 +234,21 @@ function RegistrationScreen({ onBack, onLogin }) {
   return (
     <div className="flex flex-col gap-4">
       <div className="flex items-center justify-between py-3 mb-2">
-        <button onClick={onBack} className="text-sm text-slate-500 hover:text-slate-900">← Back</button>
+        <button onClick={onBack} className="text-sm text-slate-500 hover:text-slate-900">← กลับ</button>
         <HelloRideWordmark size="sm" />
-        <button onClick={onLogin} className="text-sm text-slate-500 hover:text-slate-900">Log In</button>
+        <button onClick={onLogin} className="text-sm text-slate-500 hover:text-slate-900">เข้าสู่ระบบ</button>
       </div>
       <div>
-        <h2 className="text-xl font-bold text-slate-900">Drive with Hello Ride</h2>
+        <h2 className="text-xl font-bold text-slate-900">ขับรถกับ Hello Ride</h2>
         <p className="text-sm text-muted mt-1">
-          Join BKK Airport's proactive taxi dispatch network. Complete your details to begin the onboarding process.
+          เข้าร่วมเครือข่ายสหกรณ์แท็กซี่สุวรรณภูมิ กรอกข้อมูลเพื่อเริ่มกระบวนการสมัคร
         </p>
       </div>
       <div className="flex flex-col gap-3">
         {[
-          { key: "firstName", label: "First name", placeholder: "Somchai" },
-          { key: "lastName", label: "Last name", placeholder: "Jaidee" },
-          { key: "phone", label: "Mobile phone", placeholder: "+66 081 234 5678" },
+          { key: "firstName", label: "ชื่อ", placeholder: "สมชาย" },
+          { key: "lastName", label: "นามสกุล", placeholder: "ใจดี" },
+          { key: "phone", label: "เบอร์โทรศัพท์", placeholder: "+66 081 234 5678" },
         ].map(({ key, label, placeholder }) => (
           <div key={key}>
             <p className="text-xs text-muted uppercase tracking-widest font-medium mb-2">{label}</p>
@@ -251,7 +262,7 @@ function RegistrationScreen({ onBack, onLogin }) {
         ))}
       </div>
       <div>
-        <p className="text-xs text-muted uppercase tracking-widest font-medium mb-2">Eligibility criteria</p>
+        <p className="text-xs text-muted uppercase tracking-widest font-medium mb-2">เกณฑ์คุณสมบัติ</p>
         <div className="grid grid-cols-2 gap-1.5">
           {eligibility.map((item) => (
             <div key={item} className="flex items-center gap-2 text-xs text-slate-600">
@@ -261,12 +272,12 @@ function RegistrationScreen({ onBack, onLogin }) {
         </div>
       </div>
       <div>
-        <p className="text-xs text-muted uppercase tracking-widest font-medium mb-2">Documents required</p>
+        <p className="text-xs text-muted uppercase tracking-widest font-medium mb-2">เอกสารที่ต้องใช้</p>
         <div className="flex flex-col gap-1.5">
           {documents.map((doc) => (
             <div key={doc} className="flex justify-between text-xs">
               <span className="text-slate-700">{doc}</span>
-              <span className="text-muted">Pending upload</span>
+              <span className="text-muted">รอการอัปโหลด</span>
             </div>
           ))}
         </div>
@@ -275,9 +286,9 @@ function RegistrationScreen({ onBack, onLogin }) {
         onClick={() => setSubmitted(true)}
         className="w-full py-4 rounded-2xl bg-gradient-to-r from-brand to-brand-deep text-white font-headline font-extrabold text-base shadow-[0_8px_24px_rgba(21,74,168,0.28)] active:scale-95 transition-all"
       >
-        Continue Registration
+        ดำเนินการสมัครต่อ
       </button>
-      <p className="text-xs text-muted text-center">Need help? Chat with us 24/7 or call during business hours.</p>
+      <p className="text-xs text-muted text-center">ต้องการความช่วยเหลือ? แชทกับเราตลอด 24 ชั่วโมง หรือโทรในเวลาทำการ</p>
     </div>
   );
 }
@@ -290,9 +301,8 @@ function ForecastBars({ bars }) {
     <div className="bg-white shadow-sm border border-slate-100 rounded-2xl overflow-hidden">
       <div className="h-0.5 bg-brand" />
       <div className="p-5">
-        <p className="text-xs text-muted uppercase tracking-widest font-semibold mb-0.5">Today's Demand Forecast</p>
-        <p className="text-sm text-slate-600 mb-4">Expected queue pressure</p>
-        {/* Surge/Peak labels above bars */}
+        <p className="text-xs text-muted uppercase tracking-widest font-semibold mb-0.5">พยากรณ์ความต้องการวันนี้</p>
+        <p className="text-sm text-slate-600 mb-4">แนวโน้มความหนาแน่นของคิว</p>
         <div className="flex gap-1 px-3 mb-1">
           {bars.map((bar, i) => (
             <div key={i} className="flex-1 flex justify-center h-4">
@@ -300,7 +310,6 @@ function ForecastBars({ bars }) {
             </div>
           ))}
         </div>
-        {/* Bar area — fixed height so height:X% resolves correctly */}
         <div className="flex items-end gap-1 px-3 bg-slate-50 rounded-xl" style={{ height: '88px' }}>
           {bars.map((bar, i) => (
             <div
@@ -310,7 +319,6 @@ function ForecastBars({ bars }) {
             />
           ))}
         </div>
-        {/* Time labels below bars */}
         <div className="flex gap-1 px-3 mt-1">
           {bars.map((bar, i) => (
             <div key={i} className="flex-1 flex justify-center">
@@ -318,7 +326,7 @@ function ForecastBars({ bars }) {
             </div>
           ))}
         </div>
-        <p className="text-xs text-muted mt-3">Best window: 18:00–20:00 for the strongest airport queue demand.</p>
+        <p className="text-xs text-muted mt-3">ช่วงเวลาที่ดีที่สุด: 18:00–20:00 ความต้องการสูงสุด</p>
       </div>
     </div>
   );
@@ -361,20 +369,19 @@ function SecondaryButton({ children, onClick }) {
 }
 
 function StatusToggle({ isOnline, onToggle }) {
-  const firstName = D.profile.name.split(" ")[0];
-
+  const { t } = useLanguage();
   return (
     <div className="rounded-3xl border border-slate-100 bg-white p-5 shadow-sm">
       <div className="flex items-center justify-between gap-4">
         <div>
-          <p className="text-xs font-bold uppercase tracking-widest text-muted">Driver status</p>
-          <p className="mt-0.5 text-xl font-black text-slate-900">{isOnline ? `Online, ${firstName}` : "You are offline"}</p>
-          <p className="mt-1 text-xs text-muted">Identity verified · Airport queue eligible</p>
+          <p className="text-xs font-bold uppercase tracking-widest text-muted">{t("driver.driverStatus")}</p>
+          <p className="mt-0.5 text-xl font-black text-slate-900">{isOnline ? `${t("driver.online")}, สมชาย` : t("driver.offline")}</p>
+          <p className="mt-1 text-xs text-muted">ยืนยันตัวตนแล้ว · มีสิทธิ์เข้าคิวสนามบิน</p>
         </div>
         <button
           onClick={onToggle}
           className={`relative h-10 w-[68px] shrink-0 rounded-full transition-colors ${isOnline ? "bg-brand-mid" : "bg-slate-200"}`}
-          aria-label={isOnline ? "Go offline" : "Go online"}
+          aria-label={isOnline ? "ออฟไลน์" : "ออนไลน์"}
         >
           <span className={`absolute top-1 h-8 w-8 rounded-full bg-white shadow transition-all ${isOnline ? "left-[32px]" : "left-1"}`} />
         </button>
@@ -387,45 +394,59 @@ function DemandTeasers() {
   return (
     <div className="grid grid-cols-2 gap-3">
       <div className="rounded-2xl border border-[#154aa8]/10 bg-[#e8f0fe] p-4">
-        <p className="text-[10px] font-black uppercase tracking-widest text-[#154aa8]">Demand</p>
-        <p className="mt-1 text-sm font-bold text-slate-900">50+ cars needed</p>
-        <p className="mt-0.5 text-xs text-muted">Terminal 1 pickup zone</p>
+        <p className="text-[10px] font-black uppercase tracking-widest text-[#154aa8]">ความต้องการ</p>
+        <p className="mt-1 text-sm font-bold text-slate-900">ต้องการรถ 50+ คัน</p>
+        <p className="mt-0.5 text-xs text-muted">จุดบริการแท็กซี่สาธารณะ ชั้น 1</p>
       </div>
       <div className="rounded-2xl border border-emerald-100 bg-emerald-50 p-4">
-        <p className="text-[10px] font-black uppercase tracking-widest text-brand">Bonus</p>
-        <p className="mt-1 text-sm font-bold text-slate-900">THB 450 available</p>
-        <p className="mt-0.5 text-xs text-muted">Airport queue window</p>
+        <p className="text-[10px] font-black uppercase tracking-widest text-brand">โบนัส</p>
+        <p className="mt-1 text-sm font-bold text-slate-900">มีโบนัส 450 บาท</p>
+        <p className="mt-0.5 text-xs text-muted">ช่วงเวลาคิวสนามบิน</p>
       </div>
     </div>
   );
 }
 
-function QueueHome({ isOnline, onOnlineToggle, inQueue, onJoinQueue, onAcceptNext }) {
+function QueueHome({ isOnline, onOnlineToggle, inQueue, onJoinQueue, showIncentive }) {
+  const { t } = useLanguage();
   return (
     <div className="flex flex-col gap-4">
       <StatusToggle isOnline={isOnline} onToggle={onOnlineToggle} />
 
       <div className="rounded-3xl border border-slate-100 bg-white p-5 shadow-sm">
-        <p className="text-xs font-bold uppercase tracking-widest text-muted">Airport queue</p>
+        <p className="text-xs font-bold uppercase tracking-widest text-muted">{t("driver.airportQueue")}</p>
         <div className="mt-3 grid grid-cols-2 gap-3">
-          <DriverMetric label={inQueue ? "Queue position" : "Queue status"} value={inQueue ? `#${D.queue.position}` : "--"} />
-          <DriverMetric label="Expected wait" value={inQueue ? `${D.queue.waitMin} min` : "--"} />
+          <DriverMetric label={inQueue ? t("driver.queuePosition") : t("driver.airportQueue")} value={inQueue ? `#${D.queue.position}` : "--"} />
+          <DriverMetric label={t("driver.expectedWait")} value={inQueue ? `${D.queue.waitMin} นาที` : "--"} />
         </div>
         <div className="mt-4">
           {!inQueue ? (
-            <PrimaryButton onClick={onJoinQueue} disabled={!isOnline}>Join Airport Queue</PrimaryButton>
+            <PrimaryButton onClick={onJoinQueue} disabled={!isOnline}>{t("driver.acceptNext")}</PrimaryButton>
           ) : (
-            <PrimaryButton onClick={onAcceptNext}>Accept next airport job</PrimaryButton>
+            <div className="rounded-2xl border border-[#154aa8]/15 bg-[#e8f0fe] px-4 py-3">
+              <div className="flex items-start justify-between gap-3">
+                <div>
+                  <p className="text-sm font-black text-slate-900">Waiting for airport dispatch</p>
+                  <p className="mt-1 text-xs leading-relaxed text-slate-600">
+                    You are online and eligible. The next assigned airport job will appear here.
+                  </p>
+                </div>
+                <span className="shrink-0 rounded-full bg-white px-2.5 py-1 text-[10px] font-black uppercase tracking-widest text-[#154aa8] shadow-sm">
+                  Waiting
+                </span>
+              </div>
+            </div>
           )}
         </div>
         <p className="mt-3 text-center text-xs text-muted">
           {isOnline
-            ? inQueue ? "Stay near Terminal 1. Your next airport dispatch appears here." : "Join queue to receive airport pickup offers."
-            : "Go online to join the airport queue."}
+            ? inQueue ? "รอบริเวณชั้น 1 ประตู 4 เพื่อรับการ dispatch จากระบบ" : "เข้าร่วมคิวเพื่อรับงานรับส่งผู้โดยสาร"
+            : "เปิดออนไลน์เพื่อเข้าร่วมคิว"}
         </p>
       </div>
 
-      <DemandTeasers />
+      {showIncentive && <DemandTeasers />}
+      <ForecastBars bars={forecastBars} />
     </div>
   );
 }
@@ -455,10 +476,10 @@ function TimerRing({ seconds, total = 12 }) {
           {seconds}
         </text>
         <text x="55" y="67" textAnchor="middle" fontSize="10" fill="#64748b" fontFamily="system-ui">
-          seconds
+          วินาที
         </text>
       </svg>
-      <p className="text-xs text-muted">Offer expires soon</p>
+      <p className="text-xs text-muted">กรุณายืนยันก่อนหมดเวลา</p>
     </div>
   );
 }
@@ -466,6 +487,7 @@ function TimerRing({ seconds, total = 12 }) {
 // ── Job Request Screen ─────────────────────────────────────────────────────
 
 function JobOfferHome({ activeTrip, onAccept, onReject }) {
+  const { t } = useLanguage();
   const [seconds, setSeconds] = useState(12);
 
   useEffect(() => {
@@ -479,10 +501,10 @@ function JobOfferHome({ activeTrip, onAccept, onReject }) {
       <div className="rounded-3xl border border-brand/10 bg-white p-5 shadow-xl">
         <div className="flex items-start justify-between mb-4">
           <div>
-            <p className="mb-1 text-xs font-black uppercase tracking-widest text-brand">New job offer</p>
+            <p className="mb-1 text-xs font-black uppercase tracking-widest text-brand">{t("driver.newJobOffer")}</p>
             <p className="font-headline font-black text-3xl text-brand">{fareLabel(activeTrip)}</p>
             <p className="mt-1 text-sm font-bold text-slate-900">{activeTrip.passengerName}</p>
-            <p className="text-xs text-muted">{activeTrip.vehicleType} · Priority airport dispatch</p>
+            <p className="text-xs text-muted">สหกรณ์แท็กซี่สุวรรณภูมิ · แจ้งเตือนอัตโนมัติ</p>
           </div>
           <TimerRing seconds={seconds} total={12} />
         </div>
@@ -495,14 +517,14 @@ function JobOfferHome({ activeTrip, onAccept, onReject }) {
         />
 
         <div className="mt-4 grid grid-cols-3 gap-2">
-          <DriverMetric label="ETA" value={`${activeTrip.etaMin} min`} />
-          <DriverMetric label="Pax" value={activeTrip.passengerCount} />
-          <DriverMetric label="Bags" value={activeTrip.luggageCount} />
+          <DriverMetric label="เวลาถึง" value={`${activeTrip.etaMin} นาที`} />
+          <DriverMetric label="ผู้โดยสาร" value={activeTrip.passengerCount} />
+          <DriverMetric label="กระเป๋า" value={activeTrip.luggageCount} />
         </div>
         <p className="mt-4 rounded-2xl bg-brand/5 p-3 text-xs leading-relaxed text-slate-600">{activeTrip.matchingReason}</p>
         <div className="mt-5 flex flex-col gap-2">
-          <PrimaryButton onClick={onAccept}>ACCEPT JOB</PrimaryButton>
-          <SecondaryButton onClick={onReject}>Reject</SecondaryButton>
+          <PrimaryButton onClick={onAccept}>{t("driver.acceptJob")}</PrimaryButton>
+          <SecondaryButton onClick={onReject}>{t("driver.reject")}</SecondaryButton>
         </div>
       </div>
     </div>
@@ -510,6 +532,7 @@ function JobOfferHome({ activeTrip, onAccept, onReject }) {
 }
 
 function NavigationHome({ activeTrip, onArrived }) {
+  const { t } = useLanguage();
   return (
     <div className="-mx-5 -mb-4 -mt-4 flex min-h-[calc(100vh-164px)] flex-col bg-[#edf3f7]">
       <div className="relative h-[300px] overflow-hidden bg-[#e7efed]">
@@ -542,7 +565,7 @@ function NavigationHome({ activeTrip, onArrived }) {
           <span className="material-symbols-outlined text-[25px]">location_on</span>
         </div>
         <div className="absolute left-5 top-5 rounded-2xl border border-slate-200/70 bg-white/95 px-4 py-3 shadow-lg backdrop-blur">
-          <p className="text-sm font-black leading-none text-slate-900">{activeTrip.etaMin} min · 200 m to pickup</p>
+          <p className="text-sm font-black leading-none text-slate-900">{activeTrip.etaMin} นาที · 200 เมตร ถึงจุดรับผู้โดยสาร</p>
           <p className="mt-1 text-xs leading-none text-slate-500">{activeTrip.pickupGate}</p>
         </div>
       </div>
@@ -550,9 +573,9 @@ function NavigationHome({ activeTrip, onArrived }) {
       <div className="relative -mt-7 flex-1 rounded-t-[2rem] bg-white px-5 pb-6 pt-5 shadow-[0_-18px_42px_rgba(15,35,68,0.16)]">
         <div className="mx-auto mb-4 h-1 w-10 rounded-full bg-slate-200" />
 
-        <p className="text-xs font-black uppercase tracking-widest text-brand">Navigation</p>
-        <h2 className="mt-1 text-2xl font-black leading-snug text-slate-900">Head to pickup zone</h2>
-        <p className="mt-1 text-sm text-muted">{activeTrip.etaMin} min to {activeTrip.pickupGate}</p>
+        <p className="text-xs font-black uppercase tracking-widest text-brand">การนำทาง</p>
+        <h2 className="mt-1 text-2xl font-black leading-snug text-slate-900">{t("driver.headPickup")}</h2>
+        <p className="mt-1 text-sm text-muted">{activeTrip.etaMin} นาที ถึง {activeTrip.pickupGate}</p>
 
         <div className="mt-4 rounded-2xl border border-slate-100 bg-slate-50 p-4">
           <div className="flex gap-3">
@@ -563,12 +586,12 @@ function NavigationHome({ activeTrip, onArrived }) {
             </div>
             <div className="flex flex-col gap-4 flex-1">
               <div>
-                <p className="text-[10px] font-bold text-muted uppercase tracking-wider">Pickup</p>
+                <p className="text-[10px] font-bold text-muted uppercase tracking-wider">จุดรับ</p>
                 <p className="text-sm font-bold text-slate-900 mt-0.5">{activeTrip.pickupGate}</p>
                 <p className="mt-0.5 text-xs leading-relaxed text-muted">{activeTrip.pickupAddress}</p>
               </div>
               <div>
-                <p className="text-[10px] font-bold text-muted uppercase tracking-wider">Destination</p>
+                <p className="text-[10px] font-bold text-muted uppercase tracking-wider">ปลายทาง</p>
                 <p className="text-sm font-semibold text-slate-900 mt-0.5">{fullDestination(activeTrip)}</p>
               </div>
             </div>
@@ -581,23 +604,23 @@ function NavigationHome({ activeTrip, onArrived }) {
           </div>
           <div className="flex-1 min-w-0">
             <p className="text-sm font-bold text-slate-900">{activeTrip.passengerName}</p>
-            <p className="text-xs text-muted">{activeTrip.passengerCount} pax · {activeTrip.luggageCount} bags</p>
+            <p className="text-xs text-muted">{activeTrip.passengerCount} คน · {activeTrip.luggageCount} กระเป๋า</p>
           </div>
         </div>
 
         <div className="mt-2.5 grid grid-cols-2 gap-2.5">
           <button className="flex items-center justify-center gap-1.5 rounded-2xl border border-slate-200 bg-white py-3 text-sm font-semibold text-slate-600 hover:bg-slate-50 transition-colors">
             <span className="material-symbols-outlined text-[17px]">chat</span>
-            Message
+            ข้อความ
           </button>
           <button className="flex items-center justify-center gap-1.5 rounded-2xl border border-slate-200 bg-white py-3 text-sm font-semibold text-slate-600 hover:bg-slate-50 transition-colors">
             <span className="material-symbols-outlined text-[17px]">call</span>
-            Call
+            โทร
           </button>
         </div>
 
         <div className="mt-3">
-          <PrimaryButton onClick={onArrived}>Arrived at Pick-up</PrimaryButton>
+          <PrimaryButton onClick={onArrived}>{t("driver.arrivedPickup")}</PrimaryButton>
         </div>
       </div>
     </div>
@@ -605,12 +628,13 @@ function NavigationHome({ activeTrip, onArrived }) {
 }
 
 function TripInProgressHome({ activeTrip, onComplete }) {
+  const { t } = useLanguage();
   return (
     <div className="flex flex-col gap-4">
       <InfoCard
-        eyebrow="Trip in progress"
-        title={`Drive to ${fullDestination(activeTrip)}`}
-        body={`${activeTrip.distanceKM} km · ${activeTrip.tripTimeMin} mins estimated`}
+        eyebrow="กำลังเดินทาง"
+        title={`มุ่งหน้าไป ${fullDestination(activeTrip)}`}
+        body={`${activeTrip.distanceKM} กม. · ประมาณ ${activeTrip.tripTimeMin} นาที`}
         tone="driver"
       />
       <RouteTimeline
@@ -620,33 +644,34 @@ function TripInProgressHome({ activeTrip, onComplete }) {
         dropoffAddress={activeTrip.destinationArea}
       />
       <InfoCard
-        eyebrow="Passenger"
+        eyebrow="ผู้โดยสาร"
         title={activeTrip.passengerName}
-        body={`${activeTrip.passengerCount} passengers · ${activeTrip.luggageCount} luggage`}
+        body={`${activeTrip.passengerCount} คน · ${activeTrip.luggageCount} กระเป๋า`}
         tone="neutral"
       />
-      <PrimaryButton onClick={onComplete}>Confirm Drop-off</PrimaryButton>
+      <PrimaryButton onClick={onComplete}>{t("driver.completeTrip")}</PrimaryButton>
     </div>
   );
 }
 
 function CompletedTripHome({ activeTrip, onConfirmPayment }) {
+  const { t } = useLanguage();
   return (
     <div className="flex flex-col gap-4">
       <div className="rounded-3xl bg-brand px-5 py-7 text-center text-white shadow-lg">
         <span className="material-symbols-outlined mb-2 text-5xl" style={{ fontVariationSettings: "'FILL' 1" }}>check_circle</span>
-        <p className="font-headline text-2xl font-black">Trip Complete</p>
+        <p className="font-headline text-2xl font-black">{t("driver.tripComplete")}</p>
         <p className="mt-1 text-sm text-white/80">{activeTrip.paymentStatus}</p>
       </div>
       <div className="rounded-3xl border border-slate-100 bg-white p-5 shadow-sm">
-        <p className="mb-4 text-xs font-bold uppercase tracking-widest text-muted">Fare summary</p>
+        <p className="mb-4 text-xs font-bold uppercase tracking-widest text-muted">สรุปค่าโดยสาร</p>
         {[
-          ["Total fare", fareLabel(activeTrip), true],
-          [`Distance (${activeTrip.distanceKM} km)`, "Included"],
-          [`Time (${activeTrip.tripTimeMin} mins)`, "Included"],
-          ["Booking fee", `THB ${activeTrip.bookingFeeTHB}`],
-          ["Destination", fullDestination(activeTrip)],
-          ["Vehicle", activeTrip.vehicleType],
+          [`ค่าโดยสารรวม`, fareLabel(activeTrip), true],
+          [`ระยะทาง (${activeTrip.distanceKM} กม.)`, "รวมในค่าโดยสาร"],
+          [`เวลาเดินทาง (${activeTrip.tripTimeMin} นาที)`, "รวมในค่าโดยสาร"],
+          ["ค่าธรรมเนียมการจอง", `THB ${activeTrip.bookingFeeTHB}`],
+          ["ปลายทาง", fullDestination(activeTrip)],
+          ["ประเภทรถ", activeTrip.vehicleType],
         ].map(([label, value, isTotal]) => (
           <div key={label} className="flex items-center justify-between border-b border-slate-100 py-2.5 last:border-0">
             <p className={isTotal ? "text-sm font-bold text-slate-900" : "text-sm text-muted"}>{label}</p>
@@ -654,12 +679,12 @@ function CompletedTripHome({ activeTrip, onConfirmPayment }) {
           </div>
         ))}
       </div>
-      <PrimaryButton onClick={onConfirmPayment}>Confirm Payment Received</PrimaryButton>
+      <PrimaryButton onClick={onConfirmPayment}>{t("driver.confirmPayment")}</PrimaryButton>
     </div>
   );
 }
 
-function DriverHome({ activeTrip, isOnline, onOnlineToggle, inQueue, onJoinQueue, onAcceptNext, onAccept, onReject, onArrived, onComplete, onConfirmPayment }) {
+function DriverHome({ activeTrip, isOnline, onOnlineToggle, inQueue, onJoinQueue, onAccept, onReject, onArrived, onComplete, onConfirmPayment, showIncentive }) {
   if (activeTrip.status === "assigned") {
     return <JobOfferHome activeTrip={activeTrip} onAccept={onAccept} onReject={onReject} />;
   }
@@ -682,28 +707,8 @@ function DriverHome({ activeTrip, isOnline, onOnlineToggle, inQueue, onJoinQueue
       onOnlineToggle={onOnlineToggle}
       inQueue={inQueue}
       onJoinQueue={onJoinQueue}
-      onAcceptNext={onAcceptNext}
+      showIncentive={showIncentive}
     />
-  );
-}
-
-function DemandTab() {
-  return (
-    <div className="flex flex-col gap-4">
-      <DemandTeasers />
-      <InfoCard
-        eyebrow="Recommended hotspot"
-        title="Terminal 1 pickup zone"
-        body={D.incentive}
-        tone="driver"
-      />
-      <div className="rounded-3xl border border-slate-100 bg-white p-5 shadow-sm">
-        <p className="text-xs font-bold uppercase tracking-widest text-muted">Demand action</p>
-        <p className="mt-1 text-lg font-black text-slate-900">Stay near lane entry</p>
-        <p className="mt-1 text-sm text-muted">Best window: 18:00-20:00 for airport queue demand.</p>
-      </div>
-      <ForecastBars bars={D.forecastBars} />
-    </div>
   );
 }
 
@@ -715,10 +720,10 @@ function TripsTab({ activeTrip }) {
   return (
     <div className="flex flex-col gap-4">
       <div className="rounded-3xl border border-slate-100 bg-white p-5 shadow-sm">
-        <p className="text-xs font-bold uppercase tracking-widest text-muted">Current trip</p>
+        <p className="text-xs font-bold uppercase tracking-widest text-muted">งานปัจจุบัน</p>
         {hasTrip ? (
           <>
-            <p className="mt-1 text-lg font-black text-slate-900">{activeTrip.passengerName} to {fullDestination(activeTrip)}</p>
+            <p className="mt-1 text-lg font-black text-slate-900">{activeTrip.passengerName} ไป {fullDestination(activeTrip)}</p>
             <p className="mt-1 text-sm text-muted">{fareLabel(activeTrip)} · {activeTrip.vehicleType} · {activeTrip.status}</p>
             <div className="mt-4 flex items-center gap-2">
               {timeline.map((item, index) => (
@@ -730,35 +735,36 @@ function TripsTab({ activeTrip }) {
             </div>
           </>
         ) : (
-          <p className="mt-1 text-sm text-muted">No active airport trip.</p>
+          <p className="mt-1 text-sm text-muted">ไม่มีงานสนามบินในปัจจุบัน</p>
         )}
       </div>
       {[
-        ["T1 to Siam", "THB 420 · Completed 13:20"],
-        ["T2 to Sathorn", "THB 360 · Completed 11:45"],
-        ["T1 to Ari", "THB 310 · Completed 09:10"],
+        ["ท่าอากาศยาน → สยาม", "420 บาท · เสร็จสิ้น 13:20"],
+        ["ท่าอากาศยาน → สาทร", "360 บาท · เสร็จสิ้น 11:45"],
+        ["ท่าอากาศยาน → อารีย์", "310 บาท · เสร็จสิ้น 09:10"],
       ].map(([title, body]) => (
-        <InfoCard key={title} eyebrow="Recent trip" title={title} body={body} tone="neutral" />
+        <InfoCard key={title} eyebrow="งานล่าสุด" title={title} body={body} tone="neutral" />
       ))}
     </div>
   );
 }
 
-function WalletTab({ activeTrip }) {
+function WalletTab({ activeTrip, showIncentive }) {
   const today = activeTrip.fareTHB + 760;
+  const bonusValue = showIncentive ? "THB 450" : "THB 0";
 
   return (
     <div className="flex flex-col gap-4">
       <div className="rounded-3xl bg-brand p-5 text-white shadow-lg">
-        <p className="text-xs font-bold uppercase tracking-widest text-white/70">Today's earnings</p>
+        <p className="text-xs font-bold uppercase tracking-widest text-white/70">รายได้วันนี้</p>
         <p className="mt-1 font-headline text-4xl font-black">THB {today}</p>
-        <p className="mt-1 text-sm text-white/75">Includes airport trip and demand bonus</p>
+        <p className="mt-1 text-sm text-white/75">รวมงานสนามบินและโบนัสที่อนุมัติแล้ว</p>
       </div>
       <div className="grid grid-cols-2 gap-3">
-        <DriverMetric label="Bonus" value="THB 450" tone="brand" />
-        <DriverMetric label="Cash" value={fareLabel(activeTrip)} />
+        <DriverMetric label="โบนัส" value={bonusValue} tone="brand" />
+        <DriverMetric label="เงินสด" value={fareLabel(activeTrip)} />
       </div>
-      <InfoCard eyebrow="Payout summary" title="Next payout: Friday" body="Card and wallet trips settle automatically. Cash trips remain in driver balance." tone="neutral" />
+      <InfoCard eyebrow="สรุปการจ่ายเงิน" title="รับเงิน: วันศุกร์" body="เดินทางชำระผ่านบัตร/กระเป๋าเงินจะตัดอัตโนมัติ งานเงินสดจะค้างในยอดของคนขับ" tone="neutral" />
     </div>
   );
 }
@@ -767,33 +773,33 @@ function ProfileTab({ isOnline, onOnlineToggle, onLogout }) {
   return (
     <div className="flex flex-col gap-4">
       <StatusToggle isOnline={isOnline} onToggle={onOnlineToggle} />
-      <InfoCard eyebrow="Driver" title={D.profile.name} body={`${D.profile.score} · Identity verified`} tone="driver" />
-      <InfoCard eyebrow="Vehicle" title={D.profile.vehicle} body="Airport pickup eligible · Hello Ride partner" tone="neutral" />
+      <InfoCard eyebrow="คนขับ" title={D.profile.name} body={`${D.profile.score} · ยืนยันตัวตนแล้ว`} tone="driver" />
+      <InfoCard eyebrow="ยานพาหนะ" title={D.profile.vehicle} body="มีสิทธิ์รับงานสนามบิน · พาร์ทเนอร์ Hello Ride" tone="neutral" />
       <div className="rounded-3xl border border-slate-100 bg-white p-2 shadow-sm">
-        {["Account settings", "Support center", "Training documents"].map((item) => (
+        {["ตั้งค่าบัญชี", "ศูนย์ช่วยเหลือ", "เอกสารการฝึกอบรม"].map((item) => (
           <button key={item} className="flex w-full items-center justify-between rounded-2xl px-4 py-3 text-left text-sm font-bold text-slate-700 hover:bg-slate-50">
             {item}
             <span className="material-symbols-outlined text-slate-300">chevron_right</span>
           </button>
         ))}
       </div>
-      <SecondaryButton onClick={onLogout}>Sign out</SecondaryButton>
+      <SecondaryButton onClick={onLogout}>ออกจากระบบ</SecondaryButton>
     </div>
   );
 }
 
 const DRIVER_TABS = [
-  { id: "home", label: "Home", icon: "home" },
-  { id: "demand", label: "Demand", icon: "local_fire_department" },
-  { id: "trips", label: "Trips", icon: "route" },
-  { id: "wallet", label: "Wallet", icon: "account_balance_wallet" },
-  { id: "profile", label: "Profile", icon: "person" },
+  { id: "home", labelKey: "nav.driver", icon: "home" },
+  { id: "trips", labelKey: "driver.trips", icon: "route" },
+  { id: "wallet", labelKey: "driver.wallet", icon: "account_balance_wallet" },
+  { id: "profile", labelKey: "driver.profile", icon: "person" },
 ];
 
 function DriverBottomNav({ activeTab, onTabChange }) {
+  const { t } = useLanguage();
   return (
     <nav className="absolute inset-x-0 bottom-0 z-50 border-t border-slate-200 bg-white/95 px-2 pb-2 pt-1.5 backdrop-blur">
-      <div className="grid grid-cols-5 gap-1">
+      <div className="grid grid-cols-4 gap-1">
         {DRIVER_TABS.map((tab) => {
           const active = activeTab === tab.id;
           return (
@@ -805,7 +811,7 @@ function DriverBottomNav({ activeTab, onTabChange }) {
               }`}
             >
               <span className="material-symbols-outlined text-[22px] leading-none">{tab.icon}</span>
-              {tab.label}
+              {t(tab.labelKey)}
             </button>
           );
         })}
@@ -822,13 +828,13 @@ function DriverWorkspace({
   onOnlineToggle,
   inQueue,
   onJoinQueue,
-  onAcceptNext,
   onAccept,
   onReject,
   onArrived,
   onComplete,
   onConfirmPayment,
   onLogout,
+  showIncentive,
 }) {
   return (
     <>
@@ -841,17 +847,16 @@ function DriverWorkspace({
             onOnlineToggle={onOnlineToggle}
             inQueue={inQueue}
             onJoinQueue={onJoinQueue}
-            onAcceptNext={onAcceptNext}
             onAccept={onAccept}
             onReject={onReject}
             onArrived={onArrived}
             onComplete={onComplete}
             onConfirmPayment={onConfirmPayment}
+            showIncentive={showIncentive}
           />
         )}
-        {activeTab === "demand" && <DemandTab />}
         {activeTab === "trips" && <TripsTab activeTrip={activeTrip} />}
-        {activeTab === "wallet" && <WalletTab activeTrip={activeTrip} />}
+        {activeTab === "wallet" && <WalletTab activeTrip={activeTrip} showIncentive={showIncentive} />}
         {activeTab === "profile" && <ProfileTab isOnline={isOnline} onOnlineToggle={onOnlineToggle} onLogout={onLogout} />}
       </MobileScrollArea>
       <DriverBottomNav activeTab={activeTab} onTabChange={setActiveTab} />
@@ -866,7 +871,11 @@ export default function DriverApp() {
   const [activeTab, setActiveTab] = useState("home");
   const [isOnline, setIsOnline] = useState(false);
   const [inQueue, setInQueue] = useState(false);
-  const { activeTrip, assignMatch, acceptMatch, markArrived, completeMatch, resetMatch } = useDemoMatching();
+  const { activeTrip, acceptMatch, markArrived, completeMatch, confirmDriverPayment, resetMatch } = useDemoMatching();
+  const driverSeverity = getPwtSeverity(kpiSummary.currentPWTPrediction);
+  const showIncentive =
+    canRecommendIncentive(driverSeverity) &&
+    [OPS_ACTION.INCENTIVE_SENT, OPS_ACTION.OVERFLOW_ACTIVATED, OPS_ACTION.MAX_INCENTIVE_SENT].includes(activeTrip.opsAction);
 
   function handleLogout() {
     setStep("login");
@@ -879,11 +888,6 @@ export default function DriverApp() {
     setInQueue(true);
   }
 
-  function handleAcceptNext() {
-    assignMatch();
-    setActiveTab("home");
-  }
-
   function handleReject() {
     resetMatch();
     setInQueue(false);
@@ -891,10 +895,16 @@ export default function DriverApp() {
   }
 
   function handleConfirmPayment() {
-    resetMatch();
-    setInQueue(false);
+    confirmDriverPayment();
+    setInQueue(true);
     setActiveTab("home");
   }
+
+  const driverViewTrip =
+    activeTrip.status === "completed" && activeTrip.driverPaymentConfirmed
+      ? { ...activeTrip, status: "idle" }
+      : activeTrip;
+  const visibleTab = ["assigned", "accepted", "arrived"].includes(activeTrip.status) ? "home" : activeTab;
 
   const shouldShowWorkspace = step === "app" || ["assigned", "accepted", "arrived", "completed"].includes(activeTrip.status);
 
@@ -902,20 +912,20 @@ export default function DriverApp() {
     <MobileShell>
       {shouldShowWorkspace ? (
         <DriverWorkspace
-          activeTrip={activeTrip}
-          activeTab={activeTab}
+          activeTrip={driverViewTrip}
+          activeTab={visibleTab}
           setActiveTab={setActiveTab}
           isOnline={isOnline || activeTrip.status !== "idle"}
           onOnlineToggle={() => setIsOnline((v) => !v)}
           inQueue={inQueue}
           onJoinQueue={handleJoinQueue}
-          onAcceptNext={handleAcceptNext}
           onAccept={acceptMatch}
           onReject={handleReject}
           onArrived={markArrived}
           onComplete={completeMatch}
           onConfirmPayment={handleConfirmPayment}
           onLogout={handleLogout}
+          showIncentive={showIncentive}
         />
       ) : (
         <MobileScrollArea className="pb-8">

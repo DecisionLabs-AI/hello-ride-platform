@@ -1,6 +1,98 @@
-import { useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { getOpsData, ADVISORY_RESPONSES } from "../data/mockOps.js";
+import { kpiSummary, demandChartData, recentAlerts, aiAdvisory } from "../data/index.js";
+import { EDGE_CASE_PROTOCOLS } from "../data/edgeCaseProtocols.js";
 import { useDemoMatching } from "../context/useDemoMatching.js";
+import {
+  getActionRecommendation,
+  getMatchingMode,
+  getPwtSeverity,
+  getSeverityTone,
+  canRecommendIncentive,
+  canRecommendOverflowLane,
+  OPS_ACTION,
+  PWT_SEVERITY,
+  PWT_THRESHOLDS,
+} from "../lib/businessLogic.js";
+import { useLanguage } from "../context/useLanguage.js";
+import { matchProtocol } from "../lib/protocolMatcher.js";
+
+const OPS_SYNC_STORAGE_KEYS = [
+  "helloride_activeEscalation",
+  "helloride_opsAction",
+  "helloride_activeTrip",
+];
+
+function readStorageJson(key) {
+  if (typeof window === "undefined") return null;
+  try {
+    const stored = window.localStorage.getItem(key);
+    return stored ? JSON.parse(stored) : null;
+  } catch {
+    return null;
+  }
+}
+
+function getCurrentThaiMinuteTime() {
+  return new Date().toLocaleTimeString("th-TH", { hour: "2-digit", minute: "2-digit" });
+}
+
+function useCurrentThaiMinuteTime() {
+  const [currentTime, setCurrentTime] = useState(getCurrentThaiMinuteTime);
+
+  useEffect(() => {
+    setCurrentTime(getCurrentThaiMinuteTime());
+    const intervalId = window.setInterval(() => {
+      setCurrentTime(getCurrentThaiMinuteTime());
+    }, 60000);
+
+    return () => window.clearInterval(intervalId);
+  }, []);
+
+  return currentTime;
+}
+
+function buildOpsView() {
+  const base = getOpsData("ALL");
+  const pwt = Math.round(kpiSummary.currentPWT);
+  const holdingTaxis = Math.round(kpiSummary.taxisAtCurb);
+  const waitingPassengers = Math.round(kpiSummary.confirmedQR);
+  const laneLoad = Math.min(99, Math.round(kpiSummary.breachRate));
+  const projectedDeficit = Math.min(99, Math.round(kpiSummary.breachRate));
+
+  const forecastSeries = demandChartData.map((item) => ({
+    time: item.label,
+    pwt: Math.round(item.avgWaitMin),
+  }));
+
+  // Map recentAlerts → demandSignals shape expected by DataSection
+  const demandSignals = recentAlerts.map((alert) => ({
+    zone: `Alert ${alert.time}`,
+    time: alert.time,
+    parties: Math.round(alert.confirmedQR),
+    luggage: alert.arrivingFlights,
+  }));
+
+  return {
+    ...base,
+    pwt,
+    severity: getPwtSeverity(pwt),
+    holdingTaxis,
+    waitingPassengers,
+    laneLoad,
+    projectedDeficit,
+    aiAdvice: aiAdvisory.recommendation,
+    forecastSeries,
+    demandSignals,
+    impactSimulation: {
+      ...base.impactSimulation,
+      currentPwt: pwt,
+      projectedPwt: Math.round(pwt * 0.65),
+      currentDeficit: projectedDeficit,
+      projectedDeficit: Math.max(5, projectedDeficit - 28),
+    },
+  };
+}
 
 const OPS_AUTH_KEY = "helloRideOpsAuth";
 const OPS_DEMO_USERNAME = "ops_demo";
@@ -13,9 +105,11 @@ function getStoredOpsAuth() {
 
 // ── Shared sub-components ───────────────────────────────────────────────────
 
+const INFO_ICON_CLASS = "flex w-4 h-4 cursor-pointer items-center justify-center text-gray-400 transition-colors hover:text-gray-600 focus:outline-none";
+
 function Eyebrow({ children }) {
   return (
-    <p className="text-xs text-muted uppercase tracking-widest font-semibold">{children}</p>
+    <p className="text-xs font-semibold uppercase tracking-widest text-gray-400">{children}</p>
   );
 }
 
@@ -33,9 +127,12 @@ function SectionHeading({ eyebrow, title }) {
 
 // ── PWT Gauge (standalone — no outer card) ─────────────────────────────────
 
-function PWTGauge({ value, threshold = 10 }) {
-  const isAbove = value > threshold;
-  const max = 30;
+function PWTGauge({ value }) {
+  const { t } = useLanguage();
+  const severity = getPwtSeverity(value);
+  const tone = getSeverityTone(severity);
+  const isCritical = severity === PWT_SEVERITY.CRITICAL;
+  const max = 45;
   const progress = Math.min(value / max, 1);
   const r = 58;
   const circ = 2 * Math.PI * r;
@@ -47,20 +144,20 @@ function PWTGauge({ value, threshold = 10 }) {
       <svg width="164" height="150" viewBox="0 0 164 150">
         <circle
           cx="82" cy="90" r={r} fill="none"
-          stroke={isAbove ? "rgba(180,30,30,0.15)" : "rgba(0,0,0,0.08)"} strokeWidth="11"
+          stroke={isCritical ? "rgba(180,30,30,0.15)" : "rgba(0,0,0,0.08)"} strokeWidth="11"
           strokeDasharray={`${arcLen} ${circ - arcLen}`}
           strokeLinecap="round"
           transform="rotate(135 82 90)"
         />
         <circle
           cx="82" cy="90" r={r} fill="none"
-          stroke={isAbove ? "#b91c1c" : "#00b14f"} strokeWidth="11"
+          stroke={isCritical ? "#b91c1c" : severity === PWT_SEVERITY.WARNING ? "#f59e0b" : severity === PWT_SEVERITY.WATCH ? "#0ea5e9" : "#00b14f"} strokeWidth="11"
           strokeDasharray={`${progressLen} ${circ - progressLen}`}
           strokeLinecap="round"
           transform="rotate(135 82 90)"
         />
         <text x="82" y="86" textAnchor="middle" fontSize="42" fontWeight="800"
-          fill={isAbove ? "#b91c1c" : "#1a2b5e"} fontFamily="system-ui, sans-serif">
+          fill={isCritical ? "#b91c1c" : "#1a2b5e"} fontFamily="system-ui, sans-serif">
           {value}
         </text>
         <text x="82" y="108" textAnchor="middle" fontSize="12" fill="#94a3b8"
@@ -68,12 +165,11 @@ function PWTGauge({ value, threshold = 10 }) {
           MIN PWT
         </text>
       </svg>
-      <span className={`text-xs font-bold px-3 py-1 rounded-full flex items-center gap-1.5 ${
-        isAbove ? "bg-red-100 text-red-700" : "bg-green-100 text-green-700"
-      }`}>
-        <span className={`w-1.5 h-1.5 rounded-full ${isAbove ? "bg-red-500" : "bg-green-500"}`} />
-        {isAbove ? "CRITICAL DELAY" : "WITHIN GUARDRAIL"}
+      <span className={`text-xs font-bold px-3 py-1 rounded-full flex items-center gap-1.5 ${tone.bg} ${tone.text}`}>
+        <span className={`w-1.5 h-1.5 rounded-full ${tone.dot}`} />
+        {t(`ops.${severity.toLowerCase()}`)}
       </span>
+      <p className="mt-1 text-[10px] font-bold uppercase tracking-widest text-slate-400">Max 45 min</p>
     </div>
   );
 }
@@ -81,61 +177,83 @@ function PWTGauge({ value, threshold = 10 }) {
 // ── Main Health Card ────────────────────────────────────────────────────────
 
 function HealthCard({ d }) {
-  const loadTone = d.laneLoad >= 85
-    ? { bar: "bg-red-500",     pill: "bg-red-50 text-red-700 border border-red-200",       label: "Near Capacity", hint: "Capacity is near limit; activate mitigation if demand rises." }
-    : d.laneLoad >= 70
-    ? { bar: "bg-amber-400",   pill: "bg-amber-50 text-amber-700 border border-amber-200",  label: "High Load",     hint: "Lane capacity is tight; prepare overflow option." }
-    : { bar: "bg-brand",       pill: "bg-emerald-50 text-emerald-700 border border-emerald-200", label: "Normal Load", hint: "Lane capacity is stable." };
+  const severity = getPwtSeverity(d.pwt);
+  const severityTone = getSeverityTone(severity);
+  const loadTone = {
+    [PWT_SEVERITY.CRITICAL]: { pill: `${severityTone.bg} ${severityTone.text} border ${severityTone.border}`, label: "Critical", hint: "PWT is above the 30-min SLA threshold; activate critical response." },
+    [PWT_SEVERITY.WARNING]: { pill: `${severityTone.bg} ${severityTone.text} border ${severityTone.border}`, label: "High Load", hint: "PWT has passed the 20-min action buffer; prepare approved intervention." },
+    [PWT_SEVERITY.WATCH]: { pill: `${severityTone.bg} ${severityTone.text} border ${severityTone.border}`, label: "Watch", hint: "PWT is rising above early watch range; monitor closely." },
+    [PWT_SEVERITY.NORMAL]: { pill: `${severityTone.bg} ${severityTone.text} border ${severityTone.border}`, label: "Normal Load", hint: "PWT is within normal range." },
+  }[severity];
+  const isCritical = severity === PWT_SEVERITY.CRITICAL;
 
   return (
-    <div className="bg-white rounded-2xl border border-slate-200 shadow-sm p-5 flex flex-col gap-4 min-w-0">
-      <div className="flex items-start justify-between gap-4">
-        <div>
-          <Eyebrow>Live Situation</Eyebrow>
-          <h2 className="text-xl font-black text-[#1a2b5e] mt-0.5">Curb load and queue health</h2>
-        </div>
-        <span className={`text-[10px] font-bold px-2.5 py-1 rounded-full ${loadTone.pill}`}>
-          {loadTone.label}
-        </span>
+    <div className="flex min-w-0 flex-col gap-4 rounded-xl border border-gray-100 bg-white p-4 shadow-sm">
+      <div>
+        <p className="text-xs font-semibold uppercase tracking-widest text-gray-400">Live Situation</p>
+        <h2 className="mt-0.5 text-sm font-semibold uppercase tracking-wide text-gray-500">Curb load and queue health</h2>
       </div>
-
-      {/* Gauge + KPI metrics: fixed gauge, then two equal metric cols on larger screens */}
-      <div className="grid grid-cols-1 sm:grid-cols-[auto_1fr_1fr] items-center gap-5">
-        <PWTGauge value={d.pwt} threshold={d.guardrailMin} />
+      <div className="grid grid-cols-1 gap-4 md:grid-cols-[1fr_auto_1fr_auto_1fr]">
         <div>
-          <p className="text-xs font-bold text-slate-400 uppercase tracking-widest">Waiting Pax</p>
-          <div className="flex items-end gap-1.5 mt-1.5">
-            <p className="text-4xl font-bold text-[#1a2b5e] leading-none">{d.waitingPassengers.toLocaleString()}</p>
-            <span className={`text-sm font-bold mb-0.5 ${d.waitingTrend?.startsWith("+") ? "text-red-500" : "text-green-600"}`}>
+          <p className="text-5xl font-bold leading-none text-red-600">{d.pwt}</p>
+          <p className="mt-2 text-xs font-semibold text-gray-500">min PWT · max 45</p>
+          <span className={`mt-3 inline-flex items-center gap-1.5 rounded-full px-2.5 py-1 text-xs font-bold ${loadTone.pill}`}>
+            <span className={`h-1.5 w-1.5 rounded-full ${severityTone.dot}`} />
+            {loadTone.label}
+          </span>
+        </div>
+
+        <div className="hidden w-px bg-gray-100 md:block" />
+
+        <div>
+          <p className="text-xs font-semibold uppercase tracking-widest text-gray-400">Waiting PAX</p>
+          <div className="mt-2 flex items-end gap-1.5">
+            <p className="text-3xl font-bold leading-none text-gray-900">{d.waitingPassengers.toLocaleString()}</p>
+            <span className={`mb-0.5 text-sm font-bold ${d.waitingTrend?.startsWith("+") ? "text-red-500" : "text-green-600"}`}>
               {d.waitingTrend}
             </span>
           </div>
-          <p className="text-xs text-slate-400 mt-1">Est. clearing in 45m</p>
+          <p className="mt-1 text-xs text-gray-400">Est. clearing 45m</p>
         </div>
+
+        <div className="hidden w-px bg-gray-100 md:block" />
+
         <div>
-          <p className="text-xs font-bold text-slate-400 uppercase tracking-widest">Holding Taxis</p>
-          <div className="flex items-end gap-1.5 mt-1.5">
-            <p className="text-4xl font-bold text-[#1a2b5e] leading-none">{d.holdingTaxis}</p>
-            <span className={`text-sm font-bold mb-0.5 ${d.taxiTrend?.startsWith("-") ? "text-red-500" : "text-green-600"}`}>
+          <p className="text-xs font-semibold uppercase tracking-widest text-gray-400">Holding Taxis</p>
+          <div className="mt-2 flex items-end gap-1.5">
+            <p className="text-3xl font-bold leading-none text-gray-900">{d.holdingTaxis}</p>
+            <span className={`mb-0.5 text-sm font-bold ${d.taxiTrend?.startsWith("-") ? "text-red-500" : "text-green-600"}`}>
               {d.taxiTrend}
             </span>
           </div>
-          <p className="text-xs text-slate-400 mt-1">Queue throughput: 14/m</p>
+          <p className="mt-1 text-xs text-gray-400">Throughput 14/m</p>
         </div>
       </div>
 
-      {/* System load row */}
-      <div className="pt-3 border-t border-slate-100">
-        <div className="flex items-center justify-between mb-2">
+      <div className="flex items-center justify-between gap-4 rounded-lg bg-gray-50 px-4 py-2">
+        <p className="shrink-0 text-xs font-semibold text-gray-500">AI forecast · predicted wait in 15 min</p>
+        <p className="text-sm font-semibold text-slate-700">
+          {Math.round(kpiSummary.currentPWT)} MIN
+          {" → "}
+          <span className={`font-semibold ${kpiSummary.currentPWTPrediction > kpiSummary.currentPWT ? "text-red-600" : "text-green-600"}`}>
+            {Math.round(kpiSummary.currentPWTPrediction)} MIN
+            {" "}
+            {kpiSummary.currentPWTPrediction > kpiSummary.currentPWT ? "↑" : "↓"}
+          </span>
+        </p>
+      </div>
+
+      <div>
+        <div className="mb-2 flex items-center justify-between">
           <div className="flex items-center gap-2">
-            <p className="text-xs font-semibold text-slate-400 uppercase tracking-widest">Lane 1: System Load</p>
+            <p className="text-xs font-semibold uppercase tracking-widest text-gray-400">Lane load</p>
           </div>
-          <p className="text-xs font-bold text-slate-600">{d.laneLoad}%</p>
+          <p className="text-xs font-bold text-gray-600">{d.laneLoad}%</p>
         </div>
-        <div className="h-2 bg-slate-100 rounded-full overflow-hidden">
-          <div className={`h-full rounded-full transition-all ${loadTone.bar}`} style={{ width: `${d.laneLoad}%` }} />
+        <div className="h-1.5 overflow-hidden rounded-full bg-slate-100">
+          <div className="h-full rounded-full bg-[#154aa8] transition-all" style={{ width: `${d.laneLoad}%` }} />
         </div>
-        <p className="text-xs text-muted mt-1.5">{loadTone.hint}</p>
+        {isCritical && <p className="mt-2 text-xs font-semibold text-red-600">{loadTone.hint}</p>}
       </div>
     </div>
   );
@@ -143,40 +261,43 @@ function HealthCard({ d }) {
 
 // ── Projected Deficit Alert Card ────────────────────────────────────────────
 
-function AlertCard({ d, laneActivated, setLaneActivated, broadcastSent, setBroadcastSent }) {
+function AlertCard({ d, laneActivated, broadcastSent, onApproveAction }) {
+  const { t } = useLanguage();
+  const severity = getPwtSeverity(d.pwt);
+  const tone = getSeverityTone(severity);
+  const action = getActionRecommendation(severity);
+  const canAct = canRecommendIncentive(severity) || canRecommendOverflowLane(severity);
+  const actionDone = severity === PWT_SEVERITY.CRITICAL ? laneActivated : broadcastSent;
+  const criticalActionText = "Send Incentive & Broadcast Drivers + Broadcast Holding Zone";
+  const actionButton = severity === PWT_SEVERITY.CRITICAL
+    ? "Send Incentive & Broadcast Drivers"
+    : severity === PWT_SEVERITY.WARNING
+    ? `${t("ops.sendIncentive")} / ${t("ops.broadcastDrivers")}`
+    : action.button;
+  const actionCopyText = {
+    [PWT_SEVERITY.NORMAL]: t("ops.actionCopyNormal"),
+    [PWT_SEVERITY.WATCH]: t("ops.actionCopyWatch"),
+    [PWT_SEVERITY.WARNING]: t("ops.actionCopyWarning"),
+    [PWT_SEVERITY.CRITICAL]: criticalActionText,
+  }[severity];
+
   return (
-    <div className="bg-[#7d1a1a] text-white rounded-2xl shadow-lg p-4 flex flex-col gap-3 min-w-0">
-      <div className="flex items-center gap-2.5">
-        <div className="w-6 h-6 bg-white/20 rounded-full flex items-center justify-center shrink-0">
-          <span className="material-symbols-outlined text-white leading-none" style={{ fontSize: '14px' }}>warning</span>
-        </div>
-        <div>
-          <p className="font-bold text-sm leading-tight">Critical Alert / Action</p>
-          <p className="text-[10px] uppercase tracking-widest text-red-200 font-bold mt-0.5">Recommended now</p>
-        </div>
-      </div>
-      <p className="text-xs text-red-200 leading-snug -mt-1">
-        Arrival wave projected in T-15 mins. Predicted passenger influx will exceed current lane capacity by {d.projectedDeficit}%.
+    <div className={`${severity === PWT_SEVERITY.CRITICAL ? "bg-[#7B1A1A] text-white" : "bg-white text-slate-900"} flex min-w-0 flex-col gap-3 rounded-xl border border-gray-100 p-4 shadow-sm`}>
+      <p className={`text-xs font-semibold uppercase tracking-widest ${severity === PWT_SEVERITY.CRITICAL ? "text-red-200" : tone.text}`}>
+        ⚠ Critical alert
       </p>
-      <div className="bg-white/10 rounded-xl p-3">
-        <p className="text-xs font-bold uppercase tracking-widest text-red-300 mb-1">Single action</p>
-        <p className="text-sm text-white font-bold leading-snug">{d.impactSimulation.action}</p>
-        <p className="text-xs text-white/75 leading-snug mt-1">AI advisory: {d.aiAdvice}</p>
-      </div>
+      <p className={`text-base font-bold leading-snug ${severity === PWT_SEVERITY.CRITICAL ? "text-white" : "text-slate-900"}`}>{actionCopyText}</p>
+      <p className={`text-xs leading-snug ${severity === PWT_SEVERITY.CRITICAL ? "text-red-200" : "text-slate-500"}`}>{t("ops.aiAdvisoryOnly")}</p>
       <button
-        onClick={() => setLaneActivated(true)}
-        disabled={laneActivated}
-        className="w-full bg-white text-[#7d1a1a] font-bold py-2.5 rounded-xl text-sm transition-colors hover:bg-red-50 disabled:bg-emerald-50 disabled:text-brand active:scale-95"
+        onClick={() => onApproveAction(severity)}
+        disabled={!canAct || actionDone}
+        className={`mt-1 flex w-full items-center justify-center rounded-lg py-2.5 text-sm font-medium transition-colors active:scale-95 ${
+          severity === PWT_SEVERITY.CRITICAL
+            ? "bg-white text-red-800 hover:bg-red-50 disabled:bg-emerald-50 disabled:text-brand"
+            : "bg-[#154aa8] text-white hover:bg-[#0f2f68] disabled:bg-slate-100 disabled:text-slate-400"
+        }`}
       >
-        {laneActivated ? "Overflow Lane Active ✓" : "Activate Overflow Lane"}
-      </button>
-      <button
-        onClick={() => setBroadcastSent(true)}
-        disabled={broadcastSent}
-        className="w-full border border-white/45 text-white font-bold py-2 rounded-xl text-xs transition-colors hover:bg-white/10 disabled:bg-white/10 disabled:text-white/60 active:scale-95 flex items-center justify-center gap-2"
-      >
-        <span className="material-symbols-outlined leading-none" style={{ fontSize: '16px' }}>broadcast_on_personal</span>
-        {broadcastSent ? "Broadcast Sent ✓" : "Broadcast to Drivers"}
+        {actionDone ? t("ops.approved") : actionButton}
       </button>
     </div>
   );
@@ -185,34 +306,38 @@ function AlertCard({ d, laneActivated, setLaneActivated, broadcastSent, setBroad
 // ── AI Situation Brief ─────────────────────────────────────────────────────
 
 function AISituationBrief({ d }) {
-  const sim = d.impactSimulation;
-  const terminalLabel = d.title || d.code;
-  const guardrailMin = 15;
+  const severity = getPwtSeverity(d.pwt);
+  const action = getActionRecommendation(severity);
+  const afterActionPWT = Math.round(d.pwt * 0.65);
+  const briefText = severity === PWT_SEVERITY.CRITICAL
+    ? `All terminals are entering a queue pressure window. PWT is ${d.pwt} min with ${d.waitingPassengers.toLocaleString()} waiting passengers and ${d.laneLoad}% lane load. The 30-min SLA threshold is exceeded; OPS approval required before action.`
+    : severity === PWT_SEVERITY.WARNING
+    ? "Queue approaching threshold. Monitor and prepare incentive response."
+    : "Queue operating within normal parameters. No immediate action required.";
 
   return (
-    <section className="rounded-2xl border border-[#154aa8]/15 bg-[#e8f0fe] px-4 py-3 shadow-sm">
-      <div className="flex items-start gap-3">
-        <div className="mt-0.5 flex h-8 w-8 shrink-0 items-center justify-center rounded-xl bg-white text-[#154aa8] shadow-sm">
-          <span className="material-symbols-outlined leading-none" style={{ fontSize: "18px" }}>auto_awesome</span>
+    <section className="rounded-xl border border-blue-200 bg-blue-50 px-5 py-3 shadow-sm">
+      <div className="grid grid-cols-1 gap-3 md:grid-cols-[1.35fr_auto_0.9fr_auto_0.9fr] md:items-stretch">
+        <div>
+          <div className="mb-1.5 flex items-center gap-2">
+            <span className="material-symbols-outlined leading-none text-blue-500" style={{ fontSize: "17px" }}>auto_awesome</span>
+            <p className="text-xs font-bold uppercase tracking-widest text-blue-700">AI Situation Brief</p>
+          </div>
+          <p className="text-sm leading-snug text-gray-700">{briefText}</p>
         </div>
-        <div className="min-w-0 flex-1">
-          <div className="mb-2 flex items-center gap-2">
-            <p className="text-xs font-black uppercase tracking-widest text-[#154aa8]">AI Situation Brief</p>
-            <span className="rounded-full bg-white/75 px-2 py-0.5 text-[10px] font-bold text-slate-500">
-              Mock advisory
-            </span>
-          </div>
-          <div className="grid gap-2 text-sm leading-snug text-slate-700 lg:grid-cols-[1.1fr_0.9fr_0.9fr]">
-            <p>
-              <span className="font-bold text-slate-900">{terminalLabel}</span> {terminalLabel === "All terminals" ? "are" : "is"} entering a queue pressure window. PWT is <span className="font-bold">{d.pwt} min</span>, above the <span className="font-bold">{guardrailMin}-min guardrail</span>, with <span className="font-bold">{d.waitingPassengers.toLocaleString()}</span> waiting passengers and <span className="font-bold">{d.laneLoad}%</span> lane load.
-            </p>
-            <p>
-              <span className="font-black text-[#154aa8]">Recommended next action:</span> Activate Overflow Lane and broadcast to drivers with a 6-minute head start.
-            </p>
-            <p>
-              <span className="font-bold text-slate-900">Expected impact:</span> PWT improves from <span className="font-bold">{sim.currentPwt}</span> → <span className="font-bold">{sim.projectedPwt} min</span>; projected deficit drops from <span className="font-bold">{sim.currentDeficit}%</span> → <span className="font-bold">{sim.projectedDeficit}%</span>.
-            </p>
-          </div>
+        <div className="hidden w-px bg-blue-200/70 md:block" />
+        <div>
+          <p className="text-sm font-semibold leading-snug text-blue-700">
+            Recommended next action:
+          </p>
+          <p className="mt-1 text-sm leading-snug text-gray-700">{action.copy}</p>
+        </div>
+        <div className="hidden w-px bg-blue-200/70 md:block" />
+        <div>
+          <p className="text-sm font-bold leading-snug text-slate-900">Expected impact:</p>
+          <p className="mt-1 text-sm leading-snug text-gray-700">
+            PWT improves from <span className="font-bold">{d.pwt}</span> → <span className="font-bold">{afterActionPWT} min</span>; deficit drops from <span className="font-bold">{d.projectedDeficit}%</span> → <span className="font-bold">10%</span>.
+          </p>
         </div>
       </div>
     </section>
@@ -221,71 +346,95 @@ function AISituationBrief({ d }) {
 
 // ── Demand Chart ───────────────────────────────────────────────────────────
 
-function DemandChart({ series, criticalWindow }) {
+function DemandChart({ series }) {
   const W = 640, H = 300, padL = 50, padR = 20, padT = 20, padB = 44;
   const iW = W - padL - padR, iH = H - padT - padB;
-  const allVals = series.flatMap((d) => [d.demand, d.supply]);
-  const maxVal = Math.max(...allVals, 1);
+  const maxVal = 45;
+  const slaThreshold = 30;
   const xStep = iW / (series.length - 1);
   const toX = (i) => padL + i * xStep;
   const toY = (v) => padT + iH - (v / maxVal) * iH;
-
-  const demandPts = series.map((d, i) => `${toX(i)},${toY(d.demand)}`).join(" ");
-  const supplyPts = series.map((d, i) => `${toX(i)},${toY(d.supply)}`).join(" ");
-
-  const startIdx = criticalWindow ? series.findIndex((s) => s.time === criticalWindow.start) : -1;
-  const endIdx = criticalWindow ? series.findIndex((s) => s.time === criticalWindow.end) : -1;
-  const cwX1 = startIdx >= 0 ? toX(startIdx) : null;
-  const cwX2 = endIdx >= 0 ? toX(endIdx) : null;
+  const slaY = toY(slaThreshold);
+  const pwtPts = series.map((d, i) => `${toX(i)},${toY(d.pwt)}`).join(" ");
 
   return (
-    <div className="bg-white rounded-2xl border border-slate-100 shadow-sm overflow-hidden">
-      <div className="px-6 pt-6 pb-4 flex items-start justify-between flex-wrap gap-3">
+    <div className="overflow-hidden rounded-xl border border-gray-100 bg-white p-4 shadow-sm">
+      <div className="mb-3 flex items-start justify-between gap-3">
         <div>
-          <p className="text-xs font-bold text-slate-400 uppercase tracking-widest">Predictive Forecast</p>
-          <h2 className="text-2xl font-bold text-[#1a2b5e] mt-0.5">Arrival Wave Analysis</h2>
+          <p className="text-xs font-semibold uppercase tracking-widest text-gray-400">Predictive forecast</p>
+          <h2 className="mt-0.5 text-xl font-bold text-gray-900">Arrival wave analysis</h2>
         </div>
-        <div className="flex items-center gap-5">
-          <div className="flex items-center gap-2 text-xs text-slate-500">
-            <span className="w-2.5 h-2.5 rounded-full bg-[#154AA8] shrink-0" />
-            Demand Forecast
+        <div className="flex items-center gap-3">
+          <div className="flex items-center gap-1.5 text-xs text-slate-500">
+            <span className="inline-block w-5 shrink-0" style={{ borderTop: "2px solid #154AA8", marginTop: "1px" }} />
+            PWT (min)
           </div>
-          <div className="flex items-center gap-2 text-xs text-slate-500">
-            <span className="inline-block w-5 shrink-0" style={{ borderTop: "2px dashed #94a3b8", marginTop: "1px" }} />
-            Holding Area Supply
+          <div className="flex items-center gap-1.5 text-xs text-red-600">
+            <span className="inline-block w-5 shrink-0" style={{ borderTop: "2px dashed #dc2626", marginTop: "1px" }} />
+            SLA 30 min
           </div>
+          <span className="relative flex items-center group">
+            <button
+              type="button"
+              aria-label="Arrival wave data explanation"
+              className={INFO_ICON_CLASS}
+            >
+              ⓘ
+            </button>
+            <span
+              className="absolute right-0 top-6 z-20 hidden group-hover:block rounded-lg bg-slate-800 text-white text-xs px-3 py-2 shadow-lg whitespace-pre-line pointer-events-none"
+              style={{ minWidth: "300px" }}
+            >{`PWT (min) — ค่าเฉลี่ย avgWaitMin ต่อชั่วโมง จาก hybrid dataset\nSLA Threshold — เกณฑ์เวลารอ 30 นาที`}</span>
+          </span>
         </div>
       </div>
       {/* No explicit height on SVG — scales naturally from viewBox aspect ratio (640:300 ≈ 2.1) */}
-      <div className="px-5 pb-6">
+      <div>
         <svg viewBox={`0 0 ${W} ${H}`} className="w-full">
-          {[0, 0.25, 0.5, 0.75, 1].map((t) => (
-            <line key={t} x1={padL} y1={padT + iH * (1 - t)} x2={W - padR} y2={padT + iH * (1 - t)}
+          <rect x={padL} y={padT} width={iW} height={slaY - padT} fill="rgba(220,38,38,0.06)" />
+          {series.map((d, i) => {
+            if (d.pwt <= slaThreshold) return null;
+            const x1 = Math.max(padL, toX(i) - xStep / 2);
+            const x2 = Math.min(W - padR, toX(i) + xStep / 2);
+            return <rect key={`critical-${d.time}`} x={x1} y={padT} width={x2 - x1} height={iH} fill="rgba(220,38,38,0.08)" />;
+          })}
+          {[0, 15, 30, 45].map((tick) => (
+            <line key={tick} x1={padL} y1={toY(tick)} x2={W - padR} y2={toY(tick)}
               stroke="rgba(0,0,0,0.06)" strokeWidth={1} strokeDasharray="4 4" />
           ))}
-          {cwX1 !== null && cwX2 !== null && (
-            <>
-              <rect x={cwX1} y={padT} width={cwX2 - cwX1} height={iH} fill="rgba(220,38,38,0.08)" />
-              <text
-                x={cwX1 + (cwX2 - cwX1) / 2} y={padT + iH / 2}
-                textAnchor="middle" fontSize={8} fill="#dc2626"
-                fontFamily="system-ui" fontWeight="600" letterSpacing="1"
-                transform={`rotate(-90 ${cwX1 + (cwX2 - cwX1) / 2} ${padT + iH / 2})`}
-              >
-                CRITICAL DEFICIT WINDOW
-              </text>
-            </>
-          )}
-          {[0, 0.25, 0.5, 0.75, 1].map((t) => (
-            <text key={t} x={padL - 6} y={padT + iH * (1 - t) + 4}
+          <line x1={padL} y1={slaY} x2={W - padR} y2={slaY} stroke="#dc2626" strokeWidth={1.5} strokeDasharray="6 5" />
+          <text x={W - padR - 4} y={slaY - 6} textAnchor="end" fontSize={10} fill="#dc2626" fontFamily="system-ui" fontWeight="700">
+            SLA Threshold
+          </text>
+          <text
+            x={padL + iW / 2} y={padT + 14}
+            textAnchor="middle" fontSize={8} fill="#dc2626"
+            fontFamily="system-ui" fontWeight="600" letterSpacing="1"
+          >
+            CRITICAL DEFICIT WINDOW
+          </text>
+          {[0, 15, 30, 45].map((tick) => (
+            <text key={tick} x={padL - 6} y={toY(tick) + 4}
               textAnchor="end" fontSize={10} fill="#94a3b8" fontFamily="system-ui">
-              {Math.round(maxVal * t)}
+              {tick}
             </text>
           ))}
-          <polyline points={supplyPts} fill="none" stroke="#94a3b8" strokeWidth={2} strokeLinejoin="round" strokeDasharray="6 4" />
-          <polyline points={demandPts} fill="none" stroke="#154AA8" strokeWidth={3} strokeLinejoin="round" />
+          <text
+            x={14} y={padT + iH / 2}
+            textAnchor="middle" fontSize={10} fill="#64748b"
+            fontFamily="system-ui" fontWeight="700"
+            transform={`rotate(-90 14 ${padT + iH / 2})`}
+          >
+            Wait (min)
+          </text>
+          <polyline points={pwtPts} fill="none" stroke="#154AA8" strokeWidth={3} strokeLinejoin="round" strokeLinecap="round" />
           {series.map((d, i) => (
-            <text key={i} x={toX(i)} y={H - 10} textAnchor="middle" fontSize={10} fill="#64748b" fontFamily="system-ui">{d.time}</text>
+            <circle key={`point-${d.time}`} cx={toX(i)} cy={toY(d.pwt)} r={2.5} fill="#154AA8" />
+          ))}
+          {series.map((d, i) => (
+            i % 4 === 0 ? (
+              <text key={i} x={toX(i)} y={H - 10} textAnchor="middle" fontSize={10} fill="#64748b" fontFamily="system-ui">{d.time}</text>
+            ) : null
           ))}
         </svg>
       </div>
@@ -296,13 +445,17 @@ function DemandChart({ series, criticalWindow }) {
 // ── Deficit Breakdown ──────────────────────────────────────────────────────
 
 function DeficitBreakdown({ breakdown }) {
+  const { t } = useLanguage();
   function signalMeta(item) {
     const factor = item.factor.toLowerCase();
     if (factor.includes("qr")) {
       return {
         label: "QR surge",
         icon: "qr_code_scanner",
-        accent: "border-red-200 bg-red-50/70 text-red-700",
+        accent: "border-[#FCA5A5] bg-[#FEF2F2]",
+        iconColor: "text-red-500",
+        titleColor: "text-red-700",
+        valueColor: "text-red-600",
         value: `+${item.impact} pax`,
       };
     }
@@ -310,7 +463,10 @@ function DeficitBreakdown({ breakdown }) {
       return {
         label: "Driver shortage",
         icon: "local_taxi",
-        accent: "border-amber-200 bg-amber-50/70 text-amber-700",
+        accent: "border-[#FCD34D] bg-[#FFFBEB]",
+        iconColor: "text-amber-500",
+        titleColor: "text-amber-700",
+        valueColor: "text-amber-600",
         value: `${item.impact} taxis`,
       };
     }
@@ -318,49 +474,51 @@ function DeficitBreakdown({ breakdown }) {
       return {
         label: "Holding lane congestion",
         icon: "traffic",
-        accent: "border-amber-200 bg-amber-50/70 text-amber-700",
+        accent: "border-[#FCD34D] bg-[#FFFBEB]",
+        iconColor: "text-amber-500",
+        titleColor: "text-amber-700",
+        valueColor: "text-amber-600",
         value: `${item.impact} taxis`,
       };
     }
+    const isDemand = item.type === "demand";
     return {
       label: "Flight wave",
       icon: "flight_land",
-      accent: item.type === "demand"
-        ? "border-red-200 bg-red-50/70 text-red-700"
-        : "border-amber-200 bg-amber-50/70 text-amber-700",
+      accent: isDemand ? "border-[#FCA5A5] bg-[#FEF2F2]" : "border-[#FCD34D] bg-[#FFFBEB]",
+      iconColor: isDemand ? "text-red-500" : "text-amber-500",
+      titleColor: isDemand ? "text-red-700" : "text-amber-700",
+      valueColor: isDemand ? "text-red-600" : "text-amber-600",
       value: item.type === "demand" ? `+${item.impact} pax` : `${item.impact} taxis`,
     };
   }
 
   return (
-    <div className="bg-white shadow-sm border border-slate-100 rounded-2xl overflow-hidden">
-      <div className="h-0.5 bg-danger" />
-      <div className="p-5">
+    <div className="rounded-xl border border-gray-100 border-t-[3px] border-t-[#EF4444] bg-white p-4 shadow-sm">
         <div className="mb-3">
-          <Eyebrow>Root Cause</Eyebrow>
-          <h2 className="text-lg font-bold text-slate-900 mt-0.5">Why the gap is forming</h2>
+          <Eyebrow>{t("ops.rootCause")}</Eyebrow>
+          <h2 className="mt-0.5 text-lg font-bold text-slate-900">Why the gap is forming</h2>
         </div>
 
-        <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-4 gap-3">
+        <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
           {breakdown.map((item) => {
             const meta = signalMeta(item);
             return (
-              <div key={item.factor} className={`rounded-xl border p-3.5 ${meta.accent}`}>
+              <div key={item.factor} className={`rounded-lg border p-3 ${meta.accent}`}>
                 <div className="flex items-start justify-between gap-3">
                   <div className="flex items-center gap-2 min-w-0">
-                    <span className="material-symbols-outlined leading-none shrink-0" style={{ fontSize: "18px" }}>
+                    <span className={`material-symbols-outlined leading-none shrink-0 ${meta.iconColor}`} style={{ fontSize: "18px" }}>
                       {meta.icon}
                     </span>
-                    <p className="text-sm font-black leading-tight">{meta.label}</p>
+                    <p className={`text-sm font-semibold leading-tight ${meta.titleColor}`}>{meta.label}</p>
                   </div>
-                  <p className="text-sm font-black shrink-0">{meta.value}</p>
+                  <p className={`text-sm font-bold shrink-0 ${meta.valueColor}`}>{meta.value}</p>
                 </div>
-                <p className="text-xs text-slate-600 leading-snug mt-2">{item.factor}</p>
+                <p className="text-xs text-gray-500 leading-snug mt-2">{item.factor}</p>
               </div>
             );
           })}
         </div>
-      </div>
     </div>
   );
 }
@@ -368,55 +526,63 @@ function DeficitBreakdown({ breakdown }) {
 // ── Impact Simulation ──────────────────────────────────────────────────────
 
 function ImpactSimulation({ sim }) {
+  const { t } = useLanguage();
+  const actionRecommendation = getActionRecommendation(getPwtSeverity(sim.currentPwt));
   return (
-    <div className="bg-white shadow-sm border border-slate-100 rounded-2xl overflow-hidden h-full">
-      <div className="h-0.5 bg-brand" />
-      <div className="p-5 flex flex-col gap-4 h-full">
-        <div>
-          <Eyebrow>Impact Simulation</Eyebrow>
-          <h2 className="text-xl font-bold text-[#1a2b5e] mt-0.5">If we act now</h2>
-        </div>
-
-        <div className="bg-emerald-50 border border-emerald-200 rounded-xl px-4 py-3">
-          <p className="text-xs text-emerald-700 uppercase tracking-widest font-bold">Recommended Action</p>
-          <p className="text-sm font-bold text-slate-900 mt-0.5 leading-snug">{sim.action}</p>
-        </div>
-
-        <div className="rounded-xl border border-slate-200 overflow-hidden">
-          <div className="grid grid-cols-[1fr_auto_1fr] items-center gap-3 p-4 border-b border-slate-100 bg-slate-50/80">
-            <div>
-              <p className="text-xs text-muted uppercase tracking-widest font-bold">Current PWT</p>
-              <p className="text-3xl font-black text-danger mt-0.5">{sim.currentPwt} min</p>
-            </div>
-            <span className="material-symbols-outlined text-slate-300">arrow_forward</span>
-            <div className="text-right">
-              <p className="text-xs text-muted uppercase tracking-widest font-bold">After Action</p>
-              <p className="text-3xl font-black text-brand mt-0.5">{sim.projectedPwt} min</p>
-            </div>
+    <div className="h-full rounded-xl border border-gray-100 border-t-[3px] border-t-[#EF4444] bg-white p-4 shadow-sm">
+      <div className="flex h-full flex-col gap-4">
+        <div className="flex items-start justify-between gap-3">
+          <div>
+            <p className="text-xs font-semibold uppercase tracking-widest text-gray-400">{t("ops.impactSimulation")}</p>
+            <h2 className="mt-0.5 text-xl font-bold text-[var(--color-text-primary)]">If we act now</h2>
+            <p className="mt-1 text-sm text-muted">Estimated outcome after sending incentive</p>
           </div>
-          <div className="grid grid-cols-[1fr_auto_1fr] items-center gap-3 p-4">
-            <div>
-              <p className="text-xs text-muted uppercase tracking-widest font-bold">Deficit</p>
-              <p className="text-3xl font-black text-danger mt-0.5">{sim.currentDeficit}%</p>
-            </div>
-            <span className="material-symbols-outlined text-slate-300">arrow_forward</span>
-            <div className="text-right">
-              <p className="text-xs text-muted uppercase tracking-widest font-bold">After Action</p>
-              <p className="text-3xl font-black text-brand mt-0.5">{sim.projectedDeficit}%</p>
+          <div className="group relative">
+            <button
+              type="button"
+              aria-label="Impact simulation estimation method"
+              className={INFO_ICON_CLASS}
+            >
+              ⓘ
+            </button>
+            <div className="pointer-events-none absolute right-0 top-9 z-20 hidden min-w-[260px] max-w-[320px] rounded-lg border border-slate-200 bg-white px-4 py-3 text-sm leading-relaxed text-gray-700 shadow-xl group-hover:block group-focus-within:block">
+              <p className="font-bold">Estimation method:</p>
+              <p className="mt-2">• After Action PWT = Current PWT × 0.65</p>
+              <p className="text-gray-500">(based on historical incentive response rate)</p>
+              <p className="mt-2">• Deficit reduction assumes +15 taxis dispatched</p>
+              <p className="mt-2">• Queue time improvement = ΔPax × avg service rate</p>
             </div>
           </div>
         </div>
 
-        <div className="grid grid-cols-2 gap-3 mt-auto">
-          <div className="rounded-xl bg-emerald-50 border border-emerald-200 px-4 py-3">
-            <p className="text-xs text-emerald-700 uppercase tracking-widest font-bold">PWT Improvement</p>
-            <p className="text-2xl font-black text-brand mt-0.5">−{sim.pwtReductionPct}%</p>
+        <div className="rounded-lg border-2 border-[#4ADE80] bg-[#F0FDF4] px-3 py-2.5">
+          <p className="mb-1 text-xs font-bold uppercase tracking-widest text-green-700">Recommended Action</p>
+          <p className="text-sm font-semibold leading-snug text-gray-800">{actionRecommendation.copy}</p>
+        </div>
+
+        <div className="grid grid-cols-[1fr_auto_1fr] items-center gap-3 rounded-lg bg-gray-50 p-3">
+          <div>
+            <p className="text-xs font-bold uppercase tracking-widest text-gray-400">Current PWT</p>
+            <p className="mt-0.5 text-3xl font-black text-red-600">{sim.currentPwt} min</p>
           </div>
-          <div className="rounded-xl bg-emerald-50 border border-emerald-200 px-4 py-3">
-            <p className="text-xs text-emerald-700 uppercase tracking-widest font-bold">Queue Time</p>
-            <p className="text-2xl font-black text-brand mt-0.5">−{sim.queueTimeReduction} min</p>
+          <span className="text-xl font-bold text-gray-300">→</span>
+          <div className="text-right">
+            <p className="text-xs font-bold uppercase tracking-widest text-gray-400">After action</p>
+            <p className="mt-0.5 text-3xl font-black text-[#154aa8]">{sim.projectedPwt} min</p>
           </div>
         </div>
+
+        <div className="grid grid-cols-2 gap-3">
+          <div className="rounded-lg bg-[#16A34A] px-3 py-3">
+            <p className="text-2xl font-bold text-white">▼ {sim.pwtReductionPct}%</p>
+            <p className="mt-0.5 text-xs font-bold uppercase tracking-widest text-[#BBF7D0]">PWT improvement</p>
+          </div>
+          <div className="rounded-lg bg-[#16A34A] px-3 py-3">
+            <p className="text-2xl font-bold text-white">▼ {sim.queueTimeReduction} min</p>
+            <p className="mt-0.5 text-xs font-bold uppercase tracking-widest text-[#BBF7D0]">Queue time</p>
+          </div>
+        </div>
+
       </div>
     </div>
   );
@@ -425,21 +591,26 @@ function ImpactSimulation({ sim }) {
 // ── ML Prediction ───────────────────────────────────────────────────────────
 
 const ML_MOCK = {
-  T1:  { predictedPWT: 19.0, breachProb: 78,   decision: "Activate extra lane and broadcast to drivers." },
-  T2:  { predictedPWT: 13.8, breachProb: 12.5, decision: "Monitor closely — no extra lane required yet." },
-  ALL: { predictedPWT: 16.4, breachProb: 49,   decision: "Stage overflow capacity and synchronize driver broadcast." },
+  ALL: { predictedPWT: Math.round(kpiSummary.currentPWTPrediction), breachProb: Math.round(kpiSummary.breachRate), decision: aiAdvisory.recommendation },
 };
 
 function MLPredictionCard({ terminal }) {
-  const { predictedPWT, breachProb, decision } = ML_MOCK[terminal] ?? ML_MOCK.T1;
-  const SLA_THRESHOLD = 15;
+  const { t } = useLanguage();
+  const { predictedPWT, breachProb, decision } = ML_MOCK[terminal] ?? ML_MOCK.ALL;
+  const severity = getPwtSeverity(predictedPWT);
+  const SLA_THRESHOLD = PWT_THRESHOLDS.SLA_BREACH;
+  const ACTION_BUFFER = PWT_THRESHOLDS.ACTION_BUFFER;
+  const EARLY_WATCH = PWT_THRESHOLDS.EARLY_WATCH;
   const buffer = +(SLA_THRESHOLD - predictedPWT).toFixed(1);
-
-  const kpi = predictedPWT >= SLA_THRESHOLD
-    ? { label: "SLA Breached",   dot: "bg-red-500",     text: "text-red-700",     bg: "bg-red-50",    border: "border-red-200",    bar: "bg-red-500",     desc: "Predicted wait time exceeds the SLA. Immediate intervention required." }
-    : predictedPWT >= 12
-    ? { label: "Near Threshold", dot: "bg-amber-400",   text: "text-amber-700",   bg: "bg-amber-50",  border: "border-amber-200",  bar: "bg-amber-400",   desc: "Within 3 min of the SLA limit. Monitor closely and prepare actions." }
-    : { label: "Within SLA",     dot: "bg-emerald-500", text: "text-emerald-700", bg: "bg-emerald-50", border: "border-emerald-200", bar: "bg-emerald-500", desc: "Predicted wait time remains comfortably below the operational SLA threshold." };
+  const kpi = {
+    ...getSeverityTone(severity),
+    desc: {
+      [PWT_SEVERITY.NORMAL]: "Normal: queue pressure is within operating range.",
+      [PWT_SEVERITY.WATCH]: "Watch: rising queue pressure, no dispatch intervention yet.",
+      [PWT_SEVERITY.WARNING]: "Warning: action buffer exceeded, incentive recommended.",
+      [PWT_SEVERITY.CRITICAL]: "Critical: SLA breach risk, overflow response recommended.",
+    }[severity],
+  };
 
   const modelInputs = ["Flight wave", "QR demand", "Taxi supply", "Lane capacity", "Weather", "Time"];
   const decisionText = `Decision: ${decision}`;
@@ -449,7 +620,7 @@ function MLPredictionCard({ terminal }) {
     <details className="group bg-white shadow-sm border border-slate-100 rounded-2xl overflow-hidden">
       <summary className="flex cursor-pointer list-none items-center justify-between gap-4 px-5 py-4 hover:bg-slate-50 transition-colors">
         <div>
-          <Eyebrow>ML Prediction Details</Eyebrow>
+          <Eyebrow>{t("ops.systemIntelligence")}</Eyebrow>
           <h2 className="text-lg font-bold text-slate-900 mt-0.5">Supporting model evidence</h2>
         </div>
         <div className="flex items-center gap-3">
@@ -495,7 +666,7 @@ function MLPredictionCard({ terminal }) {
               </div>
               <div className="bg-slate-50 border border-slate-100 rounded-2xl p-4">
                 <p className="text-sm font-bold text-slate-900">XGBoost Classifier</p>
-                <p className="text-xs text-muted mt-1">Predicts probability of PWT &gt; 15 min</p>
+                <p className="text-xs text-muted mt-1">Predicts probability of PWT &gt; {SLA_THRESHOLD} min</p>
               </div>
             </div>
           </div>
@@ -516,8 +687,16 @@ function MLPredictionCard({ terminal }) {
               <p className={`text-4xl font-black mt-1 ${kpi.text}`}>{predictedPWT} min</p>
               <div className="mt-3 pt-3 border-t border-slate-200/60 flex flex-col gap-1.5">
                 <div className="flex items-center justify-between">
-                  <span className="text-xs text-muted">Target SLA</span>
-                  <span className="text-xs font-bold text-slate-600">&lt; {SLA_THRESHOLD} min</span>
+                  <span className="text-xs text-muted">SLA breach threshold</span>
+                  <span className="text-xs font-bold text-slate-600">&gt; {SLA_THRESHOLD} min</span>
+                </div>
+                <div className="flex items-center justify-between">
+                  <span className="text-xs text-muted">Action buffer</span>
+                  <span className="text-xs font-bold text-slate-600">&gt; {ACTION_BUFFER} min</span>
+                </div>
+                <div className="flex items-center justify-between">
+                  <span className="text-xs text-muted">Early watch</span>
+                  <span className="text-xs font-bold text-slate-600">&gt; {EARLY_WATCH} min</span>
                 </div>
                 <div className="flex items-center justify-between">
                   <span className={`text-xs font-semibold ${kpi.text}`}>
@@ -534,7 +713,7 @@ function MLPredictionCard({ terminal }) {
                     style={{ width: `${Math.min((predictedPWT / SLA_THRESHOLD) * 100, 100)}%` }}
                   />
                 </div>
-                <p className="text-xs text-muted mt-1">vs {SLA_THRESHOLD} min SLA limit</p>
+                <p className="text-xs text-muted mt-1">vs {SLA_THRESHOLD} min SLA breach threshold</p>
               </div>
             </div>
 
@@ -543,7 +722,7 @@ function MLPredictionCard({ terminal }) {
               <p className="text-xs text-muted uppercase tracking-widest font-semibold">Breach Risk Probability</p>
               <p className="text-4xl font-bold text-slate-900 mt-1">{breachProb}%</p>
               <p className="text-xs text-muted mt-3 leading-relaxed">
-                Probability PWT exceeds {SLA_THRESHOLD} min SLA in the next demand window.
+                Probability PWT exceeds {SLA_THRESHOLD} min in the next demand window.
               </p>
             </div>
 
@@ -568,108 +747,11 @@ function MLPredictionCard({ terminal }) {
   );
 }
 
-// ── OPS Control Actions ────────────────────────────────────────────────────
-
-function OpsControlActions({ laneActivated, setLaneActivated, broadcastSent, setBroadcastSent, lane2Active, setLane2Active }) {
-  const now = new Date().toLocaleTimeString("en-GB", { hour: "2-digit", minute: "2-digit" });
-
-  const actions = [
-    {
-      title: "Overflow Lane",
-      subtitle: "Activate high-capacity overflow routing for Terminal 1 pickup zone",
-      priority: "primary",
-      activated: laneActivated,
-      onActivate: () => setLaneActivated(true),
-      activeLabel: "Overflow Lane Active ✓",
-      inactiveLabel: "Activate Overflow Lane",
-    },
-    {
-      title: "Driver Broadcast",
-      subtitle: "Push a 6-minute head-start message to all holding and inbound drivers",
-      priority: "secondary",
-      activated: broadcastSent,
-      onActivate: () => setBroadcastSent(true),
-      activeLabel: `Sent ${now} ✓`,
-      inactiveLabel: "Broadcast to Drivers",
-    },
-    {
-      title: "Lane 2",
-      subtitle: "Open secondary pickup lane to relieve primary lane congestion",
-      priority: "tertiary",
-      activated: lane2Active,
-      onActivate: () => setLane2Active(true),
-      activeLabel: "Lane 2 Open ✓",
-      inactiveLabel: "Open Lane 2",
-    },
-  ];
-
-  return (
-    <div>
-      <SectionHeading eyebrow="OPS Control Actions" title="Act now — these change live state" />
-      <div className="bg-white shadow-sm border border-slate-100 rounded-2xl overflow-hidden">
-        <div className="h-0.5 bg-danger" />
-        <div className="p-5">
-          <Eyebrow>Dispatch Controls</Eyebrow>
-          <div className="grid grid-cols-1 lg:grid-cols-[1.45fr_1fr_0.85fr] gap-3 mt-4">
-            {actions.map((action) => {
-              const buttonClass = action.activated
-                ? "bg-emerald-50 text-brand border border-brand/30 cursor-default"
-                : action.priority === "primary"
-                ? "bg-danger text-white hover:bg-red-700 active:scale-95 shadow-sm"
-                : action.priority === "secondary"
-                ? "bg-white text-[#154aa8] border border-[#154aa8]/30 hover:bg-[#154aa8]/5 active:scale-95"
-                : "bg-slate-100 text-slate-600 border border-slate-200 hover:bg-slate-200 active:scale-95";
-              const cardClass = action.priority === "primary"
-                ? "bg-red-50/70 border-red-200 shadow-sm"
-                : action.priority === "secondary"
-                ? "bg-white border-[#154aa8]/20"
-                : "bg-slate-50 border-slate-200 opacity-85";
-              const labelClass = action.priority === "primary"
-                ? "bg-danger text-white"
-                : action.priority === "secondary"
-                ? "bg-[#154aa8]/10 text-[#154aa8]"
-                : "bg-slate-200 text-slate-500";
-              const priorityLabel = action.priority === "primary"
-                ? "Primary"
-                : action.priority === "secondary"
-                ? "Secondary"
-                : "Optional";
-
-              return (
-                <div key={action.title} className={`flex flex-col gap-3 rounded-xl border p-4 ${cardClass}`}>
-                  <div className="flex items-start justify-between gap-3">
-                    <div>
-                      <p className={`text-sm font-bold ${action.priority === "tertiary" ? "text-slate-600" : "text-slate-900"}`}>
-                        {action.title}
-                      </p>
-                      <p className="text-xs text-muted leading-relaxed mt-1">{action.subtitle}</p>
-                    </div>
-                    <span className={`shrink-0 rounded-full px-2 py-0.5 text-[10px] font-black uppercase tracking-wider ${labelClass}`}>
-                      {priorityLabel}
-                    </span>
-                  </div>
-                  <button
-                    onClick={action.onActivate}
-                    disabled={action.activated}
-                    className={`mt-auto w-full py-2.5 rounded-xl text-sm font-semibold transition-all ${buttonClass}`}
-                  >
-                    {action.activated ? action.activeLabel : action.inactiveLabel}
-                  </button>
-                </div>
-              );
-            })}
-          </div>
-        </div>
-      </div>
-    </div>
-  );
-}
-
 // ── Supporting Data: 3-column table ───────────────────────────────────────
 
 function DataSection({ eyebrow, title, items }) {
   return (
-    <div className="bg-white shadow-sm border border-slate-100 rounded-2xl p-5">
+    <div className="rounded-xl border border-gray-100 border-t-[3px] border-t-[#3B82F6] bg-white p-4 shadow-sm">
       <div className="flex items-center justify-between mb-1">
         <Eyebrow>{eyebrow}</Eyebrow>
         <span className="text-xs text-muted bg-slate-100 px-2 py-0.5 rounded-full">{items.length}</span>
@@ -689,54 +771,6 @@ function DataSection({ eyebrow, title, items }) {
           </li>
         ))}
       </ul>
-    </div>
-  );
-}
-
-function StickyActionBar({ terminal, d, laneActivated, setLaneActivated, broadcastSent, setBroadcastSent }) {
-  const isCritical = d.pwt > d.guardrailMin;
-
-  return (
-    <div className={`sticky top-0 z-30 -mx-8 px-8 py-2 border-y backdrop-blur ${
-      isCritical
-        ? "bg-red-50/95 border-red-200"
-        : "bg-white/95 border-slate-200"
-    }`}>
-      <div className="max-w-6xl mx-auto flex items-center justify-between gap-3 flex-wrap">
-        <div className="flex items-center gap-2 min-w-0">
-          <span className={`w-2 h-2 rounded-full shrink-0 ${isCritical ? "bg-danger" : "bg-brand"}`} />
-          <p className={`text-xs sm:text-sm font-black tracking-wide ${isCritical ? "text-red-800" : "text-slate-700"}`}>
-            {isCritical ? "CRITICAL" : "LIVE"} · {terminal} SLA breach projected in 15 min
-          </p>
-          <span className="hidden md:inline text-xs text-slate-500 truncate">
-            PWT {d.pwt} min · {d.waitingPassengers.toLocaleString()} waiting pax
-          </span>
-        </div>
-        <div className="flex items-center gap-2">
-          <button
-            onClick={() => setLaneActivated(true)}
-            disabled={laneActivated}
-            className={`px-3 py-1.5 rounded-lg text-xs font-bold transition-all ${
-              laneActivated
-                ? "bg-emerald-50 text-brand border border-brand/30"
-                : "bg-danger text-white hover:bg-red-700 active:scale-95 shadow-sm"
-            }`}
-          >
-            {laneActivated ? "Overflow Active" : "Activate Overflow Lane"}
-          </button>
-          <button
-            onClick={() => setBroadcastSent(true)}
-            disabled={broadcastSent}
-            className={`px-3 py-1.5 rounded-lg text-xs font-bold transition-all ${
-              broadcastSent
-                ? "bg-emerald-50 text-brand border border-brand/30"
-                : "bg-white text-[#154aa8] border border-[#154aa8]/30 hover:bg-[#154aa8]/5 active:scale-95"
-            }`}
-          >
-            {broadcastSent ? "Broadcast Sent" : "Broadcast Drivers"}
-          </button>
-        </div>
-      </div>
     </div>
   );
 }
@@ -767,6 +801,81 @@ function DemoAssignmentStatus() {
   );
 }
 
+function EscalationAlert() {
+  const { activeEscalation, acknowledgeEscalation } = useDemoMatching();
+  const [storedEscalation, setStoredEscalation] = useState(() =>
+    readStorageJson("helloride_activeEscalation")
+  );
+  const [, setStorageSyncVersion] = useState(0);
+
+  useEffect(() => {
+    function syncFromStorage() {
+      setStoredEscalation(readStorageJson("helloride_activeEscalation"));
+      setStorageSyncVersion((version) => version + 1);
+    }
+
+    function handleStorage(event) {
+      if (OPS_SYNC_STORAGE_KEYS.includes(event.key)) {
+        syncFromStorage();
+      }
+    }
+
+    window.addEventListener("storage", handleStorage);
+    syncFromStorage();
+
+    return () => {
+      window.removeEventListener("storage", handleStorage);
+    };
+  }, []);
+
+  const escalation = storedEscalation ?? activeEscalation;
+
+  if (!escalation || escalation.status !== "open") return null;
+
+  const highSeverity = escalation.severity === "HIGH";
+
+  function handleAcknowledge() {
+    const acknowledged = { ...escalation, status: "acknowledged" };
+    setStoredEscalation(acknowledged);
+    window.localStorage.setItem("helloride_activeEscalation", JSON.stringify(acknowledged));
+    acknowledgeEscalation();
+  }
+
+  return (
+    <div className={`rounded-2xl border px-4 py-3 shadow-sm ${
+      highSeverity ? "border-red-200 bg-red-50" : "border-amber-200 bg-amber-50"
+    }`}>
+      <div className="flex flex-wrap items-start justify-between gap-3">
+        <div className="min-w-0 flex-1">
+          <div className="flex flex-wrap items-center gap-2">
+            <span className={`rounded-full px-2.5 py-1 text-[10px] font-black uppercase tracking-widest ${
+              highSeverity ? "bg-red-600 text-white" : "bg-amber-500 text-white"
+            }`}>
+              Safety Escalation · {escalation.severity}
+            </span>
+            <span className="text-xs font-bold text-slate-500">{escalation.id}</span>
+          </div>
+          <p className="mt-2 text-sm font-black text-slate-900">
+            {escalation.protocolName} detected from {escalation.sourceRole}
+          </p>
+          <p className="mt-1 text-xs leading-relaxed text-slate-600">
+            Recommended: {escalation.recommendedAction}
+          </p>
+          <p className="mt-1 text-[11px] leading-relaxed text-slate-500">
+            Demo only. OPS must acknowledge before any simulated escalation. No external emergency dispatch is active.
+          </p>
+        </div>
+        <button
+          onClick={handleAcknowledge}
+          className="shrink-0 rounded-xl bg-[#154aa8] px-4 py-2 text-xs font-black text-white shadow-sm transition-colors hover:bg-[#0f2f68] active:scale-95"
+        >
+          Acknowledge
+        </button>
+      </div>
+    </div>
+  );
+}
+
 // ── Passenger–Driver Matching Simulation ───────────────────────────────────
 
 const SECONDARY_MATCHING_PASSENGERS = [
@@ -780,15 +889,26 @@ const SECONDARY_MATCHING_DRIVERS = [
 ];
 
 function MatchingSimulation({ d }) {
-  const { activeTrip, assignMatch, resetMatch } = useDemoMatching();
-  const isCritical = d.pwt > 15;
-  const mode = isCritical ? "Critical Matching" : "Normal Matching";
+  const { t } = useLanguage();
+  const { activeTrip, assignMatch, resetMatch, setOpsAction, dispatchMode, setDispatchMode } = useDemoMatching();
+  const matchingMode = getMatchingMode(d.pwt);
+  const isCritical = matchingMode === "CRITICAL_MATCHING";
+  const isPriority = matchingMode === "PRIORITY_MATCHING";
+  const mode = {
+    NORMAL_MATCHING: "Normal Matching",
+    PRIORITY_MATCHING: "Priority Matching",
+    CRITICAL_MATCHING: "Critical Matching",
+  }[matchingMode];
   const modeTone = isCritical
     ? "bg-red-50 text-red-700 border-red-200"
+    : isPriority
+    ? "bg-amber-50 text-amber-700 border-amber-200"
     : "bg-emerald-50 text-brand border-brand/20";
-  const reason = isCritical
-    ? `PWT ${d.pwt} min exceeds 15-min SLA, prioritizing long-waiting passengers.`
-    : `PWT ${d.pwt} min is within 15-min SLA, using first-come matching with capacity fit.`;
+  const reason = {
+    NORMAL_MATCHING: `PWT ${d.pwt} min is at or below the 20-min action buffer, using first-come matching with capacity fit.`,
+    PRIORITY_MATCHING: `PWT ${d.pwt} min exceeds the 20-min action buffer, adding ETA and capacity fit to queue order.`,
+    CRITICAL_MATCHING: `PWT ${d.pwt} min exceeds the 30-min SLA breach threshold, prioritizing longest wait, low ETA, high acceptance, and capacity fit.`,
+  }[matchingMode];
   const bestPassenger = {
     id: activeTrip.passengerId,
     waitMin: 18,
@@ -808,9 +928,44 @@ function MatchingSimulation({ d }) {
   const matchingPassengers = [bestPassenger, ...SECONDARY_MATCHING_PASSENGERS];
   const matchingDrivers = [bestDriver, ...SECONDARY_MATCHING_DRIVERS];
 
+  function handleRunMatching() {
+    if (matchingMode === "CRITICAL_MATCHING") {
+      setOpsAction(OPS_ACTION.OVERFLOW_ACTIVATED);
+    } else if (matchingMode === "PRIORITY_MATCHING") {
+      setOpsAction(OPS_ACTION.INCENTIVE_SENT);
+    }
+    assignMatch();
+  }
+
   return (
     <section>
-      <SectionHeading eyebrow="Dispatch Intelligence" title="Passenger–Driver Matching Simulation" />
+      <SectionHeading eyebrow={t("ops.dispatchIntelligence")} title={t("ops.matchingSimulation")} />
+      <div className="mb-4 flex flex-wrap items-center justify-between gap-3 rounded-2xl border border-[#154aa8]/15 bg-[#e8f0fe] px-4 py-3">
+        <div>
+          <p className="text-xs font-black uppercase tracking-widest text-[#154aa8]">Dispatch Mode</p>
+          <p className="mt-0.5 text-xs text-slate-600">
+            Auto assigns after booking. OPS Priority waits for manual dispatch.
+          </p>
+        </div>
+        <div className="inline-flex rounded-full border border-slate-200 bg-white p-1 shadow-sm">
+          {[
+            ["auto", "Auto Dispatch"],
+            ["priority", "OPS Priority Dispatch"],
+          ].map(([mode, label]) => (
+            <button
+              key={mode}
+              onClick={() => setDispatchMode(mode)}
+              className={`rounded-full px-3 py-1.5 text-xs font-black transition-colors ${
+                dispatchMode === mode
+                  ? "bg-[#154aa8] text-white"
+                  : "text-slate-500 hover:text-slate-800"
+              }`}
+            >
+              {label}
+            </button>
+          ))}
+        </div>
+      </div>
       <div className="mb-4 flex flex-wrap items-center justify-between gap-3 rounded-2xl border border-slate-200 bg-white px-4 py-3 shadow-sm">
         <div>
           <p className="text-sm font-bold text-slate-900">
@@ -822,10 +977,10 @@ function MatchingSimulation({ d }) {
         </div>
         <div className="flex items-center gap-2">
           <button
-            onClick={() => assignMatch()}
+            onClick={handleRunMatching}
             className="rounded-xl bg-[#154aa8] px-3 py-2 text-xs font-bold text-white shadow-sm transition-colors hover:bg-[#0f2f68] active:scale-95"
           >
-            Run Matching
+            Run Priority Dispatch
           </button>
           <button
             onClick={resetMatch}
@@ -852,10 +1007,13 @@ function MatchingSimulation({ d }) {
             <div className="rounded-xl border border-slate-200 bg-slate-50 px-4 py-3">
               <p className="text-xs font-bold uppercase tracking-widest text-slate-400">Mode logic</p>
               <p className="mt-1 text-sm text-slate-700">
-                <span className="font-bold text-slate-900">Critical:</span> Priority + ETA + Acceptance + Capacity Fit
+                <span className="font-bold text-slate-900">Critical:</span> Longest Wait + Low ETA + High Acceptance + Capacity Fit
               </p>
               <p className="mt-1 text-sm text-slate-700">
-                <span className="font-bold text-slate-900">Normal:</span> First-Come, First-Served + Capacity Fit
+                <span className="font-bold text-slate-900">Priority:</span> Queue Order + ETA + Capacity Fit
+              </p>
+              <p className="mt-1 text-sm text-slate-700">
+                <span className="font-bold text-slate-900">Normal:</span> FCFS + Capacity Fit
               </p>
             </div>
             <div className="rounded-xl border border-emerald-200 bg-emerald-50 px-4 py-3">
@@ -936,14 +1094,15 @@ function MatchingSimulation({ d }) {
   );
 }
 
-function CommandCenter({ d, laneActivated, setLaneActivated, broadcastSent, setBroadcastSent }) {
+function CommandCenter({ d, laneActivated, broadcastSent, onApproveAction }) {
   return (
     <section className="grid grid-cols-1 lg:grid-cols-[minmax(0,1fr)_360px] gap-5 items-stretch">
       <HealthCard d={d} />
       <AlertCard
         d={d}
-        laneActivated={laneActivated} setLaneActivated={setLaneActivated}
-        broadcastSent={broadcastSent} setBroadcastSent={setBroadcastSent}
+        laneActivated={laneActivated}
+        broadcastSent={broadcastSent}
+        onApproveAction={onApproveAction}
       />
     </section>
   );
@@ -952,42 +1111,34 @@ function CommandCenter({ d, laneActivated, setLaneActivated, broadcastSent, setB
 function ForecastImpactSection({ d }) {
   return (
     <section className="grid grid-cols-1 xl:grid-cols-[minmax(0,1.45fr)_minmax(340px,0.8fr)] gap-5 items-stretch">
-      <DemandChart series={d.forecastSeries} criticalWindow={d.criticalWindow} />
+      <DemandChart series={d.forecastSeries} />
       <ImpactSimulation sim={d.impactSimulation} />
     </section>
   );
 }
 
-function RootCauseTelemetry({ d, flightItems, signalItems, supplyItems }) {
+function RootCauseTelemetry({ d, flightItems, supplyItems }) {
   return (
-    <section className="flex flex-col gap-4">
+    <section className="grid grid-cols-1 gap-3 xl:grid-cols-3">
       <DeficitBreakdown breakdown={d.deficitBreakdown} />
-      <div className="grid grid-cols-1 lg:grid-cols-3 gap-4">
-        <DataSection eyebrow="Flight wave" title="Arrivals driving demand" items={flightItems} />
-        <DataSection eyebrow="Demand capture" title="QR scans in the last 20 minutes" items={signalItems} />
-        <DataSection eyebrow="Supply telemetry" title="Driver response pulse" items={supplyItems} />
-      </div>
+      <DataSection eyebrow="Flight wave" title="Arrivals driving demand" items={flightItems} />
+      <DataSection eyebrow="Supply telemetry" title="Driver response pulse" items={supplyItems} />
     </section>
   );
 }
 
 // ── Live Monitoring View ───────────────────────────────────────────────────
 
-function LiveMonitoring({ d, terminal, laneActivated, setLaneActivated, broadcastSent, setBroadcastSent, lane2Active, setLane2Active }) {
+function LiveMonitoring({ d, terminal, laneActivated, broadcastSent, onApproveAction }) {
+  const severity = getPwtSeverity(d.pwt);
+  const severityTone = getSeverityTone(severity);
+  const isCritical = severity === PWT_SEVERITY.CRITICAL;
   const flightItems = d.flights.map((f) => ({
     primary: `${f.code} · ${f.origin}`,
     secondary: `${f.status} · ${f.terminal} · ETA ${f.eta}`,
     value: String(f.demand),
     caption: "forecast pax",
   }));
-
-  const signalItems = d.demandSignals.map((s) => ({
-    primary: s.zone,
-    secondary: s.time,
-    value: `${s.parties} parties`,
-    caption: `${s.luggage} bags`,
-  }));
-
   const supplyItems = d.supplyItems.map((s) => ({
     primary: s.name,
     secondary: s.detail,
@@ -996,40 +1147,39 @@ function LiveMonitoring({ d, terminal, laneActivated, setLaneActivated, broadcas
   }));
 
   return (
-    <div className="flex flex-col gap-5">
-      <StickyActionBar
-        terminal={terminal}
-        d={d}
-        laneActivated={laneActivated} setLaneActivated={setLaneActivated}
-        broadcastSent={broadcastSent} setBroadcastSent={setBroadcastSent}
-      />
+    <div className="flex flex-col gap-3">
+      <div className="flex items-start justify-between gap-4">
+        <div>
+          <p className="text-xs font-semibold text-gray-500">OPS Dashboard · Suvarnabhumi</p>
+        </div>
+        <span className={`inline-flex items-center gap-1.5 rounded-full px-3 py-1 text-xs font-bold ${isCritical ? "bg-red-50 text-red-700 ring-1 ring-red-200" : `${severityTone.bg} ${severityTone.text} ring-1 ring-gray-100`}`}>
+          <span className={`h-1.5 w-1.5 rounded-full ${isCritical ? "bg-red-600" : severityTone.dot}`} />
+          {isCritical ? "Critical · SLA breached" : severityTone.label}
+        </span>
+      </div>
 
       <AISituationBrief d={d} />
-      <DemoAssignmentStatus />
 
-      {/* Command Center */}
-      <CommandCenter
-        d={d}
-        laneActivated={laneActivated} setLaneActivated={setLaneActivated}
-        broadcastSent={broadcastSent} setBroadcastSent={setBroadcastSent}
-      />
+      <div className="grid grid-cols-1 gap-3 xl:grid-cols-[minmax(0,1fr)_300px]">
+        <div className="flex flex-col gap-3">
+          <HealthCard d={d} />
+          <DemandChart series={d.forecastSeries} />
+        </div>
+        <div className="flex flex-col gap-3">
+          <AlertCard
+            d={d}
+            laneActivated={laneActivated}
+            broadcastSent={broadcastSent}
+            onApproveAction={onApproveAction}
+          />
+          <ImpactSimulation sim={d.impactSimulation} />
+        </div>
+      </div>
 
-      {/* Forecast + Impact Simulation */}
-      <ForecastImpactSection d={d} />
-
-      {/* Root Cause / Telemetry */}
       <RootCauseTelemetry
         d={d}
         flightItems={flightItems}
-        signalItems={signalItems}
         supplyItems={supplyItems}
-      />
-
-      {/* OPS Control Actions */}
-      <OpsControlActions
-        laneActivated={laneActivated} setLaneActivated={setLaneActivated}
-        broadcastSent={broadcastSent} setBroadcastSent={setBroadcastSent}
-        lane2Active={lane2Active} setLane2Active={setLane2Active}
       />
     </div>
   );
@@ -1037,118 +1187,248 @@ function LiveMonitoring({ d, terminal, laneActivated, setLaneActivated, broadcas
 
 // ── AI Advisory Workspace ──────────────────────────────────────────────────
 
-const DEFAULT_AI_MSG = {
-  role: "assistant",
-  text: "Hello Ride AI Advisory is ready. Ask about deficit risk, arrival-wave pressure, lane activation, or the next 15 minutes of BKK operations.",
+function makeMessage(role, content) {
+  return {
+    role,
+    content,
+    timestamp: new Date().toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" }),
+  };
+}
+
+const ADVISORY_COPY = {
+  en: {
+    defaultMessage:
+      "I’m ready to help with queue pressure, arrival-wave risk, driver supply, and next operational actions.",
+    contextEyebrow: "Advisory context",
+    contextTitle: "Current terminal context",
+    chatTitle: "AI Advisory",
+    terminal: "TERMINAL",
+    pwt: "PWT",
+    breachRate: "Breach Rate",
+    confirmedQr: "Confirmed QR",
+    taxis: "Taxis",
+    flights: "Flights",
+    subtitle: "Ask about deficits, arrival waves, driver supply, and next actions.",
+    suggested: "Suggested operational questions",
+    placeholder: "Ask about queue situation...",
+    send: "Send",
+    generating: "Generating advisory...",
+    escalationPrefix: "Active demo escalation",
+    prompts: [
+      { id: "why-pwt", label: "Why is PWT high?" },
+      { id: "next-action", label: "What should we do now?" },
+      { id: "drivers", label: "Are drivers sufficient?" },
+      { id: "arrival-risk", label: "What is the current risk?" },
+    ],
+    responses: {
+      "why-pwt": `Terminal 1 is under arrival-wave pressure from EK374 and QR833.\nHolding supply is not enough for the next 15 minutes.\n\nRoot cause:\nPassenger demand is rising faster than curb taxi supply.\n\nRecommended action:\nApprove incentive + broadcast nearby drivers.\n\nExpected impact:\nProjected PWT improves from 52 → 34 min.`,
+      "next-action": `The current queue state is critical and needs OPS approval.\n\nRoot cause:\nPWT is above the 30-min SLA breach threshold while lane load remains high.\n\nRecommended action:\nRun Priority Dispatch and approve driver broadcast.\n\nExpected impact:\nDriver supply reaches the pickup zone earlier and reduces queue pressure.`,
+      drivers: `Drivers are not sufficient for the next demand window.\n\nRoot cause:\nInbound passenger volume is outpacing available curb taxis.\n\nRecommended action:\nBroadcast nearby drivers and prepare reassignment support.\n\nExpected impact:\nCoverage improves before the next arrival wave peaks.`,
+      "arrival-risk": `The main risk is an overlapping arrival wave.\n\nRoot cause:\nMultiple inbound flights are feeding baggage claim demand at the same time.\n\nRecommended action:\nKeep OPS in priority dispatch mode and monitor PWT every 5 minutes.\n\nExpected impact:\nThe team can intervene before the queue expands further.`,
+    },
+    protocolResponse(protocol) {
+      return `Detected protocol: ${protocol.name}\nSeverity: ${protocol.severity}\n\nRecommended action:\n${protocol.recommendedAction}\n\nOPS approval required:\n${protocol.opsAction}\n\nDemo only; no external emergency dispatch or webhook is active.`;
+    },
+    fallback(d) {
+      return `Current PWT is ${d.pwt} min with ${d.projectedDeficit}% projected deficit.\n\nRoot cause:\nArrival demand is exceeding available curb supply.\n\nRecommended action:\n${d.aiAdvice}\n\nExpected impact:\nOPS can reduce queue pressure by approving the recommended action.`;
+    },
+  },
+  th: {
+    defaultMessage:
+      "พร้อมช่วยวิเคราะห์แรงกดดันคิว ความเสี่ยงจากเที่ยวบินขาเข้า จำนวนคนขับ และคำแนะนำถัดไปสำหรับ OPS",
+    contextEyebrow: "บริบทคำแนะนำ",
+    contextTitle: "บริบทสถานการณ์ปัจจุบัน",
+    chatTitle: "AI Advisory",
+    terminal: "สถานี",
+    pwt: "เวลารอ",
+    breachRate: "อัตรา Breach",
+    confirmedQr: "QR ยืนยัน",
+    taxis: "แท็กซี่",
+    flights: "เที่ยวบิน",
+    subtitle: "ถามเกี่ยวกับการขาดดุล คลื่นเที่ยวบิน หรือ action ถัดไป",
+    suggested: "คำถามแนะนำสำหรับ OPS",
+    placeholder: "ถาม AI Advisory...",
+    send: "ส่ง",
+    generating: "กำลังสร้างคำแนะนำ...",
+    escalationPrefix: "เหตุยกระดับจำลอง",
+    prompts: [
+      { id: "why-pwt", label: "ทำไม PWT สูง?" },
+      { id: "next-action", label: "ต้องทำอะไรตอนนี้?" },
+      { id: "drivers", label: "คนขับเพียงพอไหม?" },
+      { id: "arrival-risk", label: "ความเสี่ยงช่วงนี้คืออะไร?" },
+    ],
+    responses: {
+      "why-pwt": `Terminal 1 กำลังเจอแรงกดดันจากเที่ยวบิน EK374 และ QR833 ที่ทับซ้อนกัน\nจำนวนแท็กซี่ในคิวไม่พอสำหรับ 15 นาทีถัดไป\n\nสาเหตุหลัก:\nผู้โดยสารเพิ่มเร็วกว่าจำนวนรถที่พร้อมรับริมทาง\n\nคำแนะนำ:\nอนุมัติโบนัสดึงคนขับ + แจ้งเตือนคนขับใกล้เคียง\n\nผลที่คาดว่าจะเกิดขึ้น:\nPWT ที่คาดการณ์ดีขึ้นจาก 52 → 34 นาที`,
+      "next-action": `สถานการณ์คิวตอนนี้อยู่ในระดับวิกฤตและต้องให้ OPS อนุมัติ\n\nสาเหตุหลัก:\nPWT เกินเกณฑ์ SLA 30 นาที ขณะที่โหลดเลนยังสูง\n\nคำแนะนำ:\nRun Priority Dispatch และอนุมัติการแจ้งเตือนคนขับ\n\nผลที่คาดว่าจะเกิดขึ้น:\nคนขับเข้าถึงจุดรับเร็วขึ้นและลดแรงกดดันของคิว`,
+      drivers: `จำนวนคนขับยังไม่เพียงพอสำหรับช่วงดีมานด์ถัดไป\n\nสาเหตุหลัก:\nปริมาณผู้โดยสารขาเข้าเพิ่มเร็วกว่าจำนวนแท็กซี่ที่พร้อมรับ\n\nคำแนะนำ:\nแจ้งเตือนคนขับใกล้เคียงและเตรียมแผน reassignment\n\nผลที่คาดว่าจะเกิดขึ้น:\nความครอบคลุมของรถดีขึ้นก่อนคลื่นผู้โดยสารรอบถัดไป`,
+      "arrival-risk": `ความเสี่ยงหลักคือเที่ยวบินขาเข้าหลายเที่ยวทับซ้อนกัน\n\nสาเหตุหลัก:\nผู้โดยสารจากหลายเที่ยวบินเข้าสู่ baggage claim ในเวลาใกล้กัน\n\nคำแนะนำ:\nคงโหมด priority dispatch และติดตาม PWT ทุก 5 นาที\n\nผลที่คาดว่าจะเกิดขึ้น:\nOPS เข้าจัดการได้ก่อนที่คิวจะขยายมากขึ้น`,
+    },
+    protocolResponse(protocol) {
+      return `ตรวจพบโปรโตคอล: ${protocol.name}\nระดับ: ${protocol.severity}\n\nคำแนะนำ:\n${protocol.recommendedAction}\n\nต้องให้ OPS อนุมัติ:\n${protocol.opsAction}\n\nเป็นเดโมเท่านั้น ไม่มีการส่งเหตุฉุกเฉินหรือ webhook ภายนอก`;
+    },
+    fallback(d) {
+      return `PWT ปัจจุบันอยู่ที่ ${d.pwt} นาที และมี deficit คาดการณ์ ${d.projectedDeficit}%\n\nสาเหตุหลัก:\nดีมานด์ขาเข้ามากกว่าจำนวนรถที่พร้อมรับริมทาง\n\nคำแนะนำ:\n${d.aiAdvice}\n\nผลที่คาดว่าจะเกิดขึ้น:\nOPS สามารถลดแรงกดดันคิวได้เมื่ออนุมัติการดำเนินการที่แนะนำ`;
+    },
+  },
 };
 
-const QUICK_PROMPTS = [
-  { label: "Why is PWT high?", text: "What is causing the projected deficit?" },
-  { label: "What should we do next?", text: "What should ops do in the next 15 minutes?" },
-  { label: "Are drivers sufficient?", text: "Are drivers sufficient for current demand?" },
-  { label: "Explain arrival wave risk", text: "Explain the arrival wave risk" },
-];
-
 function AIAdvisoryWorkspace({ d }) {
-  const [history, setHistory] = useState([DEFAULT_AI_MSG]);
+  const { language } = useLanguage();
+  const copy = ADVISORY_COPY[language] ?? ADVISORY_COPY.en;
+  const { createEscalation, activeEscalation } = useDemoMatching();
+  const [messages, setMessages] = useState([]);
   const [input, setInput] = useState("");
   const [loading, setLoading] = useState(false);
+  const messagesEndRef = useRef(null);
 
-  function handleSend(question) {
+  useEffect(() => {
+    messagesEndRef.current?.scrollIntoView({ behavior: "smooth", block: "end" });
+  }, [messages, loading]);
+
+  function getResponse(question, promptId) {
+    const protocol = matchProtocol(question);
+    if (protocol) {
+      createEscalation({ protocol, message: question, sourceRole: "AI Advisory" });
+      return copy.protocolResponse(protocol);
+    }
+
+    if (promptId && copy.responses[promptId]) {
+      return copy.responses[promptId];
+    }
+
+    if (language === "en" && ADVISORY_RESPONSES[question]) {
+      return ADVISORY_RESPONSES[question];
+    }
+
+    return copy.fallback(d);
+  }
+
+  function handleSend(question, promptId = null) {
     if (!question.trim()) return;
     const q = question.trim();
-    setHistory((h) => [...h, { role: "user", text: q }]);
+    setMessages((prev) => [...prev, makeMessage("user", q)]);
     setInput("");
     setLoading(true);
     setTimeout(() => {
-      const response =
-        ADVISORY_RESPONSES[q] ??
-        `Based on current Terminal ${d.code} conditions (PWT: ${d.pwt} min, deficit: ${d.projectedDeficit}%), my recommendation is to ${d.aiAdvice}`;
-      setHistory((h) => [...h, { role: "assistant", text: response }]);
+      setMessages((prev) => [...prev, makeMessage("assistant", getResponse(q, promptId))]);
       setLoading(false);
     }, 800);
   }
 
-  const latestAssistant = [...history].reverse().find((msg) => msg.role === "assistant");
+  const visibleMessages = messages.length
+    ? messages
+    : [{ role: "assistant", content: copy.defaultMessage, timestamp: "" }];
 
   return (
-    <div className="grid grid-cols-1 xl:grid-cols-[minmax(0,0.8fr)_minmax(420px,1.2fr)] gap-5 items-start">
-      <section className="flex flex-col gap-4">
-        <div className="bg-white rounded-2xl border border-slate-100 shadow-sm overflow-hidden">
-          <div className="h-0.5 bg-[#154aa8]" />
-          <div className="p-5">
-            <Eyebrow>Advisory context</Eyebrow>
-            <h2 className="text-xl font-bold text-slate-900 mt-0.5">Current terminal context</h2>
-            <p className="text-sm text-muted mt-1">The assistant answers from the active terminal snapshot and existing mock advisory rules.</p>
-            <div className="grid grid-cols-2 gap-3 mt-4">
-              {[
-                ["Terminal", d.title],
-                ["PWT", `${d.pwt} min`],
-                ["Projected deficit", `${d.projectedDeficit}%`],
-                ["Waiting pax", d.waitingPassengers.toLocaleString()],
-                ["Holding taxis", String(d.holdingTaxis)],
-                ["Lane load", `${d.laneLoad}%`],
-              ].map(([label, value]) => (
-                <div key={label} className="rounded-xl bg-slate-50 border border-slate-100 px-3 py-2.5">
-                  <p className="text-[10px] text-slate-400 uppercase tracking-widest font-bold">{label}</p>
-                  <p className="text-base font-black text-slate-900 mt-0.5">{value}</p>
-                </div>
-              ))}
-            </div>
+    <div className="flex flex-col gap-5">
+      <section className="overflow-hidden rounded-2xl border border-slate-100 bg-white shadow-sm">
+        <div className="h-0.5 bg-[#154aa8]" />
+        <div className="p-5">
+          <h2 className="text-xl font-bold text-slate-900">{copy.contextTitle}</h2>
+          <div className="mt-4 grid grid-cols-2 gap-3 md:grid-cols-3 xl:grid-cols-6">
+            {[
+              [copy.terminal, d.title],
+              [copy.pwt, `${d.pwt} min`],
+              [copy.breachRate, `${Math.round(kpiSummary.breachRate)}%`],
+              [copy.confirmedQr, Math.round(kpiSummary.confirmedQR).toLocaleString()],
+              [copy.taxis, String(Math.round(kpiSummary.taxisAtCurb))],
+              [copy.flights, String(Math.round(kpiSummary.arrivingFlights))],
+            ].map(([label, value]) => (
+              <div key={label} className="rounded-xl bg-slate-50 border border-slate-100 px-3 py-2.5">
+                <p className="text-[10px] text-slate-400 uppercase tracking-widest font-bold">{label}</p>
+                <p className="text-base font-black text-slate-900 mt-0.5">{value}</p>
+              </div>
+            ))}
           </div>
-        </div>
 
-        <div className="bg-[#e8f0fe] rounded-2xl border border-[#154aa8]/15 p-5">
-          <div className="flex items-center gap-2 mb-3">
-            <span className="material-symbols-outlined text-[#154aa8] leading-none" style={{ fontSize: "18px" }}>auto_awesome</span>
-            <p className="text-sm font-black text-[#154aa8]">Suggested questions</p>
+          {activeEscalation?.status === "open" && (
+            <div className="mt-4 rounded-xl border border-red-100 border-l-4 border-l-red-500 bg-red-50 px-3 py-3">
+              <div className="flex items-center gap-2">
+                <span className="rounded-full bg-red-100 px-2 py-0.5 text-[10px] font-black uppercase tracking-wider text-red-700">
+                  {activeEscalation.severity}
+                </span>
+                <p className="min-w-0 truncate text-sm font-bold text-slate-900">{activeEscalation.protocolName}</p>
+              </div>
+              <p className="mt-2 text-xs leading-relaxed text-slate-600">{activeEscalation.recommendedAction}</p>
+            </div>
+          )}
+
+          {activeEscalation?.status === "acknowledged" && (
+            <div className="mt-4 rounded-xl border border-slate-200 border-l-4 border-l-slate-300 bg-slate-50 px-3 py-2.5">
+              <p className="text-xs font-bold text-slate-700">Recent escalation acknowledged</p>
+              <p className="mt-0.5 text-xs text-slate-500">
+                {activeEscalation.protocolName} · OPS acknowledged
+              </p>
+            </div>
+          )}
+        </div>
+      </section>
+
+      <section className="flex min-h-[560px] flex-col overflow-hidden rounded-2xl border border-slate-100 bg-white shadow-sm">
+        <div className="h-0.5 bg-[#154aa8]" />
+        <div className="flex flex-1 min-h-0 flex-col p-5">
+          <div className="flex-none">
+            <div className="flex items-center gap-2">
+              <h2 className="text-xl font-bold text-slate-900">{copy.chatTitle}</h2>
+            </div>
+            <p className="mt-1 text-sm text-muted">{copy.subtitle}</p>
           </div>
-          <div className="flex flex-col gap-2">
-            {QUICK_PROMPTS.map((prompt) => (
+
+          <div className="mt-4 flex min-h-[300px] flex-1 flex-col gap-3 overflow-y-auto rounded-2xl border border-slate-100 bg-slate-50 p-4">
+            {visibleMessages.map((message, index) => (
+              <div key={`${message.timestamp}-${index}`} className={`flex gap-2 ${message.role === "user" ? "justify-end" : "justify-start"}`}>
+                {message.role === "assistant" && (
+                  <div className="mt-1 flex h-7 w-7 shrink-0 items-center justify-center rounded-full bg-[#154aa8]/10 text-[#154aa8]">
+                    <span className="material-symbols-outlined leading-none" style={{ fontSize: "16px" }}>auto_awesome</span>
+                  </div>
+                )}
+                <div className={`max-w-[82%] rounded-2xl px-4 py-3 shadow-sm ${
+                  message.role === "user"
+                    ? "bg-[#154aa8] text-white rounded-br-md"
+                    : "bg-white text-slate-800 border border-slate-200/80 rounded-bl-md"
+                }`}>
+                  <p className="whitespace-pre-line text-sm leading-relaxed">{message.content}</p>
+                  {message.timestamp && (
+                    <p className={`mt-1 text-[10px] ${message.role === "user" ? "text-white/65" : "text-slate-400"}`}>{message.timestamp}</p>
+                  )}
+                </div>
+              </div>
+            ))}
+            {loading && (
+              <div className="flex gap-2">
+                <div className="mt-1 flex h-7 w-7 shrink-0 items-center justify-center rounded-full bg-[#154aa8]/10 text-[#154aa8]">
+                  <span className="material-symbols-outlined leading-none" style={{ fontSize: "16px" }}>auto_awesome</span>
+                </div>
+                <div className="rounded-2xl rounded-bl-md border border-slate-200/80 bg-white px-4 py-3 text-sm text-muted shadow-sm animate-pulse">
+                  {copy.generating}
+                </div>
+              </div>
+            )}
+            <div ref={messagesEndRef} />
+          </div>
+
+          <div className="mt-4 flex-none">
+            <p className="mb-2 text-xs font-black uppercase tracking-widest text-slate-400">{copy.suggested}</p>
+            <div className="flex gap-2 overflow-x-auto pb-1">
+            {copy.prompts.map((prompt) => (
               <button
-                key={prompt.label}
-                onClick={() => handleSend(prompt.text)}
-                className="text-left rounded-xl border border-white/70 bg-white/70 px-3 py-2.5 text-sm font-semibold text-slate-700 hover:border-[#154aa8]/30 hover:text-[#154aa8] transition-colors"
+                key={prompt.id}
+                onClick={() => handleSend(prompt.label, prompt.id)}
+                className="shrink-0 rounded-full border border-slate-200 bg-white px-3 py-1.5 text-xs font-bold text-slate-600 transition-colors hover:border-[#154aa8]/30 hover:bg-[#154aa8]/5 hover:text-[#154aa8]"
               >
                 {prompt.label}
               </button>
             ))}
-          </div>
-        </div>
-      </section>
-
-      <section className="bg-white rounded-2xl border border-slate-100 shadow-sm overflow-hidden">
-        <div className="h-0.5 bg-[#154aa8]" />
-        <div className="p-5 flex flex-col gap-4">
-          <div className="flex items-start justify-between gap-3">
-            <div>
-              <div className="flex items-center gap-2">
-                <span className="material-symbols-outlined text-[#154aa8] leading-none" style={{ fontSize: "18px" }}>support_agent</span>
-                <h2 className="text-xl font-bold text-slate-900">AI Advisory</h2>
-              </div>
-              <p className="text-sm text-muted mt-1">Ask about deficits, arrival waves, driver supply, and next actions.</p>
             </div>
-            <span className="rounded-full bg-[#154aa8]/8 px-2.5 py-1 text-xs font-bold text-[#154aa8]">
-              Mock
-            </span>
           </div>
 
-          <div className="rounded-2xl bg-slate-50 border border-slate-100 p-4 min-h-[180px] max-h-[360px] overflow-y-auto">
-            {loading && (
-              <p className="text-sm text-muted animate-pulse">Generating advisory...</p>
-            )}
-            {!loading && latestAssistant && (
-              <p className="text-sm leading-relaxed text-slate-700">{latestAssistant.text}</p>
-            )}
-          </div>
-
-          <div className="flex gap-2">
+          <div className="mt-3 flex flex-none gap-2">
             <input
               type="text"
               value={input}
               onChange={(e) => setInput(e.target.value)}
               onKeyDown={(e) => e.key === "Enter" && handleSend(input)}
-              placeholder="Ask the AI advisory..."
+              placeholder={copy.placeholder}
               className="min-w-0 flex-1 rounded-xl border border-slate-200 bg-slate-50 px-4 py-3 text-sm text-slate-900 placeholder:text-slate-400 focus:outline-none focus:border-[#154aa8] focus:bg-white focus:ring-2 focus:ring-[#154aa8]/10 transition-all"
             />
             <button
@@ -1156,7 +1436,7 @@ function AIAdvisoryWorkspace({ d }) {
               disabled={!input.trim()}
               className="rounded-xl bg-[#154aa8] px-5 py-3 text-sm font-bold text-white shadow-sm transition-colors hover:bg-[#0f2f68] disabled:opacity-40"
             >
-              Send
+              {copy.send}
             </button>
           </div>
         </div>
@@ -1165,17 +1445,72 @@ function AIAdvisoryWorkspace({ d }) {
   );
 }
 
+function EdgeCaseProtocolsSection() {
+  const severityClass = {
+    HIGH: "border-red-200 bg-red-50 text-red-700",
+    MEDIUM: "border-amber-200 bg-amber-50 text-amber-700",
+    LOW: "border-slate-200 bg-slate-50 text-slate-600",
+  };
+
+  return (
+    <section>
+      <SectionHeading eyebrow="Policy Intelligence" title="Policy & Edge Case Protocols" />
+      <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
+        {EDGE_CASE_PROTOCOLS.map((protocol) => (
+          <div key={protocol.id} className="rounded-2xl border border-slate-100 bg-white p-5 shadow-sm">
+            <div className="flex items-start justify-between gap-3">
+              <div>
+                <p className="text-xs font-bold uppercase tracking-widest text-slate-400">{protocol.group}</p>
+                <h3 className="mt-1 text-base font-black text-slate-900">{protocol.name}</h3>
+              </div>
+              <span className={`shrink-0 rounded-full border px-2.5 py-1 text-[10px] font-black ${severityClass[protocol.severity] ?? severityClass.LOW}`}>
+                {protocol.severity}
+              </span>
+            </div>
+            <div className="mt-4 flex flex-wrap gap-1.5">
+              {protocol.triggerKeywords.slice(0, 5).map((keyword) => (
+                <span key={keyword} className="rounded-full bg-slate-50 px-2 py-1 text-[11px] font-semibold text-slate-500 ring-1 ring-slate-200">
+                  {keyword}
+                </span>
+              ))}
+            </div>
+            <div className="mt-4 grid gap-3 text-sm">
+              <div>
+                <p className="text-[10px] font-black uppercase tracking-widest text-slate-400">Recommended action</p>
+                <p className="mt-1 text-slate-700">{protocol.recommendedAction}</p>
+              </div>
+              <div>
+                <p className="text-[10px] font-black uppercase tracking-widest text-slate-400">OPS action</p>
+                <p className="mt-1 font-bold text-slate-900">{protocol.opsAction}</p>
+              </div>
+              <div>
+                <p className="text-[10px] font-black uppercase tracking-widest text-slate-400">Required additions</p>
+                <p className="mt-1 text-xs leading-relaxed text-slate-600">{protocol.requiredAdditions}</p>
+              </div>
+            </div>
+          </div>
+        ))}
+      </div>
+      <p className="mt-3 text-xs text-slate-500">
+        Demo documentation only. These protocols do not connect to police, AOT, EMS, webhooks, or external services.
+      </p>
+    </section>
+  );
+}
+
 function SystemIntelligenceWorkspace({ d, terminal }) {
+  const { t } = useLanguage();
   return (
     <div className="flex flex-col gap-5">
       <div className="rounded-2xl border border-slate-100 bg-white p-5 shadow-sm">
-        <Eyebrow>System Intelligence</Eyebrow>
+        <Eyebrow>{t("ops.systemIntelligence")}</Eyebrow>
         <h2 className="text-xl font-bold text-slate-900 mt-0.5">Technical explainability and demo evidence</h2>
         <p className="text-sm text-muted mt-1 max-w-3xl">
           This workspace explains why Hello Ride recommends actions: passenger-driver matching evidence, dispatch mode logic, and model interpretation.
         </p>
       </div>
       <MatchingSimulation d={d} />
+      <EdgeCaseProtocolsSection />
       <MLPredictionCard terminal={terminal} />
     </div>
   );
@@ -1280,58 +1615,53 @@ function OPSLoginScreen({ onLogin }) {
 // ── Main OPS Dashboard ─────────────────────────────────────────────────────
 
 export default function OPSDashboard() {
-  const { assignMatch } = useDemoMatching();
+  const { t } = useLanguage();
+  const { assignMatch, setOpsAction } = useDemoMatching();
+  const currentTime = useCurrentThaiMinuteTime();
   const [opsLoggedIn, setOpsLoggedIn] = useState(getStoredOpsAuth);
-  const [terminal, setTerminal] = useState("T1");
+  const terminal = "ALL";
   const [workspace, setWorkspace] = useState("monitoring");
   const [laneActivated, setLaneActivated] = useState(false);
   const [broadcastSent, setBroadcastSent] = useState(false);
-  const [lane2Active, setLane2Active] = useState(false);
 
   function handleSignOut() {
     window.localStorage.removeItem(OPS_AUTH_KEY);
     setOpsLoggedIn(false);
   }
 
-  function handleActivateOverflow() {
-    setLaneActivated(true);
-    assignMatch();
+  function handleApproveOpsAction(severity) {
+    if (severity === PWT_SEVERITY.CRITICAL) {
+      setLaneActivated(true);
+      setBroadcastSent(true);
+      setOpsAction(OPS_ACTION.OVERFLOW_ACTIVATED);
+      assignMatch();
+      return;
+    }
+
+    if (severity === PWT_SEVERITY.WARNING) {
+      setBroadcastSent(true);
+      setOpsAction(OPS_ACTION.INCENTIVE_SENT);
+    }
   }
 
   if (!opsLoggedIn) {
     return <OPSLoginScreen onLogin={() => setOpsLoggedIn(true)} />;
   }
 
-  const d = getOpsData(terminal);
+  const d = buildOpsView();
 
-  const terminalOptions = ["T1", "T2", "ALL"];
   const workspaceOptions = [
-    { id: "monitoring", label: "Live Monitoring" },
-    { id: "advisory", label: "AI Advisory" },
-    { id: "intelligence", label: "System Intelligence" },
+    { id: "monitoring", label: t("ops.liveMonitoring") },
+    { id: "advisory", label: t("ops.aiAdvisory") },
   ];
-  const workspaceTitle = workspaceOptions.find((item) => item.id === workspace)?.label ?? "Live Monitoring";
+  const workspaceTitle = workspace === "intelligence"
+    ? t("ops.systemIntelligence")
+    : workspaceOptions.find((item) => item.id === workspace)?.label ?? t("ops.liveMonitoring");
 
   return (
-    <div className="flex h-[calc(100vh-56px)] bg-[#f5f8fb]">
+    <div className="flex h-[calc(100vh-56px)] bg-[#f8f9fb]">
       {/* Sidebar */}
       <aside className="w-44 shrink-0 bg-white border-r border-slate-200 flex flex-col py-4 overflow-y-auto">
-        <div className="px-3 mb-4">
-          <p className="text-xs font-bold text-slate-400 uppercase tracking-widest mb-2">Terminal</p>
-          <div className="flex flex-col gap-1">
-            {terminalOptions.map((t) => (
-              <button
-                key={t}
-                onClick={() => setTerminal(t)}
-                className={`w-full text-left px-3 py-2 rounded-xl text-sm font-semibold transition-all ${
-                  terminal === t ? "bg-[#154aa8]/10 text-[#154aa8]" : "text-slate-600 hover:bg-slate-50"
-                }`}
-              >
-                {t === "T1" ? "Terminal 1" : t === "T2" ? "Terminal 2" : "All Terminals"}
-              </button>
-            ))}
-          </div>
-        </div>
         <nav className="flex-1 px-2">
           <p className="text-xs font-bold text-slate-400 uppercase tracking-widest mb-2 px-1">Workspace</p>
           {workspaceOptions.map(({ id, label }) => (
@@ -1346,41 +1676,47 @@ export default function OPSDashboard() {
             </button>
           ))}
         </nav>
-        <div className="px-3 pt-4 border-t border-slate-100 space-y-1">
-          <p className="text-xs text-slate-400 cursor-pointer hover:text-slate-600">Documentation</p>
-          <p className="text-xs text-slate-400 cursor-pointer hover:text-slate-600">Support</p>
+        <div className="border-t border-slate-100 px-2 pt-4">
+          <button
+            onClick={() => setWorkspace("intelligence")}
+            className={`mb-1 block w-full rounded-xl px-3 py-2 text-left text-sm font-semibold transition-all ${
+              workspace === "intelligence" ? "bg-[#154aa8]/10 text-[#154aa8]" : "text-slate-600 hover:bg-slate-50"
+            }`}
+          >
+            Documentation
+          </button>
+          <button
+            onClick={handleSignOut}
+            className="mb-1 flex w-full items-center gap-1.5 rounded-xl px-3 py-2 text-left text-sm font-semibold text-slate-600 transition-all hover:bg-slate-50"
+          >
+            <span className="material-symbols-outlined leading-none" style={{ fontSize: "16px" }}>logout</span>
+            {t("ops.signOut")}
+          </button>
         </div>
       </aside>
 
       {/* Main content */}
-      <main className="flex-1 overflow-y-auto bg-[#f5f8fb]">
-        <div className="px-8 py-7 max-w-6xl mx-auto flex flex-col gap-8">
+      <main className="flex-1 overflow-y-auto bg-[#f8f9fb]">
+        <div className="mx-auto flex max-w-6xl flex-col gap-8 px-8 py-7">
           <div className="flex items-start justify-between gap-4">
             <div>
               <div className="flex items-center gap-3 flex-wrap">
-                <h1 className="font-headline font-black text-2xl text-[#1a2b5e]">Hello Ride Console</h1>
+                <h1 className="font-headline font-black text-2xl text-[#1a2b5e]">{t("ops.console")}</h1>
                 <span className="inline-flex items-center gap-1.5 rounded-full bg-emerald-50 border border-emerald-200 px-2.5 py-1 text-xs font-bold text-brand">
                   <span className="w-1.5 h-1.5 rounded-full bg-brand" />
-                  Live · Last updated 14:35
+                  Live · Last updated {currentTime}
                 </span>
               </div>
               <p className="text-xs text-muted mt-1">{d.title} · {workspaceTitle}</p>
             </div>
-            <button
-              onClick={handleSignOut}
-              className="shrink-0 inline-flex items-center gap-1.5 rounded-xl border border-slate-200 bg-white px-3 py-2 text-xs font-semibold text-slate-500 shadow-sm hover:border-[#154aa8]/30 hover:text-[#154aa8] transition-colors"
-            >
-              <span className="material-symbols-outlined leading-none" style={{ fontSize: "16px" }}>logout</span>
-              Sign out
-            </button>
           </div>
           {workspace === "monitoring" && (
             <LiveMonitoring
               d={d}
               terminal={terminal}
-              laneActivated={laneActivated} setLaneActivated={handleActivateOverflow}
-              broadcastSent={broadcastSent} setBroadcastSent={setBroadcastSent}
-              lane2Active={lane2Active} setLane2Active={setLane2Active}
+              laneActivated={laneActivated}
+              broadcastSent={broadcastSent}
+              onApproveAction={handleApproveOpsAction}
             />
           )}
           {workspace === "advisory" && <AIAdvisoryWorkspace d={d} />}

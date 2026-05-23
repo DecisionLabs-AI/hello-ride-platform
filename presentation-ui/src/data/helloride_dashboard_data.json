@@ -1,0 +1,1606 @@
+{
+  "meta": {
+    "source": "training_data_hybrid_15m.csv",
+    "dataType": "hybrid (Real OpenSky+NASA POWER + Mock supply/demand/PWT)",
+    "rows": 17626,
+    "period": "2025-11-02 to 2026-05-21",
+    "generatedAt": "2026-05-23",
+    "breachThreshold": 30
+  },
+  "kpiSummary": {
+    "currentPWT": 34.0,
+    "currentPWTPrediction": 38.0,
+    "breachRate": 38.0,
+    "taxisAtCurb": 41,
+    "activeLanes": 4,
+    "laneCapacity": 31,
+    "arrivingFlights": 6,
+    "confirmedQR": 24,
+    "totalPax": 29,
+    "tempC": 28.3,
+    "rainMm": 0.0,
+    "windKmh": 12.4,
+    "isWeekend": false,
+    "hourOfDay": 8,
+    "trend": "up",
+    "lastUpdated": "2026-05-21T08:15:00+07:00"
+  },
+  "demandChartData": [
+    {
+      "hour": 0,
+      "label": "00:00",
+      "avgWaitMin": 8.0,
+      "isBreach": false,
+      "breachRate": 6.7,
+      "arrivingFlights": 1,
+      "confirmedQR": 4,
+      "taxisAtCurb": 28
+    },
+    {
+      "hour": 1,
+      "label": "01:00",
+      "avgWaitMin": 6.0,
+      "isBreach": false,
+      "breachRate": 5.0,
+      "arrivingFlights": 0,
+      "confirmedQR": 0,
+      "taxisAtCurb": 22
+    },
+    {
+      "hour": 2,
+      "label": "02:00",
+      "avgWaitMin": 5.0,
+      "isBreach": false,
+      "breachRate": 4.2,
+      "arrivingFlights": 0,
+      "confirmedQR": 0,
+      "taxisAtCurb": 18
+    },
+    {
+      "hour": 3,
+      "label": "03:00",
+      "avgWaitMin": 5.0,
+      "isBreach": false,
+      "breachRate": 4.2,
+      "arrivingFlights": 1,
+      "confirmedQR": 4,
+      "taxisAtCurb": 16
+    },
+    {
+      "hour": 4,
+      "label": "04:00",
+      "avgWaitMin": 7.0,
+      "isBreach": false,
+      "breachRate": 5.8,
+      "arrivingFlights": 2,
+      "confirmedQR": 8,
+      "taxisAtCurb": 20
+    },
+    {
+      "hour": 5,
+      "label": "05:00",
+      "avgWaitMin": 12.0,
+      "isBreach": false,
+      "breachRate": 10.0,
+      "arrivingFlights": 3,
+      "confirmedQR": 12,
+      "taxisAtCurb": 30
+    },
+    {
+      "hour": 6,
+      "label": "06:00",
+      "avgWaitMin": 18.0,
+      "isBreach": false,
+      "breachRate": 15.0,
+      "arrivingFlights": 5,
+      "confirmedQR": 20,
+      "taxisAtCurb": 38
+    },
+    {
+      "hour": 7,
+      "label": "07:00",
+      "avgWaitMin": 24.0,
+      "isBreach": false,
+      "breachRate": 20.0,
+      "arrivingFlights": 7,
+      "confirmedQR": 28,
+      "taxisAtCurb": 42
+    },
+    {
+      "hour": 8,
+      "label": "08:00",
+      "avgWaitMin": 34.0,
+      "isBreach": true,
+      "breachRate": 35.0,
+      "arrivingFlights": 6,
+      "confirmedQR": 24,
+      "taxisAtCurb": 41
+    },
+    {
+      "hour": 9,
+      "label": "09:00",
+      "avgWaitMin": 28.0,
+      "isBreach": false,
+      "breachRate": 23.3,
+      "arrivingFlights": 5,
+      "confirmedQR": 20,
+      "taxisAtCurb": 44
+    },
+    {
+      "hour": 10,
+      "label": "10:00",
+      "avgWaitMin": 20.0,
+      "isBreach": false,
+      "breachRate": 16.7,
+      "arrivingFlights": 4,
+      "confirmedQR": 16,
+      "taxisAtCurb": 46
+    },
+    {
+      "hour": 11,
+      "label": "11:00",
+      "avgWaitMin": 17.0,
+      "isBreach": false,
+      "breachRate": 14.2,
+      "arrivingFlights": 4,
+      "confirmedQR": 16,
+      "taxisAtCurb": 48
+    },
+    {
+      "hour": 12,
+      "label": "12:00",
+      "avgWaitMin": 15.0,
+      "isBreach": false,
+      "breachRate": 12.5,
+      "arrivingFlights": 3,
+      "confirmedQR": 12,
+      "taxisAtCurb": 45
+    },
+    {
+      "hour": 13,
+      "label": "13:00",
+      "avgWaitMin": 14.0,
+      "isBreach": false,
+      "breachRate": 11.7,
+      "arrivingFlights": 4,
+      "confirmedQR": 16,
+      "taxisAtCurb": 44
+    },
+    {
+      "hour": 14,
+      "label": "14:00",
+      "avgWaitMin": 16.0,
+      "isBreach": false,
+      "breachRate": 13.3,
+      "arrivingFlights": 5,
+      "confirmedQR": 20,
+      "taxisAtCurb": 43
+    },
+    {
+      "hour": 15,
+      "label": "15:00",
+      "avgWaitMin": 19.0,
+      "isBreach": false,
+      "breachRate": 15.8,
+      "arrivingFlights": 6,
+      "confirmedQR": 24,
+      "taxisAtCurb": 42
+    },
+    {
+      "hour": 16,
+      "label": "16:00",
+      "avgWaitMin": 22.0,
+      "isBreach": false,
+      "breachRate": 18.3,
+      "arrivingFlights": 6,
+      "confirmedQR": 24,
+      "taxisAtCurb": 40
+    },
+    {
+      "hour": 17,
+      "label": "17:00",
+      "avgWaitMin": 28.0,
+      "isBreach": false,
+      "breachRate": 23.3,
+      "arrivingFlights": 7,
+      "confirmedQR": 28,
+      "taxisAtCurb": 38
+    },
+    {
+      "hour": 18,
+      "label": "18:00",
+      "avgWaitMin": 32.0,
+      "isBreach": true,
+      "breachRate": 30.0,
+      "arrivingFlights": 8,
+      "confirmedQR": 32,
+      "taxisAtCurb": 36
+    },
+    {
+      "hour": 19,
+      "label": "19:00",
+      "avgWaitMin": 35.0,
+      "isBreach": true,
+      "breachRate": 37.5,
+      "arrivingFlights": 7,
+      "confirmedQR": 28,
+      "taxisAtCurb": 33
+    },
+    {
+      "hour": 20,
+      "label": "20:00",
+      "avgWaitMin": 30.0,
+      "isBreach": false,
+      "breachRate": 25.0,
+      "arrivingFlights": 6,
+      "confirmedQR": 24,
+      "taxisAtCurb": 35
+    },
+    {
+      "hour": 21,
+      "label": "21:00",
+      "avgWaitMin": 24.0,
+      "isBreach": false,
+      "breachRate": 20.0,
+      "arrivingFlights": 5,
+      "confirmedQR": 20,
+      "taxisAtCurb": 38
+    },
+    {
+      "hour": 22,
+      "label": "22:00",
+      "avgWaitMin": 18.0,
+      "isBreach": false,
+      "breachRate": 15.0,
+      "arrivingFlights": 3,
+      "confirmedQR": 12,
+      "taxisAtCurb": 40
+    },
+    {
+      "hour": 23,
+      "label": "23:00",
+      "avgWaitMin": 12.0,
+      "isBreach": false,
+      "breachRate": 10.0,
+      "arrivingFlights": 2,
+      "confirmedQR": 8,
+      "taxisAtCurb": 34
+    }
+  ],
+  "weekdayPattern": [
+    {
+      "day": "Mon",
+      "dayIndex": 0,
+      "isWeekend": false,
+      "avgWaitMin": 43.5,
+      "breachRate": 66.8
+    },
+    {
+      "day": "Tue",
+      "dayIndex": 1,
+      "isWeekend": false,
+      "avgWaitMin": 42.8,
+      "breachRate": 65.2
+    },
+    {
+      "day": "Wed",
+      "dayIndex": 2,
+      "isWeekend": false,
+      "avgWaitMin": 44.1,
+      "breachRate": 67.4
+    },
+    {
+      "day": "Thu",
+      "dayIndex": 3,
+      "isWeekend": false,
+      "avgWaitMin": 43.9,
+      "breachRate": 66.9
+    },
+    {
+      "day": "Fri",
+      "dayIndex": 4,
+      "isWeekend": false,
+      "avgWaitMin": 44.8,
+      "breachRate": 68.1
+    },
+    {
+      "day": "Sat",
+      "dayIndex": 5,
+      "isWeekend": true,
+      "avgWaitMin": 50.4,
+      "breachRate": 81.2
+    },
+    {
+      "day": "Sun",
+      "dayIndex": 6,
+      "isWeekend": true,
+      "avgWaitMin": 51.1,
+      "breachRate": 80.7
+    }
+  ],
+  "recentAlerts": [
+    {
+      "time": "08:00",
+      "avgWaitMin": 62,
+      "arrivingFlights": 10,
+      "confirmedQR": 48,
+      "recommendedAction": "เรียกแท็กซี่จาก holding zone",
+      "severity": "high"
+    },
+    {
+      "time": "07:45",
+      "avgWaitMin": 58,
+      "arrivingFlights": 9,
+      "confirmedQR": 44,
+      "recommendedAction": "เปิด lane เพิ่ม",
+      "severity": "medium"
+    },
+    {
+      "time": "00:30",
+      "avgWaitMin": 71,
+      "arrivingFlights": 2,
+      "confirmedQR": 12,
+      "recommendedAction": "ดึง taxis จาก zone B",
+      "severity": "high"
+    },
+    {
+      "time": "01:15",
+      "avgWaitMin": 68,
+      "arrivingFlights": 1,
+      "confirmedQR": 9,
+      "recommendedAction": "เรียกแท็กซี่สำรอง",
+      "severity": "high"
+    },
+    {
+      "time": "22:45",
+      "avgWaitMin": 55,
+      "arrivingFlights": 4,
+      "confirmedQR": 22,
+      "recommendedAction": "เพิ่ม capacity lane 3",
+      "severity": "medium"
+    }
+  ],
+  "aiAdvisory": {
+    "currentTime": "08:15",
+    "predictions": [
+      {
+        "bucket": "08:15",
+        "predictedPWT": 48.2,
+        "confidence": 0.87,
+        "isBreach": true
+      },
+      {
+        "bucket": "08:30",
+        "predictedPWT": 52.1,
+        "confidence": 0.84,
+        "isBreach": true
+      },
+      {
+        "bucket": "08:45",
+        "predictedPWT": 55.6,
+        "confidence": 0.81,
+        "isBreach": true
+      },
+      {
+        "bucket": "09:00",
+        "predictedPWT": 51.3,
+        "confidence": 0.79,
+        "isBreach": true
+      }
+    ],
+    "topFactors": [
+      {
+        "feature": "confirmedQR",
+        "impact": "+8.2 min",
+        "direction": "up"
+      },
+      {
+        "feature": "arrivingFlights",
+        "impact": "+6.1 min",
+        "direction": "up"
+      },
+      {
+        "feature": "avgLaneCapacity",
+        "impact": "-3.4 min",
+        "direction": "down"
+      },
+      {
+        "feature": "isWeekend",
+        "impact": "+0.0 min",
+        "direction": "neutral"
+      }
+    ],
+    "recommendation": "เปิด Lane 5 และเรียก 12 คันจาก holding zone B ภายใน 10 นาที",
+    "urgency": "high"
+  },
+  "queueStatus": {
+    "currentWait": 45,
+    "predictedWait": 48,
+    "queueLength": 27,
+    "taxisAtCurb": 47,
+    "activeLanes": 4,
+    "demandLevel": "high",
+    "incentiveActive": true,
+    "incentiveAmount": 35,
+    "zone": "Terminal 1 - Gate A",
+    "lastUpdated": "08:15"
+  },
+  "heatmapData": [
+    {
+      "day": "Mon",
+      "dayIndex": 0,
+      "hour": 0,
+      "avgWaitMin": 59.2,
+      "isBreach": true
+    },
+    {
+      "day": "Mon",
+      "dayIndex": 0,
+      "hour": 1,
+      "avgWaitMin": 58.2,
+      "isBreach": true
+    },
+    {
+      "day": "Mon",
+      "dayIndex": 0,
+      "hour": 2,
+      "avgWaitMin": 60.3,
+      "isBreach": true
+    },
+    {
+      "day": "Mon",
+      "dayIndex": 0,
+      "hour": 3,
+      "avgWaitMin": 60.9,
+      "isBreach": true
+    },
+    {
+      "day": "Mon",
+      "dayIndex": 0,
+      "hour": 4,
+      "avgWaitMin": 60.7,
+      "isBreach": true
+    },
+    {
+      "day": "Mon",
+      "dayIndex": 0,
+      "hour": 5,
+      "avgWaitMin": 56.1,
+      "isBreach": true
+    },
+    {
+      "day": "Mon",
+      "dayIndex": 0,
+      "hour": 6,
+      "avgWaitMin": 58.7,
+      "isBreach": true
+    },
+    {
+      "day": "Mon",
+      "dayIndex": 0,
+      "hour": 7,
+      "avgWaitMin": 52.5,
+      "isBreach": true
+    },
+    {
+      "day": "Mon",
+      "dayIndex": 0,
+      "hour": 8,
+      "avgWaitMin": 53.5,
+      "isBreach": true
+    },
+    {
+      "day": "Mon",
+      "dayIndex": 0,
+      "hour": 9,
+      "avgWaitMin": 50.2,
+      "isBreach": true
+    },
+    {
+      "day": "Mon",
+      "dayIndex": 0,
+      "hour": 10,
+      "avgWaitMin": 37.4,
+      "isBreach": true
+    },
+    {
+      "day": "Mon",
+      "dayIndex": 0,
+      "hour": 11,
+      "avgWaitMin": 35.2,
+      "isBreach": true
+    },
+    {
+      "day": "Mon",
+      "dayIndex": 0,
+      "hour": 12,
+      "avgWaitMin": 31.2,
+      "isBreach": true
+    },
+    {
+      "day": "Mon",
+      "dayIndex": 0,
+      "hour": 13,
+      "avgWaitMin": 31.2,
+      "isBreach": true
+    },
+    {
+      "day": "Mon",
+      "dayIndex": 0,
+      "hour": 14,
+      "avgWaitMin": 35.2,
+      "isBreach": true
+    },
+    {
+      "day": "Mon",
+      "dayIndex": 0,
+      "hour": 15,
+      "avgWaitMin": 36.3,
+      "isBreach": true
+    },
+    {
+      "day": "Mon",
+      "dayIndex": 0,
+      "hour": 16,
+      "avgWaitMin": 36.7,
+      "isBreach": true
+    },
+    {
+      "day": "Mon",
+      "dayIndex": 0,
+      "hour": 17,
+      "avgWaitMin": 34.9,
+      "isBreach": true
+    },
+    {
+      "day": "Mon",
+      "dayIndex": 0,
+      "hour": 18,
+      "avgWaitMin": 35.0,
+      "isBreach": true
+    },
+    {
+      "day": "Mon",
+      "dayIndex": 0,
+      "hour": 19,
+      "avgWaitMin": 30.1,
+      "isBreach": true
+    },
+    {
+      "day": "Mon",
+      "dayIndex": 0,
+      "hour": 20,
+      "avgWaitMin": 34.7,
+      "isBreach": true
+    },
+    {
+      "day": "Mon",
+      "dayIndex": 0,
+      "hour": 21,
+      "avgWaitMin": 37.0,
+      "isBreach": true
+    },
+    {
+      "day": "Mon",
+      "dayIndex": 0,
+      "hour": 22,
+      "avgWaitMin": 48.6,
+      "isBreach": true
+    },
+    {
+      "day": "Mon",
+      "dayIndex": 0,
+      "hour": 23,
+      "avgWaitMin": 52.7,
+      "isBreach": true
+    },
+    {
+      "day": "Tue",
+      "dayIndex": 1,
+      "hour": 0,
+      "avgWaitMin": 60.4,
+      "isBreach": true
+    },
+    {
+      "day": "Tue",
+      "dayIndex": 1,
+      "hour": 1,
+      "avgWaitMin": 59.4,
+      "isBreach": true
+    },
+    {
+      "day": "Tue",
+      "dayIndex": 1,
+      "hour": 2,
+      "avgWaitMin": 59.6,
+      "isBreach": true
+    },
+    {
+      "day": "Tue",
+      "dayIndex": 1,
+      "hour": 3,
+      "avgWaitMin": 60.4,
+      "isBreach": true
+    },
+    {
+      "day": "Tue",
+      "dayIndex": 1,
+      "hour": 4,
+      "avgWaitMin": 61.2,
+      "isBreach": true
+    },
+    {
+      "day": "Tue",
+      "dayIndex": 1,
+      "hour": 5,
+      "avgWaitMin": 55.8,
+      "isBreach": true
+    },
+    {
+      "day": "Tue",
+      "dayIndex": 1,
+      "hour": 6,
+      "avgWaitMin": 58.3,
+      "isBreach": true
+    },
+    {
+      "day": "Tue",
+      "dayIndex": 1,
+      "hour": 7,
+      "avgWaitMin": 55.1,
+      "isBreach": true
+    },
+    {
+      "day": "Tue",
+      "dayIndex": 1,
+      "hour": 8,
+      "avgWaitMin": 53.9,
+      "isBreach": true
+    },
+    {
+      "day": "Tue",
+      "dayIndex": 1,
+      "hour": 9,
+      "avgWaitMin": 54.0,
+      "isBreach": true
+    },
+    {
+      "day": "Tue",
+      "dayIndex": 1,
+      "hour": 10,
+      "avgWaitMin": 38.0,
+      "isBreach": true
+    },
+    {
+      "day": "Tue",
+      "dayIndex": 1,
+      "hour": 11,
+      "avgWaitMin": 35.4,
+      "isBreach": true
+    },
+    {
+      "day": "Tue",
+      "dayIndex": 1,
+      "hour": 12,
+      "avgWaitMin": 34.4,
+      "isBreach": true
+    },
+    {
+      "day": "Tue",
+      "dayIndex": 1,
+      "hour": 13,
+      "avgWaitMin": 32.9,
+      "isBreach": true
+    },
+    {
+      "day": "Tue",
+      "dayIndex": 1,
+      "hour": 14,
+      "avgWaitMin": 36.0,
+      "isBreach": true
+    },
+    {
+      "day": "Tue",
+      "dayIndex": 1,
+      "hour": 15,
+      "avgWaitMin": 36.4,
+      "isBreach": true
+    },
+    {
+      "day": "Tue",
+      "dayIndex": 1,
+      "hour": 16,
+      "avgWaitMin": 38.6,
+      "isBreach": true
+    },
+    {
+      "day": "Tue",
+      "dayIndex": 1,
+      "hour": 17,
+      "avgWaitMin": 32.7,
+      "isBreach": true
+    },
+    {
+      "day": "Tue",
+      "dayIndex": 1,
+      "hour": 18,
+      "avgWaitMin": 32.7,
+      "isBreach": true
+    },
+    {
+      "day": "Tue",
+      "dayIndex": 1,
+      "hour": 19,
+      "avgWaitMin": 31.3,
+      "isBreach": true
+    },
+    {
+      "day": "Tue",
+      "dayIndex": 1,
+      "hour": 20,
+      "avgWaitMin": 31.8,
+      "isBreach": true
+    },
+    {
+      "day": "Tue",
+      "dayIndex": 1,
+      "hour": 21,
+      "avgWaitMin": 35.1,
+      "isBreach": true
+    },
+    {
+      "day": "Tue",
+      "dayIndex": 1,
+      "hour": 22,
+      "avgWaitMin": 47.6,
+      "isBreach": true
+    },
+    {
+      "day": "Tue",
+      "dayIndex": 1,
+      "hour": 23,
+      "avgWaitMin": 53.2,
+      "isBreach": true
+    },
+    {
+      "day": "Wed",
+      "dayIndex": 2,
+      "hour": 0,
+      "avgWaitMin": 59.1,
+      "isBreach": true
+    },
+    {
+      "day": "Wed",
+      "dayIndex": 2,
+      "hour": 1,
+      "avgWaitMin": 59.6,
+      "isBreach": true
+    },
+    {
+      "day": "Wed",
+      "dayIndex": 2,
+      "hour": 2,
+      "avgWaitMin": 60.7,
+      "isBreach": true
+    },
+    {
+      "day": "Wed",
+      "dayIndex": 2,
+      "hour": 3,
+      "avgWaitMin": 60.8,
+      "isBreach": true
+    },
+    {
+      "day": "Wed",
+      "dayIndex": 2,
+      "hour": 4,
+      "avgWaitMin": 58.9,
+      "isBreach": true
+    },
+    {
+      "day": "Wed",
+      "dayIndex": 2,
+      "hour": 5,
+      "avgWaitMin": 57.1,
+      "isBreach": true
+    },
+    {
+      "day": "Wed",
+      "dayIndex": 2,
+      "hour": 6,
+      "avgWaitMin": 57.7,
+      "isBreach": true
+    },
+    {
+      "day": "Wed",
+      "dayIndex": 2,
+      "hour": 7,
+      "avgWaitMin": 54.6,
+      "isBreach": true
+    },
+    {
+      "day": "Wed",
+      "dayIndex": 2,
+      "hour": 8,
+      "avgWaitMin": 52.5,
+      "isBreach": true
+    },
+    {
+      "day": "Wed",
+      "dayIndex": 2,
+      "hour": 9,
+      "avgWaitMin": 53.0,
+      "isBreach": true
+    },
+    {
+      "day": "Wed",
+      "dayIndex": 2,
+      "hour": 10,
+      "avgWaitMin": 37.2,
+      "isBreach": true
+    },
+    {
+      "day": "Wed",
+      "dayIndex": 2,
+      "hour": 11,
+      "avgWaitMin": 34.7,
+      "isBreach": true
+    },
+    {
+      "day": "Wed",
+      "dayIndex": 2,
+      "hour": 12,
+      "avgWaitMin": 35.1,
+      "isBreach": true
+    },
+    {
+      "day": "Wed",
+      "dayIndex": 2,
+      "hour": 13,
+      "avgWaitMin": 33.0,
+      "isBreach": true
+    },
+    {
+      "day": "Wed",
+      "dayIndex": 2,
+      "hour": 14,
+      "avgWaitMin": 34.8,
+      "isBreach": true
+    },
+    {
+      "day": "Wed",
+      "dayIndex": 2,
+      "hour": 15,
+      "avgWaitMin": 36.8,
+      "isBreach": true
+    },
+    {
+      "day": "Wed",
+      "dayIndex": 2,
+      "hour": 16,
+      "avgWaitMin": 39.2,
+      "isBreach": true
+    },
+    {
+      "day": "Wed",
+      "dayIndex": 2,
+      "hour": 17,
+      "avgWaitMin": 35.6,
+      "isBreach": true
+    },
+    {
+      "day": "Wed",
+      "dayIndex": 2,
+      "hour": 18,
+      "avgWaitMin": 32.7,
+      "isBreach": true
+    },
+    {
+      "day": "Wed",
+      "dayIndex": 2,
+      "hour": 19,
+      "avgWaitMin": 30.2,
+      "isBreach": true
+    },
+    {
+      "day": "Wed",
+      "dayIndex": 2,
+      "hour": 20,
+      "avgWaitMin": 32.8,
+      "isBreach": true
+    },
+    {
+      "day": "Wed",
+      "dayIndex": 2,
+      "hour": 21,
+      "avgWaitMin": 35.3,
+      "isBreach": true
+    },
+    {
+      "day": "Wed",
+      "dayIndex": 2,
+      "hour": 22,
+      "avgWaitMin": 48.0,
+      "isBreach": true
+    },
+    {
+      "day": "Wed",
+      "dayIndex": 2,
+      "hour": 23,
+      "avgWaitMin": 55.9,
+      "isBreach": true
+    },
+    {
+      "day": "Thu",
+      "dayIndex": 3,
+      "hour": 0,
+      "avgWaitMin": 60.1,
+      "isBreach": true
+    },
+    {
+      "day": "Thu",
+      "dayIndex": 3,
+      "hour": 1,
+      "avgWaitMin": 59.4,
+      "isBreach": true
+    },
+    {
+      "day": "Thu",
+      "dayIndex": 3,
+      "hour": 2,
+      "avgWaitMin": 61.8,
+      "isBreach": true
+    },
+    {
+      "day": "Thu",
+      "dayIndex": 3,
+      "hour": 3,
+      "avgWaitMin": 61.6,
+      "isBreach": true
+    },
+    {
+      "day": "Thu",
+      "dayIndex": 3,
+      "hour": 4,
+      "avgWaitMin": 61.5,
+      "isBreach": true
+    },
+    {
+      "day": "Thu",
+      "dayIndex": 3,
+      "hour": 5,
+      "avgWaitMin": 55.2,
+      "isBreach": true
+    },
+    {
+      "day": "Thu",
+      "dayIndex": 3,
+      "hour": 6,
+      "avgWaitMin": 56.2,
+      "isBreach": true
+    },
+    {
+      "day": "Thu",
+      "dayIndex": 3,
+      "hour": 7,
+      "avgWaitMin": 53.2,
+      "isBreach": true
+    },
+    {
+      "day": "Thu",
+      "dayIndex": 3,
+      "hour": 8,
+      "avgWaitMin": 54.0,
+      "isBreach": true
+    },
+    {
+      "day": "Thu",
+      "dayIndex": 3,
+      "hour": 9,
+      "avgWaitMin": 51.2,
+      "isBreach": true
+    },
+    {
+      "day": "Thu",
+      "dayIndex": 3,
+      "hour": 10,
+      "avgWaitMin": 38.8,
+      "isBreach": true
+    },
+    {
+      "day": "Thu",
+      "dayIndex": 3,
+      "hour": 11,
+      "avgWaitMin": 36.8,
+      "isBreach": true
+    },
+    {
+      "day": "Thu",
+      "dayIndex": 3,
+      "hour": 12,
+      "avgWaitMin": 32.7,
+      "isBreach": true
+    },
+    {
+      "day": "Thu",
+      "dayIndex": 3,
+      "hour": 13,
+      "avgWaitMin": 31.3,
+      "isBreach": true
+    },
+    {
+      "day": "Thu",
+      "dayIndex": 3,
+      "hour": 14,
+      "avgWaitMin": 36.6,
+      "isBreach": true
+    },
+    {
+      "day": "Thu",
+      "dayIndex": 3,
+      "hour": 15,
+      "avgWaitMin": 36.1,
+      "isBreach": true
+    },
+    {
+      "day": "Thu",
+      "dayIndex": 3,
+      "hour": 16,
+      "avgWaitMin": 36.2,
+      "isBreach": true
+    },
+    {
+      "day": "Thu",
+      "dayIndex": 3,
+      "hour": 17,
+      "avgWaitMin": 32.7,
+      "isBreach": true
+    },
+    {
+      "day": "Thu",
+      "dayIndex": 3,
+      "hour": 18,
+      "avgWaitMin": 32.2,
+      "isBreach": true
+    },
+    {
+      "day": "Thu",
+      "dayIndex": 3,
+      "hour": 19,
+      "avgWaitMin": 32.6,
+      "isBreach": true
+    },
+    {
+      "day": "Thu",
+      "dayIndex": 3,
+      "hour": 20,
+      "avgWaitMin": 34.7,
+      "isBreach": true
+    },
+    {
+      "day": "Thu",
+      "dayIndex": 3,
+      "hour": 21,
+      "avgWaitMin": 35.9,
+      "isBreach": true
+    },
+    {
+      "day": "Thu",
+      "dayIndex": 3,
+      "hour": 22,
+      "avgWaitMin": 47.5,
+      "isBreach": true
+    },
+    {
+      "day": "Thu",
+      "dayIndex": 3,
+      "hour": 23,
+      "avgWaitMin": 53.6,
+      "isBreach": true
+    },
+    {
+      "day": "Fri",
+      "dayIndex": 4,
+      "hour": 0,
+      "avgWaitMin": 60.6,
+      "isBreach": true
+    },
+    {
+      "day": "Fri",
+      "dayIndex": 4,
+      "hour": 1,
+      "avgWaitMin": 60.2,
+      "isBreach": true
+    },
+    {
+      "day": "Fri",
+      "dayIndex": 4,
+      "hour": 2,
+      "avgWaitMin": 63.1,
+      "isBreach": true
+    },
+    {
+      "day": "Fri",
+      "dayIndex": 4,
+      "hour": 3,
+      "avgWaitMin": 63.4,
+      "isBreach": true
+    },
+    {
+      "day": "Fri",
+      "dayIndex": 4,
+      "hour": 4,
+      "avgWaitMin": 57.8,
+      "isBreach": true
+    },
+    {
+      "day": "Fri",
+      "dayIndex": 4,
+      "hour": 5,
+      "avgWaitMin": 56.3,
+      "isBreach": true
+    },
+    {
+      "day": "Fri",
+      "dayIndex": 4,
+      "hour": 6,
+      "avgWaitMin": 57.8,
+      "isBreach": true
+    },
+    {
+      "day": "Fri",
+      "dayIndex": 4,
+      "hour": 7,
+      "avgWaitMin": 54.3,
+      "isBreach": true
+    },
+    {
+      "day": "Fri",
+      "dayIndex": 4,
+      "hour": 8,
+      "avgWaitMin": 52.9,
+      "isBreach": true
+    },
+    {
+      "day": "Fri",
+      "dayIndex": 4,
+      "hour": 9,
+      "avgWaitMin": 52.7,
+      "isBreach": true
+    },
+    {
+      "day": "Fri",
+      "dayIndex": 4,
+      "hour": 10,
+      "avgWaitMin": 36.9,
+      "isBreach": true
+    },
+    {
+      "day": "Fri",
+      "dayIndex": 4,
+      "hour": 11,
+      "avgWaitMin": 34.9,
+      "isBreach": true
+    },
+    {
+      "day": "Fri",
+      "dayIndex": 4,
+      "hour": 12,
+      "avgWaitMin": 32.9,
+      "isBreach": true
+    },
+    {
+      "day": "Fri",
+      "dayIndex": 4,
+      "hour": 13,
+      "avgWaitMin": 34.2,
+      "isBreach": true
+    },
+    {
+      "day": "Fri",
+      "dayIndex": 4,
+      "hour": 14,
+      "avgWaitMin": 36.1,
+      "isBreach": true
+    },
+    {
+      "day": "Fri",
+      "dayIndex": 4,
+      "hour": 15,
+      "avgWaitMin": 35.2,
+      "isBreach": true
+    },
+    {
+      "day": "Fri",
+      "dayIndex": 4,
+      "hour": 16,
+      "avgWaitMin": 37.8,
+      "isBreach": true
+    },
+    {
+      "day": "Fri",
+      "dayIndex": 4,
+      "hour": 17,
+      "avgWaitMin": 33.2,
+      "isBreach": true
+    },
+    {
+      "day": "Fri",
+      "dayIndex": 4,
+      "hour": 18,
+      "avgWaitMin": 35.5,
+      "isBreach": true
+    },
+    {
+      "day": "Fri",
+      "dayIndex": 4,
+      "hour": 19,
+      "avgWaitMin": 33.6,
+      "isBreach": true
+    },
+    {
+      "day": "Fri",
+      "dayIndex": 4,
+      "hour": 20,
+      "avgWaitMin": 32.7,
+      "isBreach": true
+    },
+    {
+      "day": "Fri",
+      "dayIndex": 4,
+      "hour": 21,
+      "avgWaitMin": 36.8,
+      "isBreach": true
+    },
+    {
+      "day": "Fri",
+      "dayIndex": 4,
+      "hour": 22,
+      "avgWaitMin": 49.6,
+      "isBreach": true
+    },
+    {
+      "day": "Fri",
+      "dayIndex": 4,
+      "hour": 23,
+      "avgWaitMin": 52.7,
+      "isBreach": true
+    },
+    {
+      "day": "Sat",
+      "dayIndex": 5,
+      "hour": 0,
+      "avgWaitMin": 66.9,
+      "isBreach": true
+    },
+    {
+      "day": "Sat",
+      "dayIndex": 5,
+      "hour": 1,
+      "avgWaitMin": 67.5,
+      "isBreach": true
+    },
+    {
+      "day": "Sat",
+      "dayIndex": 5,
+      "hour": 2,
+      "avgWaitMin": 69.5,
+      "isBreach": true
+    },
+    {
+      "day": "Sat",
+      "dayIndex": 5,
+      "hour": 3,
+      "avgWaitMin": 69.3,
+      "isBreach": true
+    },
+    {
+      "day": "Sat",
+      "dayIndex": 5,
+      "hour": 4,
+      "avgWaitMin": 65.0,
+      "isBreach": true
+    },
+    {
+      "day": "Sat",
+      "dayIndex": 5,
+      "hour": 5,
+      "avgWaitMin": 61.9,
+      "isBreach": true
+    },
+    {
+      "day": "Sat",
+      "dayIndex": 5,
+      "hour": 6,
+      "avgWaitMin": 62.4,
+      "isBreach": true
+    },
+    {
+      "day": "Sat",
+      "dayIndex": 5,
+      "hour": 7,
+      "avgWaitMin": 63.1,
+      "isBreach": true
+    },
+    {
+      "day": "Sat",
+      "dayIndex": 5,
+      "hour": 8,
+      "avgWaitMin": 62.5,
+      "isBreach": true
+    },
+    {
+      "day": "Sat",
+      "dayIndex": 5,
+      "hour": 9,
+      "avgWaitMin": 60.6,
+      "isBreach": true
+    },
+    {
+      "day": "Sat",
+      "dayIndex": 5,
+      "hour": 10,
+      "avgWaitMin": 44.9,
+      "isBreach": true
+    },
+    {
+      "day": "Sat",
+      "dayIndex": 5,
+      "hour": 11,
+      "avgWaitMin": 40.6,
+      "isBreach": true
+    },
+    {
+      "day": "Sat",
+      "dayIndex": 5,
+      "hour": 12,
+      "avgWaitMin": 41.8,
+      "isBreach": true
+    },
+    {
+      "day": "Sat",
+      "dayIndex": 5,
+      "hour": 13,
+      "avgWaitMin": 41.4,
+      "isBreach": true
+    },
+    {
+      "day": "Sat",
+      "dayIndex": 5,
+      "hour": 14,
+      "avgWaitMin": 40.1,
+      "isBreach": true
+    },
+    {
+      "day": "Sat",
+      "dayIndex": 5,
+      "hour": 15,
+      "avgWaitMin": 43.2,
+      "isBreach": true
+    },
+    {
+      "day": "Sat",
+      "dayIndex": 5,
+      "hour": 16,
+      "avgWaitMin": 43.3,
+      "isBreach": true
+    },
+    {
+      "day": "Sat",
+      "dayIndex": 5,
+      "hour": 17,
+      "avgWaitMin": 42.7,
+      "isBreach": true
+    },
+    {
+      "day": "Sat",
+      "dayIndex": 5,
+      "hour": 18,
+      "avgWaitMin": 42.1,
+      "isBreach": true
+    },
+    {
+      "day": "Sat",
+      "dayIndex": 5,
+      "hour": 19,
+      "avgWaitMin": 37.8,
+      "isBreach": true
+    },
+    {
+      "day": "Sat",
+      "dayIndex": 5,
+      "hour": 20,
+      "avgWaitMin": 40.6,
+      "isBreach": true
+    },
+    {
+      "day": "Sat",
+      "dayIndex": 5,
+      "hour": 21,
+      "avgWaitMin": 43.6,
+      "isBreach": true
+    },
+    {
+      "day": "Sat",
+      "dayIndex": 5,
+      "hour": 22,
+      "avgWaitMin": 55.5,
+      "isBreach": true
+    },
+    {
+      "day": "Sat",
+      "dayIndex": 5,
+      "hour": 23,
+      "avgWaitMin": 62.8,
+      "isBreach": true
+    },
+    {
+      "day": "Sun",
+      "dayIndex": 6,
+      "hour": 0,
+      "avgWaitMin": 65.5,
+      "isBreach": true
+    },
+    {
+      "day": "Sun",
+      "dayIndex": 6,
+      "hour": 1,
+      "avgWaitMin": 66.1,
+      "isBreach": true
+    },
+    {
+      "day": "Sun",
+      "dayIndex": 6,
+      "hour": 2,
+      "avgWaitMin": 68.6,
+      "isBreach": true
+    },
+    {
+      "day": "Sun",
+      "dayIndex": 6,
+      "hour": 3,
+      "avgWaitMin": 70.1,
+      "isBreach": true
+    },
+    {
+      "day": "Sun",
+      "dayIndex": 6,
+      "hour": 4,
+      "avgWaitMin": 65.8,
+      "isBreach": true
+    },
+    {
+      "day": "Sun",
+      "dayIndex": 6,
+      "hour": 5,
+      "avgWaitMin": 61.8,
+      "isBreach": true
+    },
+    {
+      "day": "Sun",
+      "dayIndex": 6,
+      "hour": 6,
+      "avgWaitMin": 66.3,
+      "isBreach": true
+    },
+    {
+      "day": "Sun",
+      "dayIndex": 6,
+      "hour": 7,
+      "avgWaitMin": 62.0,
+      "isBreach": true
+    },
+    {
+      "day": "Sun",
+      "dayIndex": 6,
+      "hour": 8,
+      "avgWaitMin": 60.8,
+      "isBreach": true
+    },
+    {
+      "day": "Sun",
+      "dayIndex": 6,
+      "hour": 9,
+      "avgWaitMin": 59.4,
+      "isBreach": true
+    },
+    {
+      "day": "Sun",
+      "dayIndex": 6,
+      "hour": 10,
+      "avgWaitMin": 44.2,
+      "isBreach": true
+    },
+    {
+      "day": "Sun",
+      "dayIndex": 6,
+      "hour": 11,
+      "avgWaitMin": 41.3,
+      "isBreach": true
+    },
+    {
+      "day": "Sun",
+      "dayIndex": 6,
+      "hour": 12,
+      "avgWaitMin": 39.7,
+      "isBreach": true
+    },
+    {
+      "day": "Sun",
+      "dayIndex": 6,
+      "hour": 13,
+      "avgWaitMin": 40.0,
+      "isBreach": true
+    },
+    {
+      "day": "Sun",
+      "dayIndex": 6,
+      "hour": 14,
+      "avgWaitMin": 40.7,
+      "isBreach": true
+    },
+    {
+      "day": "Sun",
+      "dayIndex": 6,
+      "hour": 15,
+      "avgWaitMin": 42.2,
+      "isBreach": true
+    },
+    {
+      "day": "Sun",
+      "dayIndex": 6,
+      "hour": 16,
+      "avgWaitMin": 43.3,
+      "isBreach": true
+    },
+    {
+      "day": "Sun",
+      "dayIndex": 6,
+      "hour": 17,
+      "avgWaitMin": 42.2,
+      "isBreach": true
+    },
+    {
+      "day": "Sun",
+      "dayIndex": 6,
+      "hour": 18,
+      "avgWaitMin": 39.9,
+      "isBreach": true
+    },
+    {
+      "day": "Sun",
+      "dayIndex": 6,
+      "hour": 19,
+      "avgWaitMin": 40.9,
+      "isBreach": true
+    },
+    {
+      "day": "Sun",
+      "dayIndex": 6,
+      "hour": 20,
+      "avgWaitMin": 42.1,
+      "isBreach": true
+    },
+    {
+      "day": "Sun",
+      "dayIndex": 6,
+      "hour": 21,
+      "avgWaitMin": 41.7,
+      "isBreach": true
+    },
+    {
+      "day": "Sun",
+      "dayIndex": 6,
+      "hour": 22,
+      "avgWaitMin": 55.4,
+      "isBreach": true
+    },
+    {
+      "day": "Sun",
+      "dayIndex": 6,
+      "hour": 23,
+      "avgWaitMin": 62.0,
+      "isBreach": true
+    }
+  ]
+}

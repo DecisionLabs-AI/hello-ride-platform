@@ -3,6 +3,7 @@ import { RIDES, PAYMENT_OPTIONS, TIP_OPTIONS, DESTINATION_PRESETS } from "../dat
 import PassengerSupportChat from "../components/passenger/PassengerSupportChat.jsx";
 import { HelloRideWordmark, MobileScrollArea, MobileShell } from "../components/shared/MobileShell.jsx";
 import { useDemoMatching } from "../context/useDemoMatching.js";
+import { useLanguage } from "../context/useLanguage.js";
 
 function fareLabel(activeTrip) {
   return `THB ${activeTrip.fareTHB}`;
@@ -133,6 +134,7 @@ function FlowSection({ title, children }) {
 // ── Home Screen ────────────────────────────────────────────────────────────
 
 function HomeScreen({ initialData = {}, onNext }) {
+  const { t } = useLanguage();
   const { activeTrip, setPassengerDestination } = useDemoMatching();
   const activeDestination = destinationLabel(activeTrip);
   const initialDestination = initialData.selectedDestination || initialData.dest || activeDestination || "";
@@ -155,7 +157,7 @@ function HomeScreen({ initialData = {}, onNext }) {
     <div className="flex flex-col gap-3.5">
       <MobileHeader title="Hello Ride" showAvatar />
 
-      <FlowSection title="Destination">
+      <FlowSection title={t("passenger.destination")}>
         <div className="bg-white border border-slate-200 rounded-2xl p-3.5 shadow-sm">
           <div className="relative">
             <span className="material-symbols-outlined absolute left-3 top-1/2 -translate-y-1/2 text-slate-400 text-xl">search</span>
@@ -203,11 +205,11 @@ function HomeScreen({ initialData = {}, onNext }) {
         </div>
       </FlowSection>
 
-      <FlowSection title="Pickup route">
+      <FlowSection title={t("passenger.pickupRoute")}>
         <RouteSummary pickup={pickupLabel(activeTrip)} destination={selectedDestination} />
       </FlowSection>
 
-      <FlowSection title="Trip details">
+      <FlowSection title={t("passenger.tripDetails")}>
         <div className="flex flex-col gap-2.5">
           <Counter
             label="Passengers"
@@ -230,7 +232,7 @@ function HomeScreen({ initialData = {}, onNext }) {
         </div>
       </FlowSection>
 
-      <FlowSection title="Notes and assistance">
+      <FlowSection title={t("passenger.notesAssistance")}>
         <div className="bg-white shadow-sm border border-slate-200 rounded-2xl p-4 flex items-center justify-between gap-4">
           <div>
             <p className="text-sm font-bold text-slate-900">Special assistance</p>
@@ -259,7 +261,7 @@ function HomeScreen({ initialData = {}, onNext }) {
           disabled={!isValid}
           className="w-full py-4 rounded-2xl bg-gradient-to-r from-brand to-brand-deep text-white font-headline font-extrabold text-base shadow-[0_12px_28px_rgba(21,74,168,0.28)] disabled:opacity-100 disabled:from-slate-300 disabled:to-slate-300 disabled:text-white disabled:shadow-none disabled:cursor-not-allowed active:scale-95 transition-all flex items-center justify-center gap-2"
         >
-          Confirm Pick-up
+          {t("passenger.confirmPickup")}
           <span className="material-symbols-outlined text-[20px]">arrow_forward</span>
         </button>
       </div>
@@ -282,6 +284,7 @@ const RIDE_ICONS = {
 };
 
 function CarTypeScreen({ activeTrip, destination, passengers, luggage, onBack, onNext }) {
+  const { t } = useLanguage();
   const [selectedRide, setSelectedRide] = useState(null);
   const [selectedPayment, setSelectedPayment] = useState(null);
   const [showPaymentPicker, setShowPaymentPicker] = useState(false);
@@ -301,7 +304,7 @@ function CarTypeScreen({ activeTrip, destination, passengers, luggage, onBack, o
 
       {/* Ride selection */}
       <div>
-        <p className="text-xl font-extrabold font-headline text-slate-900 leading-tight">Select ride</p>
+        <p className="text-xl font-extrabold font-headline text-slate-900 leading-tight">{t("passenger.selectRide")}</p>
         <p className="text-xs text-muted mt-0.5 mb-4">Estimated arrival: {activeTrip.etaMin} mins</p>
         <div className="flex flex-col gap-3">
           {RIDES.map((ride) => {
@@ -352,7 +355,7 @@ function CarTypeScreen({ activeTrip, destination, passengers, luggage, onBack, o
 
       {/* Payment — wallet card style */}
       <div>
-        <p className="text-base font-extrabold font-headline text-slate-900 mb-3">Payment</p>
+        <p className="text-base font-extrabold font-headline text-slate-900 mb-3">{t("passenger.payment")}</p>
         {activePay && !showPaymentPicker ? (
           <div className="flex items-center justify-between bg-white border-2 border-brand/10 p-4 rounded-2xl shadow-sm">
             <div className="flex items-center gap-3">
@@ -404,7 +407,7 @@ function CarTypeScreen({ activeTrip, destination, passengers, luggage, onBack, o
         disabled={!selectedRide || !selectedPayment || !destination}
         className="w-full py-5 rounded-full bg-gradient-to-br from-brand to-brand-deep text-white font-headline font-extrabold text-lg shadow-[0_12px_28px_rgba(21,74,168,0.26)] disabled:opacity-40 disabled:cursor-not-allowed active:scale-95 transition-transform flex items-center justify-center gap-2"
       >
-        Book ride
+        {t("passenger.bookRide")}
         <span className="material-symbols-outlined text-[20px]">bolt</span>
       </button>
     </div>
@@ -414,18 +417,24 @@ function CarTypeScreen({ activeTrip, destination, passengers, luggage, onBack, o
 // ── Ride Confirmation Screen ───────────────────────────────────────────────
 
 function RideScreen({ activeTrip, selectedPayment, specialAssistance, notes, onBack, onNext }) {
+  const { t } = useLanguage();
   const payment = PAYMENT_OPTIONS.find((p) => p.id === selectedPayment);
   const dest = destinationLabel(activeTrip) || "Where to?";
   const route = `${pickupLabel(activeTrip)} → ${dest}`;
+  const tripCompleted = activeTrip.status === "completed";
 
   return (
     <div className="flex flex-col gap-4">
       <MobileHeader title="Hello Ride" backLabel="Back" onBack={onBack} showAvatar />
 
-      {/* Trip complete */}
+      {/* Booking confirmation */}
       <div className="bg-brand/10 border border-brand/25 rounded-2xl p-5">
-        <p className="text-xs text-brand-deep uppercase tracking-widest font-medium">Trip complete</p>
-        <h2 className="text-xl font-bold text-slate-900 mt-1">Arrived at {dest}</h2>
+        <p className="text-xs text-brand-deep uppercase tracking-widest font-medium">
+          {tripCompleted ? t("passenger.tripComplete") : t("passenger.rideConfirmed")}
+        </p>
+        <h2 className="text-xl font-bold text-slate-900 mt-1">
+          {tripCompleted ? `Arrived at ${dest}` : `Ride booked to ${dest}`}
+        </h2>
         <p className="text-sm text-slate-600 mt-1">
           {route}
         </p>
@@ -460,7 +469,7 @@ function RideScreen({ activeTrip, selectedPayment, specialAssistance, notes, onB
 
       {/* Payment */}
       <div className="bg-white shadow-sm border border-slate-100 rounded-2xl p-5">
-        <p className="text-sm font-bold text-slate-900 mb-4">Payment</p>
+        <p className="text-sm font-bold text-slate-900 mb-4">{t("passenger.payment")}</p>
         <div className="flex justify-between py-2 border-b border-slate-100">
           <p className="text-xs text-muted">Method</p>
           <p className="text-sm text-slate-900">{payment?.label} · {payment?.detail}</p>
@@ -589,7 +598,86 @@ function ReviewScreen({ activeTrip, onBack, onHome }) {
   );
 }
 
+function TripInfoRows({ rows }) {
+  return (
+    <div className="bg-white shadow-sm border border-slate-100 rounded-2xl p-5 flex flex-col">
+      {rows.map(([label, value]) => (
+        <div key={label} className="flex justify-between gap-4 py-2 border-b border-slate-100 last:border-0">
+          <p className="text-xs text-muted">{label}</p>
+          <p className="text-sm font-bold text-slate-900 text-right">{value}</p>
+        </div>
+      ))}
+    </div>
+  );
+}
+
+function AssignedScreen({ activeTrip }) {
+  return (
+    <div className="flex flex-col gap-4">
+      <MobileHeader title="Hello Ride" showAvatar />
+      <div className="bg-brand/10 border border-brand/25 rounded-2xl p-5 text-center">
+        <div className="flex justify-center mb-3">
+          <div className="w-10 h-10 rounded-full border-4 border-brand border-t-transparent animate-spin" />
+        </div>
+        <p className="text-xs text-brand-deep uppercase tracking-widest font-medium mb-1">กำลังจัดรถให้คุณ</p>
+        <p className="text-base font-bold text-slate-900">กำลังค้นหาคนขับที่เหมาะสม</p>
+      </div>
+      <TripInfoRows rows={[
+        ["คนขับ", `${activeTrip.driverId} · ${activeTrip.vehicleType}`],
+        ["เวลาถึง", `${activeTrip.etaMin} นาที`],
+        ["จุดรับ", activeTrip.pickupGate || "ชั้น 1 ประตู 4 (Level 1, Gate 4)"],
+        ["ปลายทาง", activeTrip.destinationName || activeTrip.selectedDestination || "—"],
+      ]} />
+    </div>
+  );
+}
+
+function AcceptedScreen({ activeTrip }) {
+  return (
+    <div className="flex flex-col gap-4">
+      <MobileHeader title="Hello Ride" showAvatar />
+      <div className="bg-brand/10 border border-brand/25 rounded-2xl p-5">
+        <p className="text-xs text-brand-deep uppercase tracking-widest font-medium mb-1">คนขับกำลังเดินทางมารับคุณ</p>
+        <p className="text-2xl font-black text-slate-900 mt-1">{activeTrip.etaMin} นาที</p>
+        <p className="text-xs text-muted mt-0.5">เวลาโดยประมาณก่อนถึงจุดรับ</p>
+      </div>
+      <TripInfoRows rows={[
+        ["คนขับ", activeTrip.driverId],
+        ["ยานพาหนะ", activeTrip.vehicleType],
+        ["จุดรับ", activeTrip.pickupGate || "ชั้น 1 ประตู 4 (Level 1, Gate 4)"],
+      ]} />
+    </div>
+  );
+}
+
+function ArrivedScreen({ activeTrip }) {
+  return (
+    <div className="flex flex-col gap-4">
+      <MobileHeader title="Hello Ride" showAvatar />
+      <div className="bg-brand/10 border border-brand/25 rounded-2xl p-6 text-center">
+        <div className="flex justify-center mb-3">
+          <div className="w-14 h-14 rounded-full bg-brand/20 flex items-center justify-center">
+            <span
+              className="material-symbols-outlined text-brand"
+              style={{ fontSize: "32px", fontVariationSettings: "'FILL' 1" }}
+            >
+              check_circle
+            </span>
+          </div>
+        </div>
+        <p className="text-xs text-brand-deep uppercase tracking-widest font-medium mb-1">คนขับถึงจุดรับแล้ว</p>
+        <p className="text-base font-bold text-slate-900">กรุณาไปที่ชั้น 1 ประตู 4</p>
+      </div>
+      <TripInfoRows rows={[
+        ["คนขับ", activeTrip.driverId],
+        ["ยานพาหนะ", activeTrip.vehicleType],
+      ]} />
+    </div>
+  );
+}
+
 function PassengerMatchingStatus() {
+  const { t } = useLanguage();
   const { activeTrip } = useDemoMatching();
 
   if (activeTrip.status === "idle" || activeTrip.status === "completed") {
@@ -597,8 +685,8 @@ function PassengerMatchingStatus() {
   }
 
   const statusCopy = activeTrip.status === "arrived"
-    ? "Driver arrived at pickup zone"
-    : "Driver assigned";
+    ? t("passenger.driverArrived")
+    : t("passenger.driverAssigned");
   const destination = destinationLabel(activeTrip) || "Destination pending";
 
   return (
@@ -623,10 +711,17 @@ function PassengerMatchingStatus() {
 
 // ── Main Passenger Portal ──────────────────────────────────────────────────
 
+const STATUS_SCREENS = {
+  booked: AssignedScreen,
+  assigned: AssignedScreen,
+  accepted: AcceptedScreen,
+  arrived: ArrivedScreen,
+};
+
 export default function PassengerPortal() {
   const [step, setStep] = useState("home");
   const [tripData, setTripData] = useState({});
-  const { activeTrip, updatePassengerTrip, updateRideSelection } = useDemoMatching();
+  const { activeTrip, updatePassengerTrip, updateRideSelection, bookPassengerTrip, completePassengerReview } = useDemoMatching();
 
   function handleHomeNext(data) {
     updatePassengerTrip({
@@ -646,6 +741,7 @@ export default function PassengerPortal() {
       distanceKM: activeTrip.distanceKM,
       tripTimeMin: activeTrip.tripTimeMin,
     });
+    bookPassengerTrip();
     setTripData((prev) => ({ ...prev, ...data }));
     setStep("ride");
   }
@@ -655,41 +751,60 @@ export default function PassengerPortal() {
   }
 
   function handleHome() {
+    if (activeTrip.status === "completed" || activeTrip.passengerReviewPending) {
+      completePassengerReview();
+    }
     setStep("home");
     setTripData({});
   }
 
+  const StatusScreen = STATUS_SCREENS[activeTrip.status];
+  const shouldShowReview =
+    activeTrip.status === "completed" || activeTrip.passengerReviewPending;
+
   return (
     <MobileShell>
       <MobileScrollArea className="pb-28">
-        <PassengerMatchingStatus />
-        {step === "home" && <HomeScreen initialData={tripData} onNext={handleHomeNext} />}
-        {step === "carType" && (
-          <CarTypeScreen
-            activeTrip={activeTrip}
-            destination={tripData.selectedDestination || tripData.dest || ""}
-            passengers={tripData.passengers}
-            luggage={tripData.luggage}
-            onBack={() => setStep("home")}
-            onNext={handleCarTypeNext}
-          />
-        )}
-        {step === "ride" && (
-          <RideScreen
-            activeTrip={activeTrip}
-            selectedPayment={tripData.selectedPayment}
-            specialAssistance={tripData.specialAssistance}
-            notes={tripData.notes}
-            onBack={() => setStep("carType")}
-            onNext={handleRideNext}
-          />
-        )}
-        {step === "review" && (
+        {shouldShowReview ? (
           <ReviewScreen
             activeTrip={activeTrip}
             onBack={() => setStep("ride")}
             onHome={handleHome}
           />
+        ) : StatusScreen ? (
+          <StatusScreen activeTrip={activeTrip} />
+        ) : (
+          <>
+            <PassengerMatchingStatus />
+            {step === "home" && <HomeScreen initialData={tripData} onNext={handleHomeNext} />}
+            {step === "carType" && (
+              <CarTypeScreen
+                activeTrip={activeTrip}
+                destination={tripData.selectedDestination || tripData.dest || ""}
+                passengers={tripData.passengers}
+                luggage={tripData.luggage}
+                onBack={() => setStep("home")}
+                onNext={handleCarTypeNext}
+              />
+            )}
+            {step === "ride" && (
+              <RideScreen
+                activeTrip={activeTrip}
+                selectedPayment={tripData.selectedPayment}
+                specialAssistance={tripData.specialAssistance}
+                notes={tripData.notes}
+                onBack={() => setStep("carType")}
+                onNext={handleRideNext}
+              />
+            )}
+            {step === "review" && (
+              <ReviewScreen
+                activeTrip={activeTrip}
+                onBack={() => setStep("ride")}
+                onHome={handleHome}
+              />
+            )}
+          </>
         )}
       </MobileScrollArea>
 

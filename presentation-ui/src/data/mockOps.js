@@ -2,7 +2,7 @@ const T1 = {
   code: "T1",
   title: "Terminal 1",
   pwt: 19,
-  guardrailMin: 10,
+  guardrailMin: 30,
   waitingPassengers: 302,
   waitingTrend: "+15%",
   holdingTaxis: 101,
@@ -13,7 +13,7 @@ const T1 = {
   projectedDeficit: 49,
   criticalWindow: { start: "14:45", end: "15:00" },
   aiAdvice:
-    "Activate Terminal 1 overflow lane planning and broadcast a 6-minute head start to holding drivers.",
+    "Watch Terminal 1 closely. PWT is above the early-watch threshold but below the 20-min action buffer; no driver incentive yet.",
   deficitBreakdown: [
     { factor: "EK374 + QR833 arrival wave (JP/UAE routes)", impact: 120, type: "demand" },
     { factor: "QR scan spike at Claim C–D", impact: 35, type: "demand" },
@@ -21,7 +21,7 @@ const T1 = {
     { factor: "Holding lane congestion (87% load)", impact: -15, type: "supply" },
   ],
   impactSimulation: {
-    action: "Activate Overflow Lane + Broadcast to +6 min drivers",
+    action: "Monitor only; prepare incentive/broadcast if PWT exceeds 20 min",
     currentPwt: 19,
     projectedPwt: 11,
     pwtReductionPct: 42,
@@ -60,7 +60,7 @@ const T2 = {
   code: "T2",
   title: "Terminal 2",
   pwt: 12,
-  guardrailMin: 10,
+  guardrailMin: 30,
   waitingPassengers: 40,
   waitingTrend: "+4%",
   holdingTaxis: 27,
@@ -116,7 +116,7 @@ const ALL = {
   code: "ALL",
   title: "All terminals",
   pwt: 18,
-  guardrailMin: 10,
+  guardrailMin: 30,
   waitingPassengers: 342,
   waitingTrend: "+12%",
   holdingTaxis: 128,
@@ -127,7 +127,7 @@ const ALL = {
   projectedDeficit: 45,
   criticalWindow: { start: "14:45", end: "15:15" },
   aiAdvice:
-    "Balance Terminal 1 surge control with a steady Terminal 2 release wave and keep driver broadcasts synchronized airport-wide.",
+    "All terminals are in WATCH. Monitor the arrival wave and prepare an action plan, but do not send incentives until the 20-min action buffer is exceeded.",
   deficitBreakdown: [
     { factor: "EK374 + QR833 arrival wave (T1 — JP/UAE routes)", impact: 120, type: "demand" },
     { factor: "QR scan spike at Claim C–D (T1)", impact: 35, type: "demand" },
@@ -136,7 +136,7 @@ const ALL = {
     { factor: "Holding lane congestion (T1: 87% load)", impact: -15, type: "supply" },
   ],
   impactSimulation: {
-    action: "Activate Overflow Lane + Broadcast to +6 min drivers (T1 priority)",
+    action: "Monitor only; prepare incentive/broadcast if PWT exceeds 20 min",
     currentPwt: 18,
     projectedPwt: 12,
     pwtReductionPct: 33,
@@ -185,13 +185,13 @@ export const ADVISORY_RESPONSES = {
   "What is causing the projected deficit?":
     "The 49% projected deficit is driven by simultaneous arrival waves from EK374 (Dubai) and QR833 (Doha) delivering an estimated 218 passengers to Terminal 1 between 14:45 and 15:10. Lane 1 is at 87% load capacity, and 12 short-haul drivers remain in the holding queue. Supply cannot absorb the incoming demand without overflow activation.",
   "Should we activate overflow capacity now?":
-    "Yes. The forecast shows demand peaking at 136 passengers at 15:00 with only 43 taxis available — a 93-taxi shortfall. Activating overflow now gives drivers a 6-minute head start to position before peak arrival. Delay of 15+ minutes would push PWT above 25 min.",
+    "Only if predicted PWT exceeds 30 min or OPS confirms an active SLA breach risk. Below 20 min, monitor only. Between 20 and 30 min, recommend incentive or broadcast for OPS approval before any driver action.",
   "Summarize Terminal 1 status":
-    "Terminal 1 is in a critical deficit state. PWT is 19 min (guardrail: 10 min). 302 passengers waiting. 101 taxis available vs 136 demand at peak (15:00). Deficit window runs 14:45–15:00. Two high-demand flights inbound. Recommended: activate overflow lane and broadcast immediately.",
+    "Terminal 1 is in WATCH. PWT is 19 min, above the early-watch threshold. It remains below the 20-min action buffer and below the 30-min SLA breach threshold. Recommended: monitor closely and prepare a manual action plan; do not broadcast incentives yet.",
   "What should ops do in the next 15 minutes?":
-    "1. Activate overflow lane now — adds ~28 taxis per slot. 2. Broadcast holding drivers with +6 min head start by 14:44. 3. Monitor PWT every 5 min — target below 12 min by 15:15. 4. Reduce short-haul hold time from 4 min to 2 min to free 12 drivers. 5. Alert Terminal 2 dispatch to absorb any overflow.",
+    "1. Confirm the current severity band. 2. If PWT remains 15–20 min, monitor only. 3. If PWT exceeds 20 min, recommend incentive or broadcast for OPS approval. 4. If PWT exceeds 30 min, approve overflow lane and holding-zone broadcast manually.",
   "Explain the arrival wave risk":
     "EK374 from Dubai (122 forecast pax) and QR833 from Doha (96 forecast pax) are arriving within 35 minutes of each other. Combined with the QR scan spike at Claim C–D (+35 demand), this creates a 155+ passenger surge that exceeds current lane capacity by 49%. The overlap creates a compound wave — harder to absorb than sequential arrivals.",
   "Are drivers sufficient for current demand?":
-    "No. Current supply: 101 taxis (33 in holding, 68 inbound). Peak demand at 15:00: 136 passengers. Net shortfall: 35 taxis at peak. The gap is worsened by 12 drivers in short-haul holding not yet dispatched. Activating overflow and broadcasting to holding drivers would close the gap to approximately 8 taxis — within safe operating range.",
+    "Driver supply is tight. Current supply: 101 taxis (33 in holding, 68 inbound). Peak demand at 15:00: 136 passengers. If PWT crosses the 20-min action buffer, AI can recommend an incentive or broadcast for OPS approval; overflow is reserved for PWT above 30 min.",
 };
