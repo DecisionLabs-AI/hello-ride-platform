@@ -191,7 +191,7 @@ function HealthCard({ d }) {
     <div className="flex min-w-0 flex-col gap-4 rounded-xl border border-gray-100 bg-white p-4 shadow-sm">
       <div>
         <p className="text-xs font-semibold uppercase tracking-widest text-gray-400">Live Situation</p>
-        <h2 className="mt-0.5 text-sm font-semibold uppercase tracking-wide text-gray-500">Curb load and queue health</h2>
+        <h2 className="mt-0.5 text-xl font-extrabold text-[#1a2b5e]">Curb load and queue health</h2>
       </div>
       <div className="grid grid-cols-1 gap-4 md:grid-cols-[1fr_auto_1fr_auto_1fr]">
         <div>

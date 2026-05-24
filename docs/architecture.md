@@ -2,20 +2,40 @@
 
 ## Overview
 
-Hello Ride is a Streamlit prototype for a proactive taxi dispatch system at Suvarnabhumi Airport (BKK). It demonstrates three operating surfaces that work together to shift the airport queue from reactive dispatching to a signal-driven system that mobilises supply before passengers reach the pickup curb.
+Hello Ride is a proactive airport taxi dispatch platform for Suvarnabhumi Airport (BKK). It shifts the system from reactive dispatching (summon taxis after passengers arrive) to signal-driven pre-positioning (mobilise supply before passengers exit the terminal).
+
+The platform has two active layers:
+
+| Layer | Technology | Role |
+|---|---|---|
+| **React/Vite frontend** | React 18 + Vite + Tailwind CSS | Primary user-facing UI (OPS, Passenger, Driver) |
+| **Python backend utilities** | Python 3.11 + Streamlit | ML inference, DB access, AI advisory, rule engine |
 
 ---
 
 ## Tech Stack
 
-| Layer | Technology | Version |
-|---|---|---|
-| UI framework | Streamlit | ≥ 1.55, < 2.0 |
-| Language | Python | 3.11 |
-| Data / tabular | pandas | 2.1.4 |
-| Charts | Streamlit native (`st.line_chart`) | — |
-| Styling | Inline CSS via `st.markdown(unsafe_allow_html=True)` | — |
-| State management | `st.session_state` | — |
+### React/Vite Frontend (`presentation-ui/`)
+
+| Layer | Technology |
+|---|---|
+| UI framework | React 18 + Vite |
+| Styling | Tailwind CSS v3 (utility-first) |
+| State management | React Context + localStorage |
+| i18n | Custom dictionary hook (`useLanguage`) — EN/TH |
+| Charts | Recharts |
+| Routing | React Router v6 |
+
+### Python Backend (`utils/`, `pages/`, `components/`)
+
+| Layer | Technology |
+|---|---|
+| Prototype UI | Streamlit ≥ 1.55 |
+| Language | Python 3.11 |
+| Data / tabular | pandas 2.1.4 |
+| ML inference | scikit-learn + XGBoost + joblib |
+| AI advisory | Google Gemini 2.0 Flash (`google-genai` SDK) |
+| DB | psycopg2 → Supabase Postgres |
 
 ---
 
@@ -23,301 +43,387 @@ Hello Ride is a Streamlit prototype for a proactive taxi dispatch system at Suva
 
 ```
 hello-ride-platform/
-├── app.py                       # Entry point — page config + landing page
-├── requirements.txt             # Python dependencies
+│
+├── presentation-ui/                  # React/Vite — PRIMARY frontend
+│   ├── src/
+│   │   ├── App.jsx                   # Router + provider setup
+│   │   ├── pages/
+│   │   │   ├── OPSDashboard.jsx      # OPS Control Tower
+│   │   │   ├── PassengerPortal.jsx   # Passenger booking + status screens
+│   │   │   └── DriverApp.jsx         # Driver state machine
+│   │   ├── components/
+│   │   │   ├── shared/               # NavBar, LanguageToggle, SectionHeading
+│   │   │   ├── passenger/            # PassengerSupportChat
+│   │   │   └── ops/                  # (ops-specific widgets)
+│   │   ├── context/
+│   │   │   ├── DemoMatchingContext.jsx   # Trip state + cross-tab sync
+│   │   │   ├── LanguageContext.jsx       # EN/TH language state
+│   │   │   └── useLanguage.js           # Hook: { language, setLanguage, t }
+│   │   ├── data/
+│   │   │   ├── mockOps.js                # T1/T2/ALL terminal mock data
+│   │   │   ├── helloride_dashboard_data.json  # Full dashboard dataset
+│   │   │   └── edgeCaseProtocols.js      # Edge case protocol definitions
+│   │   ├── i18n/
+│   │   │   └── dictionary.js            # EN/TH translation keys
+│   │   └── lib/
+│   │       ├── businessLogic.js         # PWT thresholds, severity, matching mode
+│   │       └── protocolMatcher.js       # Keyword → protocol matcher
+│   └── package.json
+│
+├── app.py                            # Streamlit entry point
+├── requirements.txt
 ├── pages/
-│   ├── 1_ops_dashboard.py       # Ops Control Tower
-│   ├── 2_driver_flow.py         # Driver partner app
-│   └── 3_passenger_flow.py      # Passenger portal
-├── components/
-│   ├── __init__.py
-│   ├── cards.py                 # render_info_card, render_metric_card, render_alert_card
-│   ├── forms.py                 # render_step_counter, render_option_cards
-│   ├── header.py                # render_hero, render_page_header, render_mobile_header, render_section_heading
-│   ├── navigation.py            # render_sidebar
-│   └── status_blocks.py        # render_route_timeline, render_pwt_gauge, render_timer_ring, render_status_strip
+│   ├── 1_ops_dashboard.py            # Streamlit OPS (DB-aware, mock fallback)
+│   ├── 2_driver_flow.py              # Streamlit driver state machine
+│   └── 3_passenger_flow.py           # Streamlit passenger flow
+├── components/                       # Streamlit component library
+│   ├── cards.py
+│   ├── forms.py
+│   ├── header.py
+│   ├── navigation.py
+│   └── status_blocks.py
 ├── data/
-│   ├── __init__.py
-│   ├── mock_driver.py           # DRIVER_EXPERIENCE, DRIVER_FORECAST_BARS
-│   ├── mock_ops.py              # OPS_BY_TERMINAL (keyed by "T1", "T2")
-│   └── mock_passenger.py        # PASSENGER_EXPERIENCE, PAYMENT_OPTIONS, TIP_OPTIONS
+│   ├── mock_driver.py                # DRIVER_EXPERIENCE, DRIVER_FORECAST_BARS
+│   ├── mock_ops.py                   # OPS_BY_TERMINAL
+│   └── mock_passenger.py             # PASSENGER_EXPERIENCE, PAYMENT_OPTIONS
 ├── utils/
-│   ├── __init__.py
-│   ├── state.py                 # initialize_state(), set_driver_step(), reset_passenger_flow()
-│   └── styles.py                # apply_global_styles() — 650+ lines of inline CSS
+│   ├── ai_advisory.py               # Gemini advisory + fallback
+│   ├── ml_predictor.py              # XGBoost PWT + breach risk
+│   ├── rule_engine.py               # Rule evaluation → RuleAction list
+│   ├── actions.py                   # Dispatch event writeback
+│   ├── db.py                        # DB connection, effective_now, healthcheck
+│   ├── state.py                     # Session state helpers (Streamlit)
+│   └── styles.py                    # Global CSS injection (Streamlit)
+├── models/
+│   ├── xgb_wait_time_model.joblib
+│   ├── xgb_breach_risk_model.joblib
+│   └── feature_columns.json
 └── docs/
-    ├── architecture.md
+    ├── architecture.md              # This file
     ├── driver-flow.md
     ├── passenger-flow.md
-    └── ui-patterns.md
+    ├── ui-patterns.md
+    ├── supabase_schema_v1.sql
+    └── migrations/
 ```
 
 ---
 
 ## Application Surfaces
 
-The app has three distinct user-facing surfaces, each as a Streamlit page.
+### OPS Control Tower (`src/pages/OPSDashboard.jsx`)
+
+Desktop-first operations dashboard. Three navigation sections:
+
+**Live Monitoring**
+- PWT gauge + severity band (NORMAL / WATCH / WARNING / CRITICAL)
+- KPI tiles: Waiting Pax, Holding Taxis, Lane System Load, AI Forecast bar
+- Demand vs supply forecast chart (next 3 hr, 15-min buckets)
+- AI Situation Brief: situation summary, recommended action, expected impact
+- Arrival Wave Analysis: flight table (next 60 min), demand signals, deficit breakdown
+- Dispatch Controls: Send Incentive / Broadcast Drivers (OPS approval required)
+
+**AI Advisory**
+- Free-text chat grounded in live DB context
+- Gemini 2.0 Flash; automatic rule-based fallback on quota/SSL failure
+- Structured response: summary, root causes, recommended actions, 15-min plan
+
+**Documentation & Policy**
+- System reference and OPS protocol reference
+
+**Dispatch Intelligence panel:**
+- Passenger Queue + Driver Pool tables with priority scores
+- Matching Mode badge (Normal / Priority / Critical) based on live PWT
+- Dispatch Mode toggle (Auto vs OPS Priority)
+- "Run Priority Dispatch" button → triggers `assignMatch()` + sets OPS action
+
+---
+
+### Passenger Portal (`src/pages/PassengerPortal.jsx`)
+
+Mobile-style booking flow + real-time status screens.
+
+**Booking flow (shown when `activeTrip.status === 'idle' | 'booked'`):**
 
 ```
-app.py                  Landing page — prototype overview and navigation
-pages/1_ops_dashboard   Ops Control Tower
-pages/2_driver_flow     Driver partner app
-pages/3_passenger_flow  Passenger portal
+Destination input → Passenger/luggage counts → Ride type + payment → Book
 ```
 
-### Passenger Surface (`pages/3_passenger_flow.py`)
+**Status screens (shown when trip is active):**
 
-A mobile-style flow simulating a passenger arriving at the airport.
-
-**Screens (multi-step state machine on `passenger_step`):**
-
-```
-home → carType → ride → review → [submitted]
-```
-
-| Step | Key session state |
+| Status | Screen |
 |---|---|
-| `home` | `passenger_destination`, `passenger_destination_mode`, `passenger_count`, `passenger_luggage`, `passenger_special_assistance`, `passenger_notes` |
-| `carType` | `passenger_selected_ride` (validated against capacity), `passenger_payment` |
-| `ride` | Read-only summary |
-| `review` | `passenger_rating`, `passenger_tip`, `passenger_comment`, `passenger_review_submitted` |
+| `assigned` | Spinner · "กำลังจัดรถให้คุณ" · driver + ETA info |
+| `accepted` | "คนขับกำลังเดินทางมารับคุณ" · ETA countdown |
+| `arrived` | Checkmark · "คนขับถึงจุดรับแล้ว · กรุณาไปที่ชั้น 1 ประตู 4" |
+| `completed` | Trip summary · fare / distance / duration / destination |
 
-**Ride eligibility** is computed inline based on `passenger_count` and `passenger_luggage` against each ride's `maxPassengers` and `maxLuggage` from `PASSENGER_EXPERIENCE["rides"]`.
-
----
-
-### Driver Surface (`pages/2_driver_flow.py`)
-
-A mobile-style flow covering the full driver partner lifecycle.
-
-**Screens (state machine on `driver_step`):**
-
-```
-login → registration → guide
-                         ↓
-                     jobRequest  (countdown timer)
-                         ↓
-                   tripNavigation
-                         ↓
-                   paymentComplete → guide
-```
-
-Note: `applicationStatus` remains in the SCREENS dict but is no longer on the critical path. Registration sets `driver_verified = True` and `driver_approved = True` automatically and routes directly to `guide`.
-
-**Key session state:**
-
-| Key | Type | Purpose |
-|---|---|---|
-| `driver_step` | `str` | Active screen |
-| `driver_registered` | `bool` | Registration form submitted |
-| `driver_verified` | `bool` | Set to `True` on registration submit |
-| `driver_approved` | `bool` | Set to `True` on registration submit |
-| `driver_online` | `bool` | Driver is available for jobs |
-| `driver_job_started_at` | `float \| None` | Unix timestamp when job offer started |
-| `driver_offer_expired` | `bool` | Countdown expired flag |
-
-**Countdown timer** is implemented by comparing `time.time()` to `driver_job_started_at`. When elapsed ≥ 12 seconds, the offer is marked expired and the driver is returned to `guide`. `set_driver_step("jobRequest")` (in `utils/state.py`) sets `driver_job_started_at` on entry.
-
-**Online toggle semantics:**
-- On the `guide` screen: toggling online sets `driver_online = True` and transitions to `jobRequest`.
-- During `tripNavigation`: toggling only updates `driver_online` — never triggers a screen transition.
+**Support Chat** (`PassengerSupportChat.jsx`): keyword-based edge case detection via `protocolMatcher` — triggers protocol cards for safety, medical, lost & found, and other edge cases.
 
 ---
 
-### Ops Surface (`pages/1_ops_dashboard.py`)
+### Driver App (`src/pages/DriverApp.jsx`)
 
-A desktop-first operations dashboard with two workspace modes.
+Mobile-style state machine covering the full driver partner lifecycle.
 
-**Workspace toggle (`ops_workspace`):**
-- `"Live Monitoring"` — PWT gauge, metric tiles, forecast chart, flight wave, demand signals, supply telemetry
-- `"AI Advisory"` — AI chatbot interface with mock responses
+**Screen transitions:**
 
-**Terminal selector (`ops_terminal`):** switches data between `"T1"`, `"T2"`, and `"All"` via `OPS_BY_TERMINAL` in `data/mock_ops.py`.
+```
+login → registration → verification → applicationStatus → guide
+                                                              ↓
+                                                         jobRequest (countdown)
+                                                              ↓
+                                                       tripNavigation
+                                                              ↓
+                                                       paymentComplete → guide
+```
 
-**Key panels (Live Monitoring — stage order):**
+| Screen | Key action |
+|---|---|
+| `login` | Demo credentials pre-filled |
+| `registration` | Name, phone, vehicle type |
+| `verification` | Face scan animation |
+| `guide` | Online toggle, demand forecast bars, incentive info |
+| `jobRequest` | 12-second countdown; accept → `tripNavigation`; expire → back to `guide` |
+| `tripNavigation` | Route timeline, passenger info, "Arrived at pickup" button |
+| `paymentComplete` | Fare breakdown, "Confirm Payment Received" |
 
-| Stage | Panel | Data source |
+---
+
+## AI & ML Layer
+
+### XGBoost Models (`utils/ml_predictor.py`)
+
+Two trained `.joblib` models loaded at inference time:
+
+| Model | Output | Threshold |
 |---|---|---|
-| 1 | Critical Alert (conditional, PWT > guardrail) | `ops["pwt"]`, `ops["projectedDeficit"]`, `ops["aiAdvice"]` |
-| 2 | KPI summary — PWT gauge + metric tiles | `ops["pwt"]`, `ops["waitingPassengers"]`, `ops["holdingTaxis"]`, `ops["laneLoad"]`, `ops["fleetReadiness"]`, `ops["projectedDeficit"]` |
-| 3 | AI Advisory (standalone ops-blue card) | `ops["aiAdvice"]` |
-| 4 | Deficit Breakdown — WHY | `ops["deficitBreakdown"]` |
-| 5 | Impact Simulation — SO WHAT | `ops["impactSimulation"]` |
-| 6 | OPS Control Actions — WHAT TO DO | `ops_extra_lane_active`, `ops_last_broadcast`, `ops_lane2_active` |
-| 7 | Arrival Wave Chart | `ops["forecast"]` (`st.line_chart`, demand vs supply series) |
-| 8 | Supporting data tables | `ops["flights"]`, `ops["demandSignals"]`, `ops["supply"]` |
+| `xgb_wait_time_model` | `predicted_wait_min` (float) | — |
+| `xgb_breach_risk_model` | `breach_probability` (0–1) | `≥ 0.5` = breach risk |
+
+Input: feature row aligned to `feature_columns.json` → `pd.DataFrame.reindex()` fills missing features with 0.
+
+### Gemini AI Advisory (`utils/ai_advisory.py`)
+
+**Context assembly (`build_ops_context`)** — queries 6 rawdata/mart sources per render:
+1. `mart.ops_kpi_snapshots` — latest PWT, pax, taxis
+2. `rawdata.taxi_supply_snapshots` — holding/curb counts, lane config
+3. `rawdata.flight_instances` — flights arriving in next 60 min
+4. `rawdata.passenger_demand_signals` — rollup for last 20 min
+5. `mart.demand_supply_forecasts` — 3-hour demand/supply timeseries
+6. `rawdata.driver_dispatch_events` — dispatch events in last 30 min
+
+**Generation path:**
+1. Try `google-genai` SDK with certifi SSL context
+2. Fall back to direct HTTPS if SDK fails
+3. Fall back to rule-based `_fallback_answer()` if both fail
+
+**Response schema:** `{ summary, root_causes, recommended_actions, next_15_min_plan, assumptions }`
+
+**Modes** (set via `secrets.toml`): `auto` (SDK → HTTP → mock) | `gemini` | `mock`
+
+### Rule Engine (`utils/rule_engine.py`)
+
+Pure Python — no DB calls. Evaluates an `ops_view` dict against thresholds and returns a sorted `list[RuleAction]`:
+
+| `kind` | Trigger | Priority |
+|---|---|---|
+| `activate_lane` | Lane load exceeds capacity | 1 (critical) |
+| `broadcast_drivers` | Supply deficit detected | 2 |
+| `flag_deficit` | Forecast gap > guardrail | 3 |
+
+### Severity Classification + Action Recommendation (`businessLogic.js`)
+
+Client-side threshold evaluation (mirrors rule engine logic):
+
+```js
+getPwtSeverity(pwt)   → NORMAL | WATCH | WARNING | CRITICAL
+getMatchingMode(pwt)  → NORMAL_MATCHING | PRIORITY_MATCHING | CRITICAL_MATCHING
+getSeverityTone(s)    → { dot, text, bg, border, bar } Tailwind classes
+getActionRecommendation(s) → { label, copy, button }
+```
+
+### Edge Case Protocol Matcher (`lib/protocolMatcher.js`)
+
+Keyword-based detector for passenger support chat. Scans message text against `EDGE_CASE_PROTOCOLS` trigger keywords (EN + TH). Returns the first matching protocol or `null`.
+
+| Protocol ID | Group | Severity |
+|---|---|---|
+| `silent-sos` | In-transit Safety | HIGH |
+| `medical-emergency` | In-transit Safety | HIGH |
+| `data-pipeline-down` | Systemic & Policy Risk | HIGH |
+| `lost-found` | User Behavior & Fraud | MEDIUM |
+| `ghost-supply` | Demand/Supply Shock | MEDIUM |
+| `accessibility-assist` | Accessibility | MEDIUM |
+
+---
+
+## Driver–Passenger Matching System
+
+### Matching Modes
+
+| PWT | Mode | Scoring Algorithm |
+|---|---|---|
+| ≤ 20 min | Normal Matching | FCFS + Capacity Fit |
+| 20–30 min | Priority Matching | Queue Order + ETA + Capacity Fit |
+| > 30 min | Critical Matching | Longest Wait + Low ETA + High Acceptance Rate + Capacity Fit |
+
+Matching mode is derived at render time from `getMatchingMode(d.pwt)` — no separate state needed.
+
+### Dispatch Modes
+
+| Mode | Trigger | Behaviour |
+|---|---|---|
+| Auto Dispatch | `bookPassengerTrip()` | status → `assigned` immediately |
+| OPS Priority Dispatch | `bookPassengerTrip()` then OPS action | status → `booked` → OPS runs `assignMatch()` |
+
+When `matchingMode === CRITICAL_MATCHING`, `handleRunMatching()` also sets `OPS_ACTION.OVERFLOW_ACTIVATED` before assigning.
+
+### Trip Status Machine
+
+```
+idle → booked → assigned → accepted → arrived → completed
+```
+
+All status transitions go through `DemoMatchingContext` functions. Direct mutation of `activeTrip.status` is not allowed.
+
+---
+
+## Cross-Tab State Synchronisation
+
+`DemoMatchingContext` (`src/context/DemoMatchingContext.jsx`) uses localStorage as a shared bridge across browser tabs.
+
+**Storage keys:**
+
+| Key | Contents |
+|---|---|
+| `helloride_activeTrip` | Full trip object (status, passenger, driver, fare, destination) |
+| `helloride_opsAction` | `incentive_sent` \| `overflow_activated` \| `max_incentive_sent` \| `null` |
+| `helloride_activeEscalation` | Active edge case escalation object or `null` |
+| `helloride_dispatchMode` | `auto` \| `priority` |
+
+**Sync mechanism:** `window.addEventListener('storage', handler)` fires in sibling tabs when one tab writes. Each handler reads `e.key` and `e.newValue` to update only the relevant state slice.
+
+**Reset:** `resetMatch()` calls `localStorage.removeItem` on both trip and ops keys before resetting React state — ensures sibling tabs receive a `null` event and reset to default immediately.
+
+---
+
+## i18n System
+
+`src/i18n/dictionary.js` — flat key→string map for EN and TH.  
+`src/context/LanguageContext.jsx` — stores active language in `helloRideLanguage` localStorage key.  
+`src/context/useLanguage.js` — hook returning `{ language, setLanguage, t }` where `t(key)` looks up `dictionary[language][key]` with EN fallback.
+
+Language is controlled by `<LanguageToggle />` in `NavBar.jsx` and shared across all pages via context.
 
 ---
 
 ## Data Layer
 
-All mock data lives in three Python modules under `data/`.
+### React/Vite mock data
 
-### `data/mock_passenger.py`
-
-```python
-PASSENGER_EXPERIENCE = {
-  "currentFlight": { "code", "origin", "landedAt", "baggageClaim", "terminal" },
-  "signal":        { "capturedAt", "headStartMin", "confidence", "pwtSavedMin", "partySize", "luggage", "specialAssistance" },
-  "route":         { "pickup", "dropoff", "walkToCurbMin" },
-  "rides": [       # consumed by carType step
-    { "id", "label", "description", "price", "maxPassengers", "maxLuggage" }
-  ],
-  "tracking":      { "driver", "vehicle", "plate", "eta", "distanceKm", "rating" },
-}
-PAYMENT_OPTIONS = [...]   # list of { "id", "label" }
-TIP_OPTIONS = [...]        # list of tip strings e.g. "฿50"
-```
-
-### `data/mock_driver.py`
-
-```python
-DRIVER_EXPERIENCE = {
-  "profile":     { "name", "status", "score", "vehicle" },
-  "incomingJob": { "pickup", "dropoff", "flightRef", "payout", "distance", "etaToPickup", "countdown", "passengers", "luggage", "payment" },
-  "readiness":   [{ "label", "value" }],
-  "signals":     [{ "label", "value" }],
-  "guideTrip":   { "passengerName", "pickup", "pickupAddress", "dropoff", "dropoffAddress", "eta", "distance", "payout", "fareBreakdown" },
-}
-# fareBreakdown: { distanceKm, distanceFare, durationMin, durationFare, bookingFee }
-# fareBreakdown line items must sum to payout
-
-DRIVER_FORECAST_BARS = [
-  { "time", "height", "type", "label" }  # type: "normal" | "surge" | "peak"
-]
-```
-
-### `data/mock_ops.py`
-
-```python
-OPS_BY_TERMINAL = {
-  "T1": {
-    "pwt", "waitingPassengers", "waitingTrend", "holdingTaxis", "taxiTrend",
-    "laneLoad", "fleetReadiness", "projectedDeficit", "aiAdvice",
-    "criticalWindow":    { "start", "end" },
-    "flights":           [{ "code", "origin", "eta", "terminal", "status", "demand" }],
-    "demandSignals":     [{ "time", "zone", "parties", "luggage" }],
-    "supply":            [{ "name", "value", "detail" }],
-    "forecast":          [{ "time", "demand", "supply" }],
-    "deficitBreakdown":  [{ "factor", "impact", "type" }],  # type: "demand" | "supply"
-    "impactSimulation":  { "current_pwt", "projected_pwt", "pwt_reduction_pct",
-                           "current_deficit", "projected_deficit",
-                           "queue_time_reduction", "action" },
-  },
-  "T2": { ... },
-}
-```
-
----
-
-## Shared UI Component Library
-
-All components are plain Python functions that render Streamlit elements.
-
-### `components/cards.py`
-
-| Function | Signature | Purpose |
-|---|---|---|
-| `render_info_card` | `(eyebrow, title, body, tone="default")` | General info card |
-| `render_metric_card` | `(label, value, delta=None, tone="default")` | KPI display tile |
-| `render_alert_card` | `(title, body, tone="danger")` | Alert / warning card |
-
-### `components/header.py`
-
-| Function | Signature | Purpose |
-|---|---|---|
-| `render_hero` | `(badge, title, body, aside_title, aside_body)` | Landing page hero |
-| `render_page_header` | `(eyebrow, title, body)` | Top-of-page header |
-| `render_mobile_header` | `(back_label, title, forward_label)` | Mobile step header |
-| `render_section_heading` | `(title, badge=None)` | In-page section divider |
-
-### `components/status_blocks.py`
-
-| Function | Signature | Purpose |
-|---|---|---|
-| `render_route_timeline` | `(pickup, pickup_address, dropoff, dropoff_address)` | Pickup → destination indicator |
-| `render_pwt_gauge` | `(value, max_value, threshold)` | Circular PWT gauge (Ops) |
-| `render_timer_ring` | `(seconds_remaining, total_seconds)` | Countdown timer (Driver job offer) |
-| `render_status_strip` | `(steps, current)` | 5-step progress bar (Driver onboarding) |
-
-### `components/forms.py`
-
-| Function | Signature | Purpose |
-|---|---|---|
-| `render_step_counter` | `(label, key, min_val, max_val)` | Increment/decrement counter |
-| `render_option_cards` | `(options, key)` | Radio-style option card group |
-
----
-
-## Styling
-
-All CSS is defined in `utils/styles.py` and injected once at app startup by `apply_global_styles()` in `app.py` via `st.markdown(..., unsafe_allow_html=True)`.
-
-**CSS variable tokens (`:root`):**
-
-| Variable | Value | Usage |
-|---|---|---|
-| `--hr-bg` | `#f6fbf7` | Base background reference |
-| `--hr-surface` | `rgba(255,255,255,0.96)` | Card / hero surface fill |
-| `--hr-card` | `#ffffff` | Solid card fill |
-| `--hr-foreground` | `#0f172a` | Body text |
-| `--hr-muted` | `#64748b` | Secondary / caption text |
-| `--hr-border` | `#d9e4ee` | Input and row borders |
-| `--hr-primary` | `#00b14f` | Brand green, CTAs, online state |
-| `--hr-primary-deep` | `#0c7d35` | Driver accent, hover states |
-| `--hr-secondary` | `#154aa8` | Ops surface accent |
-| `--hr-danger` | `#b91c1c` | Critical alerts |
-| `--hr-danger-deep` | `#991b1b` | Gauge and deep danger states |
-| `--hr-info` | `#2d6bff` | Passenger surface accent |
-
-**`st.container(border=True)` styling:**
-
-`[data-testid="stVerticalBlockBorderWrapper"]` is targeted globally to give every bordered container a white surface (`rgba(255,255,255,0.98)`), a visible slate border, and a soft shadow — ensuring cards separate clearly from the tinted page background on all surfaces.
-
-**Card tone variants** (`tone` parameter on card components): `default`, `passenger`, `driver`, `ops`, `ops-dark`, `danger`, `success`, `muted`.
-
----
-
-## State Management
-
-The prototype uses `st.session_state` for all stateful values. State is initialised once at app startup by `initialize_state()` in `utils/state.py`, which sets defaults only for keys not already present (safe for reruns).
-
-**Helper functions in `utils/state.py`:**
-
-| Function | Purpose |
+| File | Contents |
 |---|---|
-| `initialize_state()` | Set all session state defaults. Called once in `app.py`. |
-| `set_driver_step(step)` | Transition driver to a new step. Also sets `driver_job_started_at` for `"jobRequest"`. |
-| `reset_passenger_flow()` | Reset all `passenger_*` keys to initial values. |
+| `src/data/mockOps.js` | T1, T2, ALL terminal objects: PWT, flights, demand signals, forecast series, deficit breakdown, impact simulation |
+| `src/data/helloride_dashboard_data.json` | Full dashboard dataset (38 modules, ~371 KB) |
+| `src/data/edgeCaseProtocols.js` | 6 protocol definitions with trigger keywords (EN + TH) |
 
-**Ops-specific state keys:**
+### Python mock data
 
-| Key | Type | Default | Purpose |
-|---|---|---|---|
-| `ops_terminal` | `str` | `"T1"` | Selected terminal context |
-| `ops_workspace` | `str` | `"Live Monitoring"` | Active workspace tab |
-| `ops_guardrail_min` | `int` | `10` | PWT threshold for critical alert |
-| `ops_extra_lane_active` | `bool` | `False` | Overflow lane toggle |
-| `ops_last_broadcast` | `str` | `""` | Timestamp of last driver broadcast (HH:MM) |
-| `ops_lane2_active` | `bool` | `False` | Lane 2 open/close toggle |
+| File | Contents |
+|---|---|
+| `data/mock_driver.py` | `DRIVER_EXPERIENCE` (profile, guideTrip, fareBreakdown), `DRIVER_FORECAST_BARS` |
+| `data/mock_ops.py` | `OPS_BY_TERMINAL` keyed by `"T1"`, `"T2"` |
+| `data/mock_passenger.py` | `PASSENGER_EXPERIENCE`, `PAYMENT_OPTIONS`, `TIP_OPTIONS` |
 
-**Implications:**
-- State persists across page navigation within the same browser session.
-- Refreshing the browser resets all session state to defaults.
+### Supabase DB (`rawdata.*` + `mart.*`)
+
+> **Timezone contract:** All `*_local` columns are **stored as UTC**.  
+> Every query must convert: `(field AT TIME ZONE 'UTC') AT TIME ZONE 'Asia/Bangkok'`
+
+**`rawdata` schema — source of truth:**
+
+| Table | Key timestamp | Purpose |
+|---|---|---|
+| `flight_instances` | `est_arrival_local` | Arrival wave; primary `effective_now` source |
+| `taxi_supply_snapshots` | `captured_at_local` | Supply telemetry; top-priority `effective_now` |
+| `passenger_demand_signals` | `created_at_local` | Demand signals (last 20 min) |
+| `driver_dispatch_events` | `created_at_local` | Dispatch history |
+| `flights_raw` | `sched_arrival_local` | Raw feed before normalisation |
+| `weather_raw` | `captured_at_local` | Weather context |
+
+**`mart` schema — aggregated views:**
+
+| Table | Purpose | If empty |
+|---|---|---|
+| `ops_kpi_snapshots` | KPI tiles (PWT, pax, taxis) | Tiles show 0; warning banner |
+| `demand_supply_forecasts` | Forecast chart (15-min buckets, 3-hr horizon) | Chart blank; warning banner |
+| `ops_ai_chat_messages` | Advisory chat history | Advisory still works |
+
+---
+
+## DB Layer (`utils/db.py`)
+
+| Export | Purpose |
+|---|---|
+| `get_conn()` | Cached psycopg2 connection (`@st.cache_resource`) |
+| `fetch_all(sql, params)` | SELECT → `list[dict]` |
+| `fetch_one(sql, params)` | SELECT → `dict \| None` |
+| `execute(sql, params)` | INSERT / UPDATE / DELETE with commit |
+| `healthcheck()` | Returns `HealthcheckResult(ok, info)` — never exposes credentials |
+| `get_effective_now()` | Returns `EffectiveNow(ts, source)` anchor in ICT |
+| `refresh_mart(airport_code)` | Calls `mart.refresh_kpi_snapshot` + `mart.refresh_demand_supply_forecast` |
+
+**`effective_now` source priority:**
+1. `max(captured_at_local)` from `rawdata.taxi_supply_snapshots`
+2. `max(created_at_local)` from `rawdata.passenger_demand_signals`
+3. `max(est_arrival_local)` from `rawdata.flight_instances`
+4. `(now() AT TIME ZONE 'UTC') AT TIME ZONE 'Asia/Bangkok'` (fallback)
+
+**SQL rules:**
+- Always use `%(name)s` placeholders — never f-strings or `.format()` in SQL
+- Time-window comparison pattern:
+  ```sql
+  (field_local AT TIME ZONE 'UTC') AT TIME ZONE 'Asia/Bangkok'
+  BETWEEN coalesce(%(effective_now)s, ...) - interval 'X'
+      AND coalesce(%(effective_now)s, ...)
+  ```
+- INSERT timestamp: `(now() AT TIME ZONE 'UTC') AT TIME ZONE 'Asia/Bangkok'`
+
+---
+
+## Security Constraints
+
+| Rule | Detail |
+|---|---|
+| Never display in UI | `DATABASE_URL`, `host`, `resolved_host`, `user`, `dbname`, `port`, IP addresses |
+| DB status badge | "Connected / Not connected" + source type + sanitized error only |
+| `healthcheck()` | Returns only `{"source": "..."}` or `{"source": "...", "error": "..."}` |
+| Exception messages | `re.sub` to redact `password=`, `host=`, `user=`, `://...` before display |
+| Secrets | `.streamlit/secrets.toml` (local) or Streamlit Cloud Secrets only; never committed |
+
+---
+
+## Design Tokens (React/Vite)
+
+| Token | Value | Usage |
+|---|---|---|
+| `--color-primary` / `text-brand` | `#00b14f` | Brand green, CTAs, online state |
+| `--color-danger` | `#d54b72` | Critical alerts, drop-off marker |
+| `--color-ops` | `#154aa8` | OPS surface accent |
+| `--color-driver` | `#0c7d35` | Driver surface accent |
+| `--color-passenger` | `#2d6bff` | Passenger surface accent |
 
 ---
 
 ## Production Readiness Gaps
 
-This is a prototype. The following are required before production deployment:
-
 | Area | Gap |
 |---|---|
-| Backend | No API integration; all data is static mock |
+| Backend API | React calls mock data; real ML/Gemini requires an API bridge to Python utilities |
 | Authentication | No auth layer on any surface |
-| State persistence | Session state resets on browser refresh |
-| Error handling | No error boundaries or loading/error states |
-| Input validation | Minimal; no server-side validation |
-| Testing | No unit, integration, or E2E tests |
+| State persistence | localStorage resets on clear; no server-side session |
 | Real-time data | No WebSocket or polling for live PWT / flight data |
-| Monitoring | No analytics, error tracking, or logging |
+| Testing | No unit, integration, or E2E tests |
+| Monitoring | No analytics, error tracking, or structured logging |
+| Production split | All surfaces in one repo; Phase 3 separates per stakeholder |
