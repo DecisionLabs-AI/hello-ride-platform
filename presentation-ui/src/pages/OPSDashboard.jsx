@@ -1348,6 +1348,25 @@ function HelpRequestsWorkspace() {
   );
 
   useEffect(() => {
+    // Auto-clear escalations older than 60 min on mount
+    const raw = window.localStorage.getItem("helloride_activeEscalation");
+    if (raw) {
+      try {
+        const parsed = JSON.parse(raw);
+        if (parsed.createdAt) {
+          const ageMs = Date.now() - new Date(parsed.createdAt).getTime();
+          if (ageMs > 60 * 60 * 1000) {
+            window.localStorage.removeItem("helloride_activeEscalation");
+            setStoredEscalation(null);
+            acknowledgeEscalation();
+            return;
+          }
+        }
+      } catch {
+        // ignore
+      }
+    }
+
     function syncFromStorage() {
       setStoredEscalation(readStorageJson("helloride_activeEscalation"));
     }
@@ -1360,9 +1379,9 @@ function HelpRequestsWorkspace() {
   }, []);
 
   const escalation = storedEscalation ?? activeEscalation;
-  const isHelp = isPassengerHelpEscalation(escalation);
+  const isActiveHelp =
+    isPassengerHelpEscalation(escalation) && escalation?.status === "open";
   const highSeverity = escalation?.severity === "HIGH";
-  const isOpen = escalation?.status === "open";
   const createdAt = escalation?.createdAt
     ? new Date(escalation.createdAt).toLocaleTimeString("en-GB", { hour: "2-digit", minute: "2-digit" })
     : "";
@@ -1374,21 +1393,23 @@ function HelpRequestsWorkspace() {
     acknowledgeEscalation();
   }
 
+  const emptyState = (
+    <div className="mt-6 flex flex-col items-center gap-2 rounded-2xl bg-slate-50 py-12 text-center">
+      <span className="material-symbols-outlined text-4xl text-slate-300">support_agent</span>
+      <p className="text-sm font-semibold text-slate-500">No active help requests</p>
+      <p className="text-xs text-slate-400">Passenger escalations will appear here when triggered from the Passenger Portal</p>
+    </div>
+  );
+
   return (
     <div className="flex flex-col gap-5">
       <section className="overflow-hidden rounded-2xl border border-slate-100 bg-white shadow-sm">
-        <div className={`h-0.5 ${highSeverity && isHelp ? "bg-red-500" : isHelp ? "bg-amber-500" : "bg-slate-200"}`} />
+        <div className={`h-0.5 ${isActiveHelp && highSeverity ? "bg-red-500" : isActiveHelp ? "bg-amber-500" : "bg-slate-200"}`} />
         <div className="p-5">
           <h2 className="text-xl font-bold text-slate-900">Help Requests</h2>
           <p className="mt-1 text-sm text-muted">Passenger escalations from Support Chat</p>
 
-          {!isHelp ? (
-            <div className="mt-6 flex flex-col items-center gap-2 rounded-2xl bg-slate-50 py-12 text-center">
-              <span className="material-symbols-outlined text-4xl text-slate-300">support_agent</span>
-              <p className="text-sm font-semibold text-slate-400">No active help requests</p>
-              <p className="text-xs text-slate-400">Requests appear here when a passenger contacts Support Chat</p>
-            </div>
-          ) : (
+          {!isActiveHelp ? emptyState : (
             <div className={`mt-4 rounded-2xl border p-4 ${highSeverity ? "border-red-200 bg-red-50" : "border-amber-200 bg-amber-50"}`}>
               <div className="flex flex-wrap items-start justify-between gap-4">
                 <div className="min-w-0 flex-1">
@@ -1398,11 +1419,6 @@ function HelpRequestsWorkspace() {
                     }`}>
                       {escalation.severity}
                     </span>
-                    {!isOpen && (
-                      <span className="rounded-full bg-slate-200 px-2.5 py-1 text-[10px] font-black uppercase tracking-widest text-slate-600">
-                        Acknowledged
-                      </span>
-                    )}
                     <span className="text-xs font-bold text-slate-500">{escalation.id}</span>
                     {createdAt && (
                       <span className="text-xs text-slate-400">· {createdAt}</span>
@@ -1439,14 +1455,14 @@ function HelpRequestsWorkspace() {
                   </p>
                 </div>
 
-                {isOpen && (
-                  <button
-                    onClick={handleAcknowledge}
-                    className="shrink-0 rounded-xl bg-[#154aa8] px-4 py-2 text-xs font-black text-white shadow-sm transition-colors hover:bg-[#0f2f68] active:scale-95"
-                  >
-                    Acknowledge
-                  </button>
-                )}
+                <button
+                  onClick={handleAcknowledge}
+                  className={`shrink-0 self-start rounded-xl px-5 py-2.5 text-sm font-black text-white shadow-sm transition-colors active:scale-95 ${
+                    highSeverity ? "bg-red-600 hover:bg-red-700" : "bg-[#154aa8] hover:bg-[#0f2f68]"
+                  }`}
+                >
+                  Acknowledge
+                </button>
               </div>
             </div>
           )}
@@ -1886,19 +1902,17 @@ export default function OPSDashboard() {
           <button
             onClick={() => setWorkspace("help")}
             className={`mb-1 flex w-full items-center justify-between rounded-xl px-3 py-2 text-left text-sm font-semibold transition-all ${
-              workspace === "help"
+              workspace === "help" || helpRequestCount > 0
                 ? "bg-red-50 text-red-700"
-                : helpRequestCount > 0
-                  ? "bg-red-50 text-red-700"
-                  : "text-slate-600 hover:bg-slate-50"
+                : "text-slate-600 hover:bg-slate-50"
             }`}
           >
             <span>Help Requests</span>
-            <span className={`rounded-full px-2 py-0.5 text-xs font-black ${
-              helpRequestCount > 0 ? "bg-red-600 text-white" : "bg-slate-100 text-slate-500"
-            }`}>
-              {helpRequestCount}
-            </span>
+            {helpRequestCount > 0 && (
+              <span className="rounded-full bg-red-600 px-2 py-0.5 text-xs font-black text-white">
+                {helpRequestCount}
+              </span>
+            )}
           </button>
         </nav>
         <div className="border-t border-slate-100 px-2 pt-4">
