@@ -17,7 +17,7 @@ const T1 = {
   deficitBreakdown: [
     { factor: "EK374 + QR833 arrival wave (JP/UAE routes)", impact: 120, type: "demand" },
     { factor: "QR scan spike at Claim C–D", impact: 35, type: "demand" },
-    { factor: "Driver shortage — short-haul gap", impact: -20, type: "supply" },
+    { factor: "Lane throughput bottleneck — taxis queued in holding zone", impact: 18, type: "supply" },
     { factor: "Holding lane congestion (87% load)", impact: -15, type: "supply" },
   ],
   impactSimulation: {
@@ -40,9 +40,11 @@ const T1 = {
     { time: "15:45", demand: 54, supply: 53 },
   ],
   flights: [
-    { code: "TG401", origin: "Tokyo", eta: "14:35", terminal: "T1", status: "Bags on belt", demand: 84 },
-    { code: "EK374", origin: "Dubai", eta: "14:50", terminal: "T1", status: "Taxiing", demand: 122 },
-    { code: "QR833", origin: "Doha", eta: "15:10", terminal: "T1", status: "On final", demand: 96 },
+    { flight: "TG316", airline: "Thai Airways", origin: "Delhi (DEL)", eta: "07:05", status: "Bags on belt", pax: 178 },
+    { flight: "EY402", airline: "Etihad Airways", origin: "Abu Dhabi (AUH)", eta: "07:21", status: "Bags on belt", pax: 215 },
+    { flight: "EK374", airline: "Emirates", origin: "Dubai (DXB)", eta: "07:45", status: "Bags on belt", pax: 283 },
+    { flight: "SQ706", airline: "Singapore Airlines", origin: "Singapore (SIN)", eta: "08:11", status: "Taxiing", pax: 196 },
+    { flight: "TK64", airline: "Turkish Airlines", origin: "Istanbul (IST)", eta: "08:31", status: "On final", pax: 312 },
   ],
   demandSignals: [
     { zone: "Claim A", time: "14:12", parties: 4, luggage: 3 },
@@ -98,8 +100,11 @@ const T2 = {
     { time: "15:45", demand: 25, supply: 31 },
   ],
   flights: [
-    { code: "EK500", origin: "London", eta: "14:55", terminal: "T2", status: "Taxiing", demand: 45 },
-    { code: "LH760", origin: "Frankfurt", eta: "15:20", terminal: "T2", status: "On final", demand: 38 },
+    { flight: "TG316", airline: "Thai Airways", origin: "Delhi (DEL)", eta: "07:05", status: "Bags on belt", pax: 178 },
+    { flight: "EY402", airline: "Etihad Airways", origin: "Abu Dhabi (AUH)", eta: "07:21", status: "Bags on belt", pax: 215 },
+    { flight: "EK374", airline: "Emirates", origin: "Dubai (DXB)", eta: "07:45", status: "Bags on belt", pax: 283 },
+    { flight: "SQ706", airline: "Singapore Airlines", origin: "Singapore (SIN)", eta: "08:11", status: "Taxiing", pax: 196 },
+    { flight: "TK64", airline: "Turkish Airlines", origin: "Istanbul (IST)", eta: "08:31", status: "On final", pax: 312 },
   ],
   demandSignals: [
     { zone: "Claim B", time: "14:20", parties: 2, luggage: 2 },
@@ -132,7 +137,7 @@ const ALL = {
     { factor: "EK374 + QR833 arrival wave (T1 — JP/UAE routes)", impact: 120, type: "demand" },
     { factor: "QR scan spike at Claim C–D (T1)", impact: 35, type: "demand" },
     { factor: "EK500 arrival wave (T2 — EU routes)", impact: 45, type: "demand" },
-    { factor: "Driver shortage — short-haul gap", impact: -23, type: "supply" },
+    { factor: "Lane throughput bottleneck — taxis queued in holding zone", impact: 18, type: "supply" },
     { factor: "Holding lane congestion (T1: 87% load)", impact: -15, type: "supply" },
   ],
   impactSimulation: {
@@ -155,11 +160,11 @@ const ALL = {
     { time: "15:45", demand: 79, supply: 84 },
   ],
   flights: [
-    { code: "TG401", origin: "Tokyo", eta: "14:35", terminal: "T1", status: "Bags on belt", demand: 84 },
-    { code: "EK374", origin: "Dubai", eta: "14:50", terminal: "T1", status: "Taxiing", demand: 122 },
-    { code: "EK500", origin: "London", eta: "14:55", terminal: "T2", status: "Taxiing", demand: 45 },
-    { code: "QR833", origin: "Doha", eta: "15:10", terminal: "T1", status: "On final", demand: 96 },
-    { code: "LH760", origin: "Frankfurt", eta: "15:20", terminal: "T2", status: "On final", demand: 38 },
+    { flight: "TG316", airline: "Thai Airways", origin: "Delhi (DEL)", eta: "07:05", status: "Bags on belt", pax: 178 },
+    { flight: "EY402", airline: "Etihad Airways", origin: "Abu Dhabi (AUH)", eta: "07:21", status: "Bags on belt", pax: 215 },
+    { flight: "EK374", airline: "Emirates", origin: "Dubai (DXB)", eta: "07:45", status: "Bags on belt", pax: 283 },
+    { flight: "SQ706", airline: "Singapore Airlines", origin: "Singapore (SIN)", eta: "08:11", status: "Taxiing", pax: 196 },
+    { flight: "TK64", airline: "Turkish Airlines", origin: "Istanbul (IST)", eta: "08:31", status: "On final", pax: 312 },
   ],
   demandSignals: [
     { zone: "Claim A (T1)", time: "14:12", parties: 4, luggage: 3 },
@@ -169,8 +174,8 @@ const ALL = {
     { zone: "Claim E (T2)", time: "14:30", parties: 2, luggage: 3 },
   ],
   supplyItems: [
-    { name: "Ready drivers", value: 128, detail: "101 T1 ready, 27 T2 ready" },
-    { name: "Accepted dispatches", value: 47, detail: "Last 15 min across terminals" },
+    { name: "Ready drivers", value: 41, detail: "At curb: 41 · Holding zone: 87" },
+    { name: "Accepted dispatches", value: 24, detail: "Last 15 min across terminals" },
     { name: "Declines", value: 6, detail: "Combined airport response pulse" },
   ],
 };

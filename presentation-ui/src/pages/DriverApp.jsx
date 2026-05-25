@@ -391,11 +391,15 @@ function StatusToggle({ isOnline, onToggle }) {
 }
 
 function DemandTeasers() {
+  const taxisNeeded = Number.isFinite(kpiSummary?.taxisAtCurb)
+    ? `ต้องการรถ ${Math.round(kpiSummary.taxisAtCurb)} คัน`
+    : "ต้องการรถเพิ่ม";
+
   return (
     <div className="grid grid-cols-2 gap-3">
       <div className="rounded-2xl border border-[#154aa8]/10 bg-[#e8f0fe] p-4">
         <p className="text-[10px] font-black uppercase tracking-widest text-[#154aa8]">ความต้องการ</p>
-        <p className="mt-1 text-sm font-bold text-slate-900">ต้องการรถ 50+ คัน</p>
+        <p className="mt-1 text-sm font-bold text-slate-900">{taxisNeeded}</p>
         <p className="mt-0.5 text-xs text-muted">จุดบริการแท็กซี่สาธารณะ ชั้น 1</p>
       </div>
       <div className="rounded-2xl border border-emerald-100 bg-emerald-50 p-4">

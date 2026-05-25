@@ -1,6 +1,6 @@
 import { useEffect, useRef, useState } from "react";
 import { getOpsData, ADVISORY_RESPONSES } from "../data/mockOps.js";
-import { kpiSummary, demandChartData, recentAlerts, aiAdvisory } from "../data/index.js";
+import { meta, kpiSummary, demandChartData, recentAlerts, aiAdvisory, dispatchSummary } from "../data/index.js";
 import { EDGE_CASE_PROTOCOLS } from "../data/edgeCaseProtocols.js";
 import { useDemoMatching } from "../context/useDemoMatching.js";
 import {
@@ -55,9 +55,12 @@ function useCurrentThaiMinuteTime() {
 function buildOpsView() {
   const base = getOpsData("ALL");
   const pwt = Math.round(kpiSummary.currentPWT);
+  const predictedPWT = Math.round(kpiSummary.currentPWTPrediction);
+  const slaThreshold = Math.round(meta.breachThreshold);
+  const pwtImprovement = Math.round(((predictedPWT - slaThreshold) / predictedPWT) * 100);
   const holdingTaxis = Math.round(kpiSummary.taxisAtCurb);
   const waitingPassengers = Math.round(kpiSummary.confirmedQR);
-  const laneLoad = Math.min(99, Math.round(kpiSummary.breachRate));
+  const laneLoad = Math.round((kpiSummary.confirmedQR / kpiSummary.laneCapacity) * 100);
   const projectedDeficit = Math.min(99, Math.round(kpiSummary.breachRate));
 
   const forecastSeries = demandChartData.map((item) => ({
@@ -77,6 +80,7 @@ function buildOpsView() {
     ...base,
     pwt,
     severity: getPwtSeverity(pwt),
+    predictedPwt: predictedPWT,
     holdingTaxis,
     waitingPassengers,
     laneLoad,
@@ -84,12 +88,15 @@ function buildOpsView() {
     aiAdvice: aiAdvisory.recommendation,
     forecastSeries,
     demandSignals,
+    deficitBreakdown: aiAdvisory.topFactors,
     impactSimulation: {
       ...base.impactSimulation,
       currentPwt: pwt,
-      projectedPwt: Math.round(pwt * 0.65),
+      projectedPwt: slaThreshold,
+      predictedPwt: predictedPWT,
       currentDeficit: projectedDeficit,
       projectedDeficit: Math.max(5, projectedDeficit - 28),
+      pwtReductionPct: pwtImprovement,
     },
   };
 }
@@ -176,6 +183,12 @@ function PWTGauge({ value }) {
 
 // ── Main Health Card ────────────────────────────────────────────────────────
 
+function getCardSeverityAccent(severity) {
+  if (severity === PWT_SEVERITY.CRITICAL) return "border-t-[3px] border-t-[#EF4444]";
+  if (severity === PWT_SEVERITY.WARNING) return "border-t-[3px] border-t-[#F59E0B]";
+  return "";
+}
+
 function HealthCard({ d }) {
   const severity = getPwtSeverity(d.pwt);
   const severityTone = getSeverityTone(severity);
@@ -186,9 +199,10 @@ function HealthCard({ d }) {
     [PWT_SEVERITY.NORMAL]: { pill: `${severityTone.bg} ${severityTone.text} border ${severityTone.border}`, label: "Normal Load", hint: "PWT is within normal range." },
   }[severity];
   const isCritical = severity === PWT_SEVERITY.CRITICAL;
+  const severityAccent = getCardSeverityAccent(severity);
 
   return (
-    <div className="flex min-w-0 flex-col gap-4 rounded-xl border border-gray-100 bg-white p-4 shadow-sm">
+    <div className={`flex min-w-0 flex-col gap-4 rounded-xl border border-gray-100 bg-white p-4 shadow-sm ${severityAccent}`}>
       <div>
         <p className="text-xs font-semibold uppercase tracking-widest text-gray-400">Live Situation</p>
         <h2 className="mt-0.5 text-xl font-extrabold text-[#1a2b5e]">Curb load and queue health</h2>
@@ -196,7 +210,7 @@ function HealthCard({ d }) {
       <div className="grid grid-cols-1 gap-4 md:grid-cols-[1fr_auto_1fr_auto_1fr]">
         <div>
           <p className="text-5xl font-bold leading-none text-red-600">{d.pwt}</p>
-          <p className="mt-2 text-xs font-semibold text-gray-500">min PWT · max 45</p>
+          <p className="mt-2 text-xs font-semibold text-gray-500">min PWT · max {d.predictedPwt}</p>
           <span className={`mt-3 inline-flex items-center gap-1.5 rounded-full px-2.5 py-1 text-xs font-bold ${loadTone.pill}`}>
             <span className={`h-1.5 w-1.5 rounded-full ${severityTone.dot}`} />
             {loadTone.label}
@@ -226,7 +240,7 @@ function HealthCard({ d }) {
               {d.taxiTrend}
             </span>
           </div>
-          <p className="mt-1 text-xs text-gray-400">Throughput 14/m</p>
+          <p className="mt-1 text-xs text-gray-400">Throughput {Math.round(kpiSummary.laneCapacity)} /m</p>
         </div>
       </div>
 
@@ -243,17 +257,20 @@ function HealthCard({ d }) {
         </p>
       </div>
 
-      <div>
-        <div className="mb-2 flex items-center justify-between">
-          <div className="flex items-center gap-2">
-            <p className="text-xs font-semibold uppercase tracking-widest text-gray-400">Lane load</p>
+      <div className="grid grid-cols-2 gap-3">
+        <div className="rounded-lg bg-gray-50 px-4 py-2">
+          <p className="text-xs font-semibold uppercase tracking-widest text-gray-400">Active Lanes</p>
+          <p className="mt-1 text-sm font-bold text-gray-900">{Math.round(kpiSummary.activeLanes)}</p>
+        </div>
+        <div className="rounded-lg bg-gray-50 px-4 py-2">
+          <p className="text-xs font-semibold uppercase tracking-widest text-gray-400">Lane Throughput</p>
+          <p className="mt-1 text-sm font-bold text-gray-900">{Math.round(kpiSummary.laneCapacity)} taxis/slot</p>
+        </div>
+        {isCritical && (
+          <div className="col-span-2">
+            <p className="text-xs font-semibold text-red-600">{loadTone.hint}</p>
           </div>
-          <p className="text-xs font-bold text-gray-600">{d.laneLoad}%</p>
-        </div>
-        <div className="h-1.5 overflow-hidden rounded-full bg-slate-100">
-          <div className="h-full rounded-full bg-[#154aa8] transition-all" style={{ width: `${d.laneLoad}%` }} />
-        </div>
-        {isCritical && <p className="mt-2 text-xs font-semibold text-red-600">{loadTone.hint}</p>}
+        )}
       </div>
     </div>
   );
@@ -268,7 +285,7 @@ function AlertCard({ d, laneActivated, broadcastSent, onApproveAction }) {
   const action = getActionRecommendation(severity);
   const canAct = canRecommendIncentive(severity) || canRecommendOverflowLane(severity);
   const actionDone = severity === PWT_SEVERITY.CRITICAL ? laneActivated : broadcastSent;
-  const criticalActionText = "Send Incentive & Broadcast Drivers + Broadcast Holding Zone";
+  const criticalActionText = "Send Incentive & Broadcast Drivers";
   const actionButton = severity === PWT_SEVERITY.CRITICAL
     ? "Send Incentive & Broadcast Drivers"
     : severity === PWT_SEVERITY.WARNING
@@ -299,6 +316,30 @@ function AlertCard({ d, laneActivated, broadcastSent, onApproveAction }) {
       >
         {actionDone ? t("ops.approved") : actionButton}
       </button>
+      <div className={`rounded-lg p-3 ${severity === PWT_SEVERITY.CRITICAL ? "bg-white/10" : "bg-slate-50 border border-slate-100"}`}>
+        <p className={`mb-2 text-[10px] font-bold uppercase tracking-widest ${severity === PWT_SEVERITY.CRITICAL ? "text-red-200" : "text-slate-400"}`}>
+          Supply Analysis
+        </p>
+        <div className="mb-2 flex gap-3">
+          <div className="flex-1">
+            <p className={`text-[10px] uppercase tracking-widest ${severity === PWT_SEVERITY.CRITICAL ? "text-red-200" : "text-slate-400"}`}>Predicted Taxis</p>
+            <p className={`text-xl font-black ${severity === PWT_SEVERITY.CRITICAL ? "text-white" : "text-slate-900"}`}>{Math.round(dispatchSummary.predSupply)}</p>
+          </div>
+          <div className={`w-px ${severity === PWT_SEVERITY.CRITICAL ? "bg-white/20" : "bg-slate-200"}`} />
+          <div className="flex-1">
+            <p className={`text-[10px] uppercase tracking-widest ${severity === PWT_SEVERITY.CRITICAL ? "text-red-200" : "text-slate-400"}`}>Taxis Needed</p>
+            <p className={`text-xl font-black ${severity === PWT_SEVERITY.CRITICAL ? "text-white" : "text-slate-900"}`}>{Math.round(dispatchSummary.predDemand)}</p>
+          </div>
+        </div>
+        <p className={`text-xs leading-snug ${severity === PWT_SEVERITY.CRITICAL ? "text-red-100" : "text-slate-600"}`}>
+          {dispatchSummary.dispatchGap > 0
+            ? `Pull ${dispatchSummary.dispatchGap} taxis from Holding Zone`
+            : "Taxis are sufficient · problem is holding zone flow"}
+        </p>
+        <p className={`mt-1.5 text-[9px] ${severity === PWT_SEVERITY.CRITICAL ? "text-red-300" : "text-slate-400"}`}>
+          AI forecast · {dispatchSummary.horizon.replace(/^T\+/, "")} ahead
+        </p>
+      </div>
     </div>
   );
 }
@@ -307,10 +348,10 @@ function AlertCard({ d, laneActivated, broadcastSent, onApproveAction }) {
 
 function AISituationBrief({ d }) {
   const severity = getPwtSeverity(d.pwt);
-  const action = getActionRecommendation(severity);
-  const afterActionPWT = Math.round(d.pwt * 0.65);
+  const currentPWT = Math.round(kpiSummary.currentPWT);
+  const slaTarget = Math.round(meta.breachThreshold);
   const briefText = severity === PWT_SEVERITY.CRITICAL
-    ? `All terminals are entering a queue pressure window. PWT is ${d.pwt} min with ${d.waitingPassengers.toLocaleString()} waiting passengers and ${d.laneLoad}% lane load. The 30-min SLA threshold is exceeded; OPS approval required before action.`
+    ? `Suvarnabhumi Airport is entering a queue pressure window. PWT is ${d.pwt} min with ${d.waitingPassengers.toLocaleString()} waiting passengers and ${d.laneLoad}% lane load. The 30-min SLA threshold is exceeded; OPS approval required before action.`
     : severity === PWT_SEVERITY.WARNING
     ? "Queue approaching threshold. Monitor and prepare incentive response."
     : "Queue operating within normal parameters. No immediate action required.";
@@ -330,13 +371,13 @@ function AISituationBrief({ d }) {
           <p className="text-sm font-semibold leading-snug text-blue-700">
             Recommended next action:
           </p>
-          <p className="mt-1 text-sm leading-snug text-gray-700">{action.copy}</p>
+          <p className="mt-1 text-sm leading-snug text-gray-700">Send Incentive & Broadcast Drivers</p>
         </div>
         <div className="hidden w-px bg-blue-200/70 md:block" />
         <div>
           <p className="text-sm font-bold leading-snug text-slate-900">Expected impact:</p>
           <p className="mt-1 text-sm leading-snug text-gray-700">
-            PWT improves from <span className="font-bold">{d.pwt}</span> → <span className="font-bold">{afterActionPWT} min</span>; deficit drops from <span className="font-bold">{d.projectedDeficit}%</span> → <span className="font-bold">10%</span>.
+            PWT improves from <span className="font-bold">{currentPWT}</span> → <span className="font-bold">{slaTarget} min</span> <span className="font-semibold">(SLA target)</span>; deficit drops from <span className="font-bold">{d.projectedDeficit}%</span> → <span className="font-bold">10%</span>.
           </p>
         </div>
       </div>
@@ -346,7 +387,9 @@ function AISituationBrief({ d }) {
 
 // ── Demand Chart ───────────────────────────────────────────────────────────
 
-function DemandChart({ series }) {
+function DemandChart({ series, currentPwt = kpiSummary.currentPWT }) {
+  const severity = getPwtSeverity(currentPwt);
+  const severityAccent = getCardSeverityAccent(severity);
   const W = 640, H = 300, padL = 50, padR = 20, padT = 20, padB = 44;
   const iW = W - padL - padR, iH = H - padT - padB;
   const maxVal = 45;
@@ -358,7 +401,7 @@ function DemandChart({ series }) {
   const pwtPts = series.map((d, i) => `${toX(i)},${toY(d.pwt)}`).join(" ");
 
   return (
-    <div className="overflow-hidden rounded-xl border border-gray-100 bg-white p-4 shadow-sm">
+    <div className={`overflow-hidden rounded-xl border border-gray-100 bg-white p-4 shadow-sm ${severityAccent}`}>
       <div className="mb-3 flex items-start justify-between gap-3">
         <div>
           <p className="text-xs font-semibold uppercase tracking-widest text-gray-400">Predictive forecast</p>
@@ -447,49 +490,47 @@ function DemandChart({ series }) {
 function DeficitBreakdown({ breakdown }) {
   const { t } = useLanguage();
   function signalMeta(item) {
-    const factor = item.factor.toLowerCase();
-    if (factor.includes("qr")) {
-      return {
-        label: "QR surge",
-        icon: "qr_code_scanner",
+    const featureLabels = {
+      confirmedQR: "QR Scan Surge",
+      arrivingFlights: "Flight Wave",
+      avgLaneCapacity: "Lane Capacity",
+      isWeekend: "Weekend Effect",
+    };
+    const featureIcons = {
+      confirmedQR: "qr_code_scanner",
+      arrivingFlights: "flight_land",
+      avgLaneCapacity: "traffic",
+      isWeekend: "calendar_month",
+    };
+    const directionTone = {
+      up: {
         accent: "border-[#FCA5A5] bg-[#FEF2F2]",
         iconColor: "text-red-500",
         titleColor: "text-red-700",
         valueColor: "text-red-600",
-        value: `+${item.impact} pax`,
-      };
-    }
-    if (factor.includes("driver shortage")) {
-      return {
-        label: "Driver shortage",
-        icon: "local_taxi",
-        accent: "border-[#FCD34D] bg-[#FFFBEB]",
-        iconColor: "text-amber-500",
-        titleColor: "text-amber-700",
-        valueColor: "text-amber-600",
-        value: `${item.impact} taxis`,
-      };
-    }
-    if (factor.includes("holding lane")) {
-      return {
-        label: "Holding lane congestion",
-        icon: "traffic",
-        accent: "border-[#FCD34D] bg-[#FFFBEB]",
-        iconColor: "text-amber-500",
-        titleColor: "text-amber-700",
-        valueColor: "text-amber-600",
-        value: `${item.impact} taxis`,
-      };
-    }
-    const isDemand = item.type === "demand";
+      },
+      down: {
+        accent: "border-[#86EFAC] bg-[#F0FDF4]",
+        iconColor: "text-green-500",
+        titleColor: "text-green-700",
+        valueColor: "text-green-600",
+      },
+      neutral: {
+        accent: "border-gray-200 bg-gray-50",
+        iconColor: "text-gray-500",
+        titleColor: "text-gray-700",
+        valueColor: "text-gray-600",
+      },
+    };
+    const tone = directionTone[item.direction] ?? directionTone.neutral;
     return {
-      label: "Flight wave",
-      icon: "flight_land",
-      accent: isDemand ? "border-[#FCA5A5] bg-[#FEF2F2]" : "border-[#FCD34D] bg-[#FFFBEB]",
-      iconColor: isDemand ? "text-red-500" : "text-amber-500",
-      titleColor: isDemand ? "text-red-700" : "text-amber-700",
-      valueColor: isDemand ? "text-red-600" : "text-amber-600",
-      value: item.type === "demand" ? `+${item.impact} pax` : `${item.impact} taxis`,
+      label: featureLabels[item.feature] ?? item.feature,
+      icon: featureIcons[item.feature] ?? "analytics",
+      accent: tone.accent,
+      iconColor: tone.iconColor,
+      titleColor: tone.titleColor,
+      valueColor: tone.valueColor,
+      value: item.impact,
     };
   }
 
@@ -504,17 +545,15 @@ function DeficitBreakdown({ breakdown }) {
           {breakdown.map((item) => {
             const meta = signalMeta(item);
             return (
-              <div key={item.factor} className={`rounded-lg border p-3 ${meta.accent}`}>
-                <div className="flex items-start justify-between gap-3">
-                  <div className="flex items-center gap-2 min-w-0">
+              <div key={item.feature} className={`flex min-h-[112px] flex-col gap-2 rounded-lg border p-3 ${meta.accent}`}>
+                <div className="flex min-w-0 items-start gap-2">
                     <span className={`material-symbols-outlined leading-none shrink-0 ${meta.iconColor}`} style={{ fontSize: "18px" }}>
                       {meta.icon}
                     </span>
-                    <p className={`text-sm font-semibold leading-tight ${meta.titleColor}`}>{meta.label}</p>
-                  </div>
-                  <p className={`text-sm font-bold shrink-0 ${meta.valueColor}`}>{meta.value}</p>
+                  <p className={`min-w-0 text-sm font-semibold leading-tight break-words ${meta.titleColor}`}>{meta.label}</p>
                 </div>
-                <p className="text-xs text-gray-500 leading-snug mt-2">{item.factor}</p>
+                <p className={`text-base font-bold leading-tight ${meta.valueColor}`}>{meta.value}</p>
+                <p className="mt-auto text-xs leading-snug text-gray-500 break-words">{item.feature}</p>
               </div>
             );
           })}
@@ -527,9 +566,11 @@ function DeficitBreakdown({ breakdown }) {
 
 function ImpactSimulation({ sim }) {
   const { t } = useLanguage();
-  const actionRecommendation = getActionRecommendation(getPwtSeverity(sim.currentPwt));
+  const severity = getPwtSeverity(sim.currentPwt);
+  const severityAccent = getCardSeverityAccent(severity);
+
   return (
-    <div className="h-full rounded-xl border border-gray-100 border-t-[3px] border-t-[#EF4444] bg-white p-4 shadow-sm">
+    <div className={`h-full rounded-xl border border-gray-100 bg-white p-4 shadow-sm ${severityAccent}`}>
       <div className="flex h-full flex-col gap-4">
         <div className="flex items-start justify-between gap-3">
           <div>
@@ -545,19 +586,26 @@ function ImpactSimulation({ sim }) {
             >
               ⓘ
             </button>
-            <div className="pointer-events-none absolute right-0 top-9 z-20 hidden min-w-[260px] max-w-[320px] rounded-lg border border-slate-200 bg-white px-4 py-3 text-sm leading-relaxed text-gray-700 shadow-xl group-hover:block group-focus-within:block">
+            <div className="pointer-events-none absolute right-0 top-9 z-20 hidden min-w-[280px] max-w-[320px] rounded-lg border border-slate-200 bg-white px-4 py-3 text-sm leading-relaxed text-gray-700 shadow-xl group-hover:block group-focus-within:block">
               <p className="font-bold">Estimation method:</p>
-              <p className="mt-2">• After Action PWT = Current PWT × 0.65</p>
-              <p className="text-gray-500">(based on historical incentive response rate)</p>
-              <p className="mt-2">• Deficit reduction assumes +15 taxis dispatched</p>
-              <p className="mt-2">• Queue time improvement = ΔPax × avg service rate</p>
+              <div className="mt-2 grid grid-cols-[auto_92px_1fr] gap-x-2 gap-y-1.5">
+                <span>·</span>
+                <span className="font-semibold text-gray-600">Without action</span>
+                <span className="whitespace-nowrap">→ PWT rises to 38 min</span>
+                <span>·</span>
+                <span className="font-semibold text-gray-600">Action target</span>
+                <span className="whitespace-nowrap">→ bring PWT to SLA (30 min)</span>
+                <span>·</span>
+                <span className="font-semibold text-gray-600">Improvement</span>
+                <span className="whitespace-nowrap">→ (38 − 30) ÷ 38 = 21%</span>
+              </div>
             </div>
           </div>
         </div>
 
         <div className="rounded-lg border-2 border-[#4ADE80] bg-[#F0FDF4] px-3 py-2.5">
           <p className="mb-1 text-xs font-bold uppercase tracking-widest text-green-700">Recommended Action</p>
-          <p className="text-sm font-semibold leading-snug text-gray-800">{actionRecommendation.copy}</p>
+          <p className="text-sm font-semibold leading-snug text-gray-800">Send Incentive & Broadcast Drivers</p>
         </div>
 
         <div className="grid grid-cols-[1fr_auto_1fr] items-center gap-3 rounded-lg bg-gray-50 p-3">
@@ -569,17 +617,15 @@ function ImpactSimulation({ sim }) {
           <div className="text-right">
             <p className="text-xs font-bold uppercase tracking-widest text-gray-400">After action</p>
             <p className="mt-0.5 text-3xl font-black text-[#154aa8]">{sim.projectedPwt} min</p>
+            <p className="mt-1 text-xs font-semibold text-gray-500">SLA target</p>
           </div>
         </div>
 
-        <div className="grid grid-cols-2 gap-3">
+        <div className="grid grid-cols-1 gap-3">
           <div className="rounded-lg bg-[#16A34A] px-3 py-3">
             <p className="text-2xl font-bold text-white">▼ {sim.pwtReductionPct}%</p>
             <p className="mt-0.5 text-xs font-bold uppercase tracking-widest text-[#BBF7D0]">PWT improvement</p>
-          </div>
-          <div className="rounded-lg bg-[#16A34A] px-3 py-3">
-            <p className="text-2xl font-bold text-white">▼ {sim.queueTimeReduction} min</p>
-            <p className="mt-0.5 text-xs font-bold uppercase tracking-widest text-[#BBF7D0]">Queue time</p>
+            <p className="mt-1 text-xs text-[#DCFCE7]">vs. predicted baseline ({sim.predictedPwt} min)</p>
           </div>
         </div>
 
@@ -1111,7 +1157,7 @@ function CommandCenter({ d, laneActivated, broadcastSent, onApproveAction }) {
 function ForecastImpactSection({ d }) {
   return (
     <section className="grid grid-cols-1 xl:grid-cols-[minmax(0,1.45fr)_minmax(340px,0.8fr)] gap-5 items-stretch">
-      <DemandChart series={d.forecastSeries} />
+      <DemandChart series={d.forecastSeries} currentPwt={d.pwt} />
       <ImpactSimulation sim={d.impactSimulation} />
     </section>
   );
@@ -1134,17 +1180,31 @@ function LiveMonitoring({ d, terminal, laneActivated, broadcastSent, onApproveAc
   const severityTone = getSeverityTone(severity);
   const isCritical = severity === PWT_SEVERITY.CRITICAL;
   const flightItems = d.flights.map((f) => ({
-    primary: `${f.code} · ${f.origin}`,
-    secondary: `${f.status} · ${f.terminal} · ETA ${f.eta}`,
-    value: String(f.demand),
+    primary: `${f.flight ?? f.code} · ${f.airline ?? f.origin}`,
+    secondary: `${f.status} · ${f.origin} · ETA ${f.eta}`,
+    value: String(f.pax ?? f.demand),
     caption: "forecast pax",
   }));
-  const supplyItems = d.supplyItems.map((s) => ({
-    primary: s.name,
-    secondary: s.detail,
-    value: String(s.value),
-    caption: null,
-  }));
+  const supplyItems = [
+    {
+      primary: "Taxis at curb",
+      secondary: null,
+      value: String(Math.round(kpiSummary.taxisAtCurb)),
+      caption: null,
+    },
+    {
+      primary: "Predicted Taxis",
+      secondary: `AI forecast · ${dispatchSummary.horizon.replace(/^T\+/, "")} ahead`,
+      value: String(Math.round(dispatchSummary.predSupply)),
+      caption: "taxis",
+    },
+    {
+      primary: "Dispatch gap",
+      secondary: `Taxis needed ${dispatchSummary.predDemand} · buffer ${dispatchSummary.safetyBuffer}`,
+      value: String(dispatchSummary.dispatchGap),
+      caption: "gap",
+    },
+  ];
 
   return (
     <div className="flex flex-col gap-3">
@@ -1160,20 +1220,16 @@ function LiveMonitoring({ d, terminal, laneActivated, broadcastSent, onApproveAc
 
       <AISituationBrief d={d} />
 
-      <div className="grid grid-cols-1 gap-3 xl:grid-cols-[minmax(0,1fr)_300px]">
-        <div className="flex flex-col gap-3">
-          <HealthCard d={d} />
-          <DemandChart series={d.forecastSeries} />
-        </div>
-        <div className="flex flex-col gap-3">
-          <AlertCard
-            d={d}
-            laneActivated={laneActivated}
-            broadcastSent={broadcastSent}
-            onApproveAction={onApproveAction}
-          />
-          <ImpactSimulation sim={d.impactSimulation} />
-        </div>
+      <div className="grid grid-cols-1 items-stretch gap-3 xl:grid-cols-[minmax(0,1.6fr)_minmax(320px,1fr)]">
+        <HealthCard d={d} />
+        <AlertCard
+          d={d}
+          laneActivated={laneActivated}
+          broadcastSent={broadcastSent}
+          onApproveAction={onApproveAction}
+        />
+        <DemandChart series={d.forecastSeries} currentPwt={d.pwt} />
+        <ImpactSimulation sim={d.impactSimulation} />
       </div>
 
       <RootCauseTelemetry

@@ -23,7 +23,9 @@
     "isWeekend": false,
     "hourOfDay": 8,
     "trend": "up",
-    "lastUpdated": "2026-05-21T08:15:00+07:00"
+    "lastUpdated": "2026-05-21T08:15:00+07:00",
+    "predictedSupply": 40.0,
+    "dispatchGap": 0
   },
   "demandChartData": [
     {
@@ -34,7 +36,9 @@
       "breachRate": 6.7,
       "arrivingFlights": 1,
       "confirmedQR": 4,
-      "taxisAtCurb": 28
+      "taxisAtCurb": 28,
+      "predictedSupply": 27.200000762939453,
+      "dispatchGap": 0
     },
     {
       "hour": 1,
@@ -44,7 +48,9 @@
       "breachRate": 5.0,
       "arrivingFlights": 0,
       "confirmedQR": 0,
-      "taxisAtCurb": 22
+      "taxisAtCurb": 22,
+      "predictedSupply": 22.0,
+      "dispatchGap": 0
     },
     {
       "hour": 2,
@@ -54,7 +60,9 @@
       "breachRate": 4.2,
       "arrivingFlights": 0,
       "confirmedQR": 0,
-      "taxisAtCurb": 18
+      "taxisAtCurb": 18,
+      "predictedSupply": 17.0,
+      "dispatchGap": 0
     },
     {
       "hour": 3,
@@ -64,7 +72,9 @@
       "breachRate": 4.2,
       "arrivingFlights": 1,
       "confirmedQR": 4,
-      "taxisAtCurb": 16
+      "taxisAtCurb": 16,
+      "predictedSupply": 16.5,
+      "dispatchGap": 0
     },
     {
       "hour": 4,
@@ -74,7 +84,9 @@
       "breachRate": 5.8,
       "arrivingFlights": 2,
       "confirmedQR": 8,
-      "taxisAtCurb": 20
+      "taxisAtCurb": 20,
+      "predictedSupply": 19.0,
+      "dispatchGap": 0
     },
     {
       "hour": 5,
@@ -84,7 +96,9 @@
       "breachRate": 10.0,
       "arrivingFlights": 3,
       "confirmedQR": 12,
-      "taxisAtCurb": 30
+      "taxisAtCurb": 30,
+      "predictedSupply": 29.100000381469727,
+      "dispatchGap": 0
     },
     {
       "hour": 6,
@@ -94,7 +108,9 @@
       "breachRate": 15.0,
       "arrivingFlights": 5,
       "confirmedQR": 20,
-      "taxisAtCurb": 38
+      "taxisAtCurb": 38,
+      "predictedSupply": 35.599998474121094,
+      "dispatchGap": 0
     },
     {
       "hour": 7,
@@ -104,7 +120,9 @@
       "breachRate": 20.0,
       "arrivingFlights": 7,
       "confirmedQR": 28,
-      "taxisAtCurb": 42
+      "taxisAtCurb": 42,
+      "predictedSupply": 41.0,
+      "dispatchGap": 0
     },
     {
       "hour": 8,
@@ -114,7 +132,9 @@
       "breachRate": 35.0,
       "arrivingFlights": 6,
       "confirmedQR": 24,
-      "taxisAtCurb": 41
+      "taxisAtCurb": 41,
+      "predictedSupply": 40.0,
+      "dispatchGap": 0
     },
     {
       "hour": 9,
@@ -124,7 +144,9 @@
       "breachRate": 23.3,
       "arrivingFlights": 5,
       "confirmedQR": 20,
-      "taxisAtCurb": 44
+      "taxisAtCurb": 44,
+      "predictedSupply": 46.400001525878906,
+      "dispatchGap": 0
     },
     {
       "hour": 10,
@@ -134,7 +156,9 @@
       "breachRate": 16.7,
       "arrivingFlights": 4,
       "confirmedQR": 16,
-      "taxisAtCurb": 46
+      "taxisAtCurb": 46,
+      "predictedSupply": 49.0,
+      "dispatchGap": 0
     },
     {
       "hour": 11,
@@ -144,7 +168,9 @@
       "breachRate": 14.2,
       "arrivingFlights": 4,
       "confirmedQR": 16,
-      "taxisAtCurb": 48
+      "taxisAtCurb": 48,
+      "predictedSupply": 50.70000076293945,
+      "dispatchGap": 0
     },
     {
       "hour": 12,
@@ -154,7 +180,9 @@
       "breachRate": 12.5,
       "arrivingFlights": 3,
       "confirmedQR": 12,
-      "taxisAtCurb": 45
+      "taxisAtCurb": 45,
+      "predictedSupply": 47.20000076293945,
+      "dispatchGap": 0
     },
     {
       "hour": 13,
@@ -164,7 +192,9 @@
       "breachRate": 11.7,
       "arrivingFlights": 4,
       "confirmedQR": 16,
-      "taxisAtCurb": 44
+      "taxisAtCurb": 44,
+      "predictedSupply": 46.0,
+      "dispatchGap": 0
     },
     {
       "hour": 14,
@@ -174,7 +204,9 @@
       "breachRate": 13.3,
       "arrivingFlights": 5,
       "confirmedQR": 20,
-      "taxisAtCurb": 43
+      "taxisAtCurb": 43,
+      "predictedSupply": 45.0,
+      "dispatchGap": 0
     },
     {
       "hour": 15,
@@ -184,7 +216,9 @@
       "breachRate": 15.8,
       "arrivingFlights": 6,
       "confirmedQR": 24,
-      "taxisAtCurb": 42
+      "taxisAtCurb": 42,
+      "predictedSupply": 45.099998474121094,
+      "dispatchGap": 0
     },
     {
       "hour": 16,
@@ -194,7 +228,9 @@
       "breachRate": 18.3,
       "arrivingFlights": 6,
       "confirmedQR": 24,
-      "taxisAtCurb": 40
+      "taxisAtCurb": 40,
+      "predictedSupply": 42.099998474121094,
+      "dispatchGap": 0
     },
     {
       "hour": 17,
@@ -204,7 +240,9 @@
       "breachRate": 23.3,
       "arrivingFlights": 7,
       "confirmedQR": 28,
-      "taxisAtCurb": 38
+      "taxisAtCurb": 38,
+      "predictedSupply": 40.400001525878906,
+      "dispatchGap": 0
     },
     {
       "hour": 18,
@@ -214,7 +252,9 @@
       "breachRate": 30.0,
       "arrivingFlights": 8,
       "confirmedQR": 32,
-      "taxisAtCurb": 36
+      "taxisAtCurb": 36,
+      "predictedSupply": 38.29999923706055,
+      "dispatchGap": 0
     },
     {
       "hour": 19,
@@ -224,7 +264,9 @@
       "breachRate": 37.5,
       "arrivingFlights": 7,
       "confirmedQR": 28,
-      "taxisAtCurb": 33
+      "taxisAtCurb": 33,
+      "predictedSupply": 34.599998474121094,
+      "dispatchGap": 0
     },
     {
       "hour": 20,
@@ -234,7 +276,9 @@
       "breachRate": 25.0,
       "arrivingFlights": 6,
       "confirmedQR": 24,
-      "taxisAtCurb": 35
+      "taxisAtCurb": 35,
+      "predictedSupply": 36.5,
+      "dispatchGap": 0
     },
     {
       "hour": 21,
@@ -244,7 +288,9 @@
       "breachRate": 20.0,
       "arrivingFlights": 5,
       "confirmedQR": 20,
-      "taxisAtCurb": 38
+      "taxisAtCurb": 38,
+      "predictedSupply": 38.900001525878906,
+      "dispatchGap": 0
     },
     {
       "hour": 22,
@@ -254,7 +300,9 @@
       "breachRate": 15.0,
       "arrivingFlights": 3,
       "confirmedQR": 12,
-      "taxisAtCurb": 40
+      "taxisAtCurb": 40,
+      "predictedSupply": 40.900001525878906,
+      "dispatchGap": 0
     },
     {
       "hour": 23,
@@ -264,7 +312,9 @@
       "breachRate": 10.0,
       "arrivingFlights": 2,
       "confirmedQR": 8,
-      "taxisAtCurb": 34
+      "taxisAtCurb": 34,
+      "predictedSupply": 35.099998474121094,
+      "dispatchGap": 0
     }
   ],
   "weekdayPattern": [
@@ -1602,5 +1652,199 @@
       "avgWaitMin": 62.0,
       "isBreach": true
     }
-  ]
+  ],
+  "supplyForecastMeta": {
+    "model": "XGBoost Supply Forecast v1",
+    "MAE": 2.42,
+    "R2": 0.9,
+    "features": [
+      "hour_of_day",
+      "is_weekend",
+      "arriving_flights",
+      "weather",
+      "supply_lag"
+    ],
+    "target": "avg_taxis_at_curb",
+    "note": "Trained on simulated operational data — real deployment requires AOT dispatch log"
+  },
+  "supplyForecast": [
+    {
+      "hour": 0,
+      "label": "00:00",
+      "predSupply": 22.7,
+      "predDemand": 3,
+      "dispatchGap": 0
+    },
+    {
+      "hour": 1,
+      "label": "01:00",
+      "predSupply": 19.5,
+      "predDemand": 0,
+      "dispatchGap": 0
+    },
+    {
+      "hour": 2,
+      "label": "02:00",
+      "predSupply": 16.5,
+      "predDemand": 0,
+      "dispatchGap": 0
+    },
+    {
+      "hour": 3,
+      "label": "03:00",
+      "predSupply": 16.4,
+      "predDemand": 3,
+      "dispatchGap": 0
+    },
+    {
+      "hour": 4,
+      "label": "04:00",
+      "predSupply": 17.1,
+      "predDemand": 6,
+      "dispatchGap": 0
+    },
+    {
+      "hour": 5,
+      "label": "05:00",
+      "predSupply": 24.1,
+      "predDemand": 8,
+      "dispatchGap": 0
+    },
+    {
+      "hour": 6,
+      "label": "06:00",
+      "predSupply": 33.4,
+      "predDemand": 14,
+      "dispatchGap": 0
+    },
+    {
+      "hour": 7,
+      "label": "07:00",
+      "predSupply": 40.2,
+      "predDemand": 19,
+      "dispatchGap": 0
+    },
+    {
+      "hour": 8,
+      "label": "08:00",
+      "predSupply": 39.0,
+      "predDemand": 16,
+      "dispatchGap": 0
+    },
+    {
+      "hour": 9,
+      "label": "09:00",
+      "predSupply": 42.0,
+      "predDemand": 14,
+      "dispatchGap": 0
+    },
+    {
+      "hour": 10,
+      "label": "10:00",
+      "predSupply": 42.8,
+      "predDemand": 11,
+      "dispatchGap": 0
+    },
+    {
+      "hour": 11,
+      "label": "11:00",
+      "predSupply": 44.4,
+      "predDemand": 11,
+      "dispatchGap": 0
+    },
+    {
+      "hour": 12,
+      "label": "12:00",
+      "predSupply": 41.4,
+      "predDemand": 8,
+      "dispatchGap": 0
+    },
+    {
+      "hour": 13,
+      "label": "13:00",
+      "predSupply": 40.3,
+      "predDemand": 11,
+      "dispatchGap": 0
+    },
+    {
+      "hour": 14,
+      "label": "14:00",
+      "predSupply": 40.3,
+      "predDemand": 14,
+      "dispatchGap": 0
+    },
+    {
+      "hour": 15,
+      "label": "15:00",
+      "predSupply": 41.4,
+      "predDemand": 16,
+      "dispatchGap": 0
+    },
+    {
+      "hour": 16,
+      "label": "16:00",
+      "predSupply": 38.5,
+      "predDemand": 16,
+      "dispatchGap": 0
+    },
+    {
+      "hour": 17,
+      "label": "17:00",
+      "predSupply": 36.8,
+      "predDemand": 19,
+      "dispatchGap": 0
+    },
+    {
+      "hour": 18,
+      "label": "18:00",
+      "predSupply": 35.8,
+      "predDemand": 22,
+      "dispatchGap": 0
+    },
+    {
+      "hour": 19,
+      "label": "19:00",
+      "predSupply": 31.9,
+      "predDemand": 19,
+      "dispatchGap": 0
+    },
+    {
+      "hour": 20,
+      "label": "20:00",
+      "predSupply": 33.3,
+      "predDemand": 16,
+      "dispatchGap": 0
+    },
+    {
+      "hour": 21,
+      "label": "21:00",
+      "predSupply": 34.9,
+      "predDemand": 14,
+      "dispatchGap": 0
+    },
+    {
+      "hour": 22,
+      "label": "22:00",
+      "predSupply": 35.7,
+      "predDemand": 8,
+      "dispatchGap": 0
+    },
+    {
+      "hour": 23,
+      "label": "23:00",
+      "predSupply": 29.7,
+      "predDemand": 6,
+      "dispatchGap": 0
+    }
+  ],
+  "dispatchSummary": {
+    "asOf": "08:15",
+    "horizon": "T+45 min",
+    "predDemand": 16,
+    "predSupply": 39.0,
+    "safetyBuffer": 5,
+    "dispatchGap": 0,
+    "recommendation": "Send incentive signal to broadcast available drivers",
+    "model": "XGBoost Supply Forecast v1"
+  }
 }

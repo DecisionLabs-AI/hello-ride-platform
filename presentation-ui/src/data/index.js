@@ -9,6 +9,7 @@ export const {
   recentAlerts,
   aiAdvisory,
   queueStatus,
+  dispatchSummary,
 } = dashboardData;
 
 export default dashboardData;
