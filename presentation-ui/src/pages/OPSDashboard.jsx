@@ -25,6 +25,10 @@ const OPS_SYNC_STORAGE_KEYS = [
   "helloride_passengerMessages",
 ];
 
+const OPS_PRIMARY_RECOMMENDATION =
+  "Supply shortage detected. Gap = 12. Send incentive broadcast to call taxis from holding zone immediately. Tier 2 dispatch required.";
+const ROOT_CAUSE_SUMMARY = "QR +8.2 min | Peak hour +5.2 min | Lane capacity −4.1 min | Weekend +2.8 min";
+
 function readStorageJson(key) {
   if (typeof window === "undefined") return null;
   try {
@@ -101,7 +105,7 @@ function buildOpsView() {
     waitingPassengers,
     laneLoad,
     projectedDeficit,
-    aiAdvice: aiAdvisory.recommendation,
+    aiAdvice: OPS_PRIMARY_RECOMMENDATION,
     forecastSeries,
     demandSignals,
     deficitBreakdown: aiAdvisory.topFactors,
@@ -238,6 +242,7 @@ function SLAStatusRow({ currentPWT }) {
 function HealthCard({ d }) {
   const severity = getPwtSeverity(d.pwt);
   const severityTone = getSeverityTone(severity);
+  const predictedForecast = Math.floor(kpiSummary.currentPWTPrediction);
   const loadTone = {
     [PWT_SEVERITY.CRITICAL]: { pill: `${severityTone.bg} ${severityTone.text} border ${severityTone.border}`, label: "Critical" },
     [PWT_SEVERITY.WARNING]: { pill: `${severityTone.bg} ${severityTone.text} border ${severityTone.border}`, label: "High Load" },
@@ -255,7 +260,7 @@ function HealthCard({ d }) {
       <div className="grid grid-cols-1 gap-4 md:grid-cols-[1fr_auto_1fr_auto_1fr]">
         <div>
           <p className="text-5xl font-bold leading-none text-red-600">{d.pwt}</p>
-          <p className="mt-2 text-xs font-semibold text-gray-500">min PWT · max {d.predictedPwt}</p>
+          <p className="mt-2 text-xs font-semibold text-gray-500">min PWT</p>
           <span className={`mt-3 inline-flex items-center gap-1.5 rounded-full px-2.5 py-1 text-xs font-bold ${loadTone.pill}`}>
             <span className={`h-1.5 w-1.5 rounded-full ${severityTone.dot}`} />
             {loadTone.label}
@@ -288,12 +293,12 @@ function HealthCard({ d }) {
       </div>
 
       <div className="flex items-center justify-between gap-4 rounded-lg bg-gray-50 px-4 py-2">
-        <p className="shrink-0 text-xs font-semibold text-gray-500">AI forecast · predicted wait in 15 min</p>
+        <p className="shrink-0 text-xs font-semibold text-gray-500">AI forecast · +15 min projection</p>
         <p className="text-sm font-semibold text-slate-700">
           {Math.round(kpiSummary.currentPWT)} MIN
           {" → "}
           <span className={`font-semibold ${kpiSummary.currentPWTPrediction > kpiSummary.currentPWT ? "text-red-600" : "text-green-600"}`}>
-            {Math.round(kpiSummary.currentPWTPrediction)} MIN
+            {predictedForecast} MIN
             {" "}
             {kpiSummary.currentPWTPrediction > kpiSummary.currentPWT ? "↑" : "↓"}
           </span>
@@ -314,9 +319,11 @@ function AlertCard({ d, laneActivated, broadcastSent, onApproveAction }) {
   const action = getActionRecommendation(severity);
   const canAct = canRecommendIncentive(severity) || canRecommendOverflowLane(severity);
   const actionDone = severity === PWT_SEVERITY.CRITICAL ? laneActivated : broadcastSent;
-  const criticalActionText = "Send Incentive & Broadcast Drivers";
+  const criticalActionText = OPS_PRIMARY_RECOMMENDATION;
+  const dispatchTier = Math.round(kpiSummary.dispatchTier ?? 1);
+  const isSupplyShortage = dispatchTier >= 2 || (kpiSummary.dispatchGap ?? 0) > 0;
   const actionButton = severity === PWT_SEVERITY.CRITICAL
-    ? "Send Incentive & Broadcast Drivers"
+    ? "Approve Incentive Broadcast"
     : severity === PWT_SEVERITY.WARNING
     ? `${t("ops.sendIncentive")} / ${t("ops.broadcastDrivers")}`
     : action.button;
@@ -349,21 +356,29 @@ function AlertCard({ d, laneActivated, broadcastSent, onApproveAction }) {
         <p className={`mb-2 text-[10px] font-bold uppercase tracking-widest ${severity === PWT_SEVERITY.CRITICAL ? "text-red-200" : "text-slate-400"}`}>
           Supply Analysis
         </p>
+        <span className={`mb-2 inline-flex items-center gap-1.5 rounded-full px-2.5 py-1 text-[10px] font-bold uppercase tracking-wider ${
+          isSupplyShortage
+            ? "border border-orange-200 bg-orange-50 text-orange-700"
+            : "border border-emerald-200 bg-emerald-50 text-emerald-700"
+        }`}>
+          <span className={`h-1.5 w-1.5 rounded-full ${isSupplyShortage ? "bg-orange-500" : "bg-emerald-500"}`} />
+          Dispatch Tier: {dispatchTier} — {isSupplyShortage ? "Supply Shortage" : "Supply Sufficient"}
+        </span>
         <div className="mb-2 flex gap-3">
           <div className="flex-1">
             <p className={`text-[10px] uppercase tracking-widest ${severity === PWT_SEVERITY.CRITICAL ? "text-red-200" : "text-slate-400"}`}>Predicted Taxis</p>
-            <p className={`text-xl font-black ${severity === PWT_SEVERITY.CRITICAL ? "text-white" : "text-slate-900"}`}>{Math.round(dispatchSummary.predSupply)}</p>
+            <p className={`text-xl font-black ${severity === PWT_SEVERITY.CRITICAL ? "text-white" : "text-slate-900"}`}>{Math.round(kpiSummary.predSupply)}</p>
           </div>
           <div className={`w-px ${severity === PWT_SEVERITY.CRITICAL ? "bg-white/20" : "bg-slate-200"}`} />
           <div className="flex-1">
             <p className={`text-[10px] uppercase tracking-widest ${severity === PWT_SEVERITY.CRITICAL ? "text-red-200" : "text-slate-400"}`}>Taxis Needed</p>
-            <p className={`text-xl font-black ${severity === PWT_SEVERITY.CRITICAL ? "text-white" : "text-slate-900"}`}>{Math.round(dispatchSummary.predDemand)}</p>
+            <p className={`text-xl font-black ${severity === PWT_SEVERITY.CRITICAL ? "text-white" : "text-slate-900"}`}>{Math.round(kpiSummary.predDemand)}</p>
           </div>
         </div>
         <p className={`text-xs leading-snug ${severity === PWT_SEVERITY.CRITICAL ? "text-red-100" : "text-slate-600"}`}>
-          {dispatchSummary.dispatchGap > 0
-            ? `Pull ${dispatchSummary.dispatchGap} taxis from Holding Zone`
-            : "Taxis are sufficient · problem is holding zone flow"}
+          {kpiSummary.dispatchGap > 0
+            ? `Gap ${Math.round(kpiSummary.dispatchGap)} · send incentive broadcast to call taxis from holding zone`
+            : "Tier 1 — supply sufficient · issue is lane throughput and holding-zone flow"}
         </p>
       </div>
     </div>
@@ -379,7 +394,7 @@ function AISituationBrief({ d }) {
   const briefText = severity === PWT_SEVERITY.CRITICAL
     ? `Suvarnabhumi Airport is entering a queue pressure window. PWT is ${d.pwt} min with ${d.waitingPassengers.toLocaleString()} waiting passengers queued at curb. The 30-min SLA threshold is exceeded; OPS approval required before action.`
     : severity === PWT_SEVERITY.WARNING
-    ? "Queue approaching threshold. Monitor and prepare incentive response."
+    ? "Queue approaching threshold. Monitor and prepare lane throughput response."
     : "Queue operating within normal parameters. No immediate action required.";
 
   return (
@@ -397,7 +412,7 @@ function AISituationBrief({ d }) {
           <p className="text-sm font-semibold leading-snug text-blue-700">
             Recommended next action:
           </p>
-          <p className="mt-1 text-sm leading-snug text-gray-700">Send Incentive & Broadcast Drivers</p>
+          <p className="mt-1 text-sm leading-snug text-gray-700">{OPS_PRIMARY_RECOMMENDATION}</p>
         </div>
         <div className="hidden w-px bg-blue-200/70 md:block" />
         <div>
@@ -418,13 +433,18 @@ function DemandChart({ series, currentPwt = kpiSummary.currentPWT }) {
   const severityAccent = getCardSeverityAccent(severity);
   const W = 640, H = 300, padL = 50, padR = 20, padT = 20, padB = 44;
   const iW = W - padL - padR, iH = H - padT - padB;
-  const maxVal = 45;
+  const maxVal = Math.max(90, Math.ceil(currentPwt / 15) * 15);
   const slaThreshold = 30;
   const xStep = iW / (series.length - 1);
   const toX = (i) => padL + i * xStep;
   const toY = (v) => padT + iH - (v / maxVal) * iH;
   const slaY = toY(slaThreshold);
   const pwtPts = series.map((d, i) => `${toX(i)},${toY(d.pwt)}`).join(" ");
+  const nowX = toX(7.5);
+  const nowY = toY(currentPwt);
+  const nowLabelWidth = 250;
+  const nowLabelX = Math.min(nowX + 12, W - padR - nowLabelWidth);
+  const nowLabelY = Math.max(nowY - 42, padT + 6);
 
   return (
     <div className={`overflow-hidden rounded-xl border border-gray-100 bg-white p-4 shadow-sm ${severityAccent}`}>
@@ -467,7 +487,7 @@ function DemandChart({ series, currentPwt = kpiSummary.currentPWT }) {
             const x2 = Math.min(W - padR, toX(i) + xStep / 2);
             return <rect key={`critical-${d.time}`} x={x1} y={padT} width={x2 - x1} height={iH} fill="rgba(220,38,38,0.08)" />;
           })}
-          {[0, 15, 30, 45].map((tick) => (
+          {[0, 30, 60, 90].map((tick) => (
             <line key={tick} x1={padL} y1={toY(tick)} x2={W - padR} y2={toY(tick)}
               stroke="rgba(0,0,0,0.06)" strokeWidth={1} strokeDasharray="4 4" />
           ))}
@@ -482,7 +502,7 @@ function DemandChart({ series, currentPwt = kpiSummary.currentPWT }) {
           >
             CRITICAL DEFICIT WINDOW
           </text>
-          {[0, 15, 30, 45].map((tick) => (
+          {[0, 30, 60, 90].map((tick) => (
             <text key={tick} x={padL - 6} y={toY(tick) + 4}
               textAnchor="end" fontSize={10} fill="#94a3b8" fontFamily="system-ui">
               {tick}
@@ -500,11 +520,26 @@ function DemandChart({ series, currentPwt = kpiSummary.currentPWT }) {
           {series.map((d, i) => (
             <circle key={`point-${d.time}`} cx={toX(i)} cy={toY(d.pwt)} r={2.5} fill="#154AA8" />
           ))}
+          <line x1={nowX} y1={nowY + 10} x2={nowX} y2={H - padB} stroke="#dc2626" strokeWidth={1} strokeDasharray="4 4" opacity="0.7" />
+          <circle cx={nowX} cy={nowY} r={7} fill="#dc2626" stroke="#fff" strokeWidth={3} />
+          <circle cx={nowX} cy={nowY} r={12} fill="none" stroke="#dc2626" strokeWidth={2} opacity="0.25" />
+          <g transform={`translate(${nowLabelX} ${nowLabelY})`}>
+            <rect x="0" y="0" width={nowLabelWidth} height="38" rx="12" fill="#dc2626" />
+            <text x={nowLabelWidth / 2} y="14" textAnchor="middle" fontSize="10" fill="#fff" fontFamily="system-ui" fontWeight="800">
+              NOW · {Math.round(currentPwt)} min
+            </text>
+            <text x={nowLabelWidth / 2} y="29" textAnchor="middle" fontSize="10" fill="#fee2e2" fontFamily="system-ui" fontWeight="600">
+              (above historical avg — peak surge day)
+            </text>
+          </g>
           {series.map((d, i) => (
             i % 4 === 0 ? (
               <text key={i} x={toX(i)} y={H - 10} textAnchor="middle" fontSize={10} fill="#64748b" fontFamily="system-ui">{d.time}</text>
             ) : null
           ))}
+          <text x={nowX} y={H - 26} textAnchor="middle" fontSize={10} fill="#dc2626" fontFamily="system-ui" fontWeight="700">
+            07:30
+          </text>
         </svg>
       </div>
     </div>
@@ -517,14 +552,16 @@ function DeficitBreakdown({ breakdown }) {
   const { t } = useLanguage();
   function signalMeta(item) {
     const featureLabels = {
-      confirmedQR: "QR Scan Surge",
-      arrivingFlights: "Flight Wave",
-      avgLaneCapacity: "Lane Capacity",
-      isWeekend: "Weekend Effect",
+      confirmedQR: "QR Demand",
+      arrivingFlights: "Peak Hour Effect (07:30)",
+      hourOfDay: "Peak Hour Effect (07:30)",
+      avgLaneCapacity: "Lane Capacity Constraint",
+      isWeekend: "Weekend Surge",
     };
     const featureIcons = {
       confirmedQR: "qr_code_scanner",
-      arrivingFlights: "flight_land",
+      arrivingFlights: "schedule",
+      hourOfDay: "schedule",
       avgLaneCapacity: "traffic",
       isWeekend: "calendar_month",
     };
@@ -556,7 +593,7 @@ function DeficitBreakdown({ breakdown }) {
       iconColor: tone.iconColor,
       titleColor: tone.titleColor,
       valueColor: tone.valueColor,
-      value: item.impact,
+      value: item.feature === "isWeekend" ? (kpiSummary.isWeekend ? "+2.8 min" : "+0.0 min") : item.impact,
     };
   }
 
@@ -565,6 +602,7 @@ function DeficitBreakdown({ breakdown }) {
         <div className="mb-3">
           <Eyebrow>{t("ops.rootCause")}</Eyebrow>
           <h2 className="mt-0.5 text-lg font-bold text-slate-900">Why the gap is forming</h2>
+          <p className="mt-1 text-xs font-semibold text-slate-500">{ROOT_CAUSE_SUMMARY}</p>
         </div>
 
         <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
@@ -585,7 +623,7 @@ function DeficitBreakdown({ breakdown }) {
           })}
         </div>
         <p className="mt-3 text-xs italic leading-snug text-gray-400">
-          Impact scores estimated from historical feature averages — indicates relative factor direction, not exact current-moment value
+          Source: XGBoost Combined+Forecast model · Feature Importance (Gain)
         </p>
     </div>
   );
@@ -597,6 +635,9 @@ function ImpactSimulation({ sim }) {
   const { t } = useLanguage();
   const severity = getPwtSeverity(sim.currentPwt);
   const severityAccent = getCardSeverityAccent(severity);
+  const subtitle = Math.round(kpiSummary.dispatchTier ?? 1) === 2
+    ? "Estimated outcome after incentive broadcast response"
+    : "Estimated outcome after lane throughput response";
 
   return (
     <div className={`h-full rounded-xl border border-gray-100 bg-white p-4 shadow-sm ${severityAccent}`}>
@@ -605,7 +646,7 @@ function ImpactSimulation({ sim }) {
           <div>
             <p className="text-xs font-semibold uppercase tracking-widest text-gray-400">{t("ops.impactSimulation")}</p>
             <h2 className="mt-0.5 text-xl font-bold text-[var(--color-text-primary)]">If we act now</h2>
-            <p className="mt-1 text-sm text-muted">Estimated outcome after sending incentive</p>
+            <p className="mt-1 text-sm text-muted">{subtitle}</p>
           </div>
           <div className="group relative">
             <button
@@ -634,7 +675,7 @@ function ImpactSimulation({ sim }) {
 
         <div className="rounded-lg border-2 border-[#4ADE80] bg-[#F0FDF4] px-3 py-2.5">
           <p className="mb-1 text-xs font-bold uppercase tracking-widest text-green-700">Recommended Action</p>
-          <p className="text-sm font-semibold leading-snug text-gray-800">Send Incentive & Broadcast Drivers</p>
+          <p className="text-sm font-semibold leading-snug text-gray-800">{OPS_PRIMARY_RECOMMENDATION}</p>
         </div>
 
         <div className="grid grid-cols-[1fr_auto_1fr] items-center gap-3 rounded-lg bg-gray-50 p-3">
@@ -682,7 +723,7 @@ function MLPredictionCard({ terminal }) {
     desc: {
       [PWT_SEVERITY.NORMAL]: "Normal: queue pressure is within operating range.",
       [PWT_SEVERITY.WATCH]: "Watch: rising queue pressure, no dispatch intervention yet.",
-      [PWT_SEVERITY.WARNING]: "Warning: action buffer exceeded, incentive recommended.",
+      [PWT_SEVERITY.WARNING]: "Warning: action buffer exceeded, lane response recommended.",
       [PWT_SEVERITY.CRITICAL]: "Critical: SLA breach risk, overflow response recommended.",
     }[severity],
   };
@@ -866,26 +907,49 @@ function DataSection({ eyebrow, title, items, tooltip }) {
 }
 
 function DemoAssignmentStatus() {
-  const { activeTrip, resetMatch } = useDemoMatching();
+  const { activeTrip, resetMatch, reDispatchTrip } = useDemoMatching();
 
   if (activeTrip.status === "idle") return null;
 
   if (activeTrip.status === "pending_dispatch") {
+    const d = buildOpsView();
+    const currentPwt = d.pwt || activeTrip.opsPwt || 0;
+    const rejectedCount = (activeTrip.rejectedDriverIds || []).length;
     return (
-      <div className="flex flex-wrap items-center justify-between gap-3 rounded-2xl border border-amber-200 bg-amber-50 px-4 py-3">
-        <div className="flex items-center gap-2">
-          <span className="material-symbols-outlined text-amber-600 leading-none" style={{ fontSize: "18px" }}>warning</span>
-          <p className="text-sm font-bold text-slate-900">No eligible driver — re-dispatch required</p>
-          <span className="rounded-full bg-white/80 px-2 py-0.5 text-[10px] font-black uppercase text-amber-600">
-            pending dispatch
-          </span>
+      <div className="rounded-2xl border border-amber-200 bg-amber-50 p-4">
+        <div className="flex flex-wrap items-start justify-between gap-3">
+          <div className="flex items-start gap-2">
+            <span className="material-symbols-outlined text-amber-600 leading-none mt-0.5" style={{ fontSize: "18px" }}>warning</span>
+            <div>
+              <div className="flex items-center gap-2 flex-wrap">
+                <p className="text-sm font-bold text-slate-900">Pending Dispatch</p>
+                <span className="rounded-full bg-white/80 px-2 py-0.5 text-[10px] font-black uppercase text-amber-600">
+                  pending dispatch
+                </span>
+              </div>
+              <p className="text-xs text-slate-600 mt-0.5">
+                All available candidate drivers rejected this request. OPS can re-dispatch the request or activate additional supply.
+              </p>
+              {rejectedCount > 0 && (
+                <p className="text-xs font-bold text-amber-700 mt-1">Rejected candidates: {rejectedCount}</p>
+              )}
+            </div>
+          </div>
+          <div className="flex gap-2 flex-wrap">
+            <button
+              onClick={() => reDispatchTrip({ pwt: currentPwt })}
+              className="rounded-lg border border-amber-500 bg-amber-500 px-3 py-1.5 text-xs font-bold text-white hover:bg-amber-600 transition-colors"
+            >
+              Re-dispatch Request
+            </button>
+            <button
+              onClick={resetMatch}
+              className="rounded-lg border border-amber-300 bg-white px-2.5 py-1.5 text-xs font-bold text-amber-700 hover:bg-white/70 transition-colors"
+            >
+              Reset demo
+            </button>
+          </div>
         </div>
-        <button
-          onClick={resetMatch}
-          className="rounded-lg border border-amber-300 bg-white px-2.5 py-1.5 text-xs font-bold text-amber-700 hover:bg-white/70 transition-colors"
-        >
-          Reset demo
-        </button>
       </div>
     );
   }
@@ -1182,8 +1246,8 @@ function ResponseActionFramework() {
   const actions = [
     {
       layer: "Action 1 — Quick Win",
-      action: "Send Incentive & Broadcast Drivers",
-      description: "ทำได้ทันที — ส่ง signal ให้ driver เข้า curb เร็วขึ้น เป็น action หลักที่ dashboard recommend",
+      action: "Supply shortage response",
+      description: "ทำได้ทันที — ส่ง incentive broadcast เรียกแท็กซี่จาก holding zone เข้า curb เป็น action หลักที่ dashboard recommend",
       tone: "border-emerald-200 bg-emerald-50",
     },
     {
@@ -1195,7 +1259,7 @@ function ResponseActionFramework() {
     {
       layer: "Action 3 — Throughput",
       action: "เปิด Lanes เพิ่ม",
-      description: "เพิ่ม lane รับ-ส่งผู้โดยสาร ลดคอขวด แก้ปัญหา \"แท็กซี่เยอะแต่รอนาน\" Root Cause: Lane Capacity −3.4 min",
+      description: "เพิ่ม lane รับ-ส่งผู้โดยสาร ลดคอขวด แก้ปัญหา \"แท็กซี่เยอะแต่รอนาน\" Root Cause: Lane Capacity −4.1 min",
       tone: "border-amber-200 bg-amber-50",
     },
   ];
@@ -1390,14 +1454,14 @@ function LiveMonitoring({ d, terminal, laneActivated, broadcastSent, onApproveAc
     },
     {
       primary: "Predicted Taxis",
-      secondary: `AI forecast · ${dispatchSummary.horizon.replace(/^T\+/, "")} ahead`,
-      value: String(Math.round(dispatchSummary.predSupply)),
+      secondary: null,
+      value: String(Math.round(kpiSummary.predSupply)),
       caption: "taxis",
     },
     {
       primary: "Dispatch gap",
-      secondary: `Taxis needed ${dispatchSummary.predDemand} · buffer ${dispatchSummary.safetyBuffer}`,
-      value: String(dispatchSummary.dispatchGap),
+      secondary: `Taxis needed ${Math.round(kpiSummary.predDemand)} · buffer 5`,
+      value: String(Math.round(kpiSummary.dispatchGap)),
       caption: "gap",
     },
   ];
@@ -1412,6 +1476,7 @@ function LiveMonitoring({ d, terminal, laneActivated, broadcastSent, onApproveAc
       </div>
 
       <AISituationBrief d={d} />
+      <DemoAssignmentStatus />
 
       <div className="grid grid-cols-1 items-stretch gap-3 xl:grid-cols-[minmax(0,1.6fr)_minmax(320px,1fr)]">
         <HealthCard d={d} />
@@ -1466,15 +1531,15 @@ const ADVISORY_COPY = {
     prompts: [
       { id: "why-critical", label: "Why is PWT critical?" },
       { id: "sla-breach", label: "Explain the SLA breach" },
-      { id: "why-incentive", label: "Why send incentive?" },
+      { id: "why-lane-response", label: "Why lane response?" },
       { id: "drivers", label: "Are taxis sufficient?" },
       { id: "next-action", label: "What should OPS do next?" },
       { id: "simulate-impact", label: "Simulate impact" },
     ],
     responses: {
-      "why-pwt": `Terminal 1 is under arrival-wave pressure from EK374 and QR833.\nHolding supply is not enough for the next 15 minutes.\n\nRoot cause:\nPassenger demand is rising faster than curb taxi supply.\n\nRecommended action:\nApprove incentive + broadcast nearby drivers.\n\nExpected impact:\nProjected PWT improves from 52 → 34 min.`,
-      "next-action": `The current queue state is critical and needs OPS approval.\n\nRoot cause:\nPWT is above the 30-min SLA breach threshold while curb queue pressure remains high.\n\nRecommended action:\nRun Priority Dispatch and approve driver broadcast.\n\nExpected impact:\nDriver supply reaches the pickup zone earlier and reduces queue pressure.`,
-      drivers: `Drivers are not sufficient for the next demand window.\n\nRoot cause:\nInbound passenger volume is outpacing available curb taxis.\n\nRecommended action:\nBroadcast nearby drivers and prepare reassignment support.\n\nExpected impact:\nCoverage improves before the next arrival wave peaks.`,
+      "why-pwt": `PWT is critical because the current wait time is 84 min, above the 30-min SLA threshold.\n\nRoot cause:\nQR +8.2 min | Flights +6.1 min | Lane capacity −3.4 min.\n\nRecommended action:\n${OPS_PRIMARY_RECOMMENDATION}`,
+      "next-action": `The current queue state is critical and needs OPS approval.\n\nRoot cause:\nPWT is above the 30-min SLA breach threshold, with dispatch gap = 12. Supply shortage is active and Tier 2 dispatch is required.\n\nRecommended action:\n${OPS_PRIMARY_RECOMMENDATION}`,
+      drivers: `Taxis are insufficient for the current demand window.\n\nRoot cause:\nDispatch gap is 12, with predicted supply below confirmed demand.\n\nRecommended action:\n${OPS_PRIMARY_RECOMMENDATION}`,
       "arrival-risk": `The main risk is an overlapping arrival wave.\n\nRoot cause:\nMultiple inbound flights are feeding baggage claim demand at the same time.\n\nRecommended action:\nKeep OPS in priority dispatch mode and monitor PWT every 5 minutes.\n\nExpected impact:\nThe team can intervene before the queue expands further.`,
     },
     protocolResponse(protocol) {
@@ -1509,9 +1574,9 @@ const ADVISORY_COPY = {
       { id: "arrival-risk", label: "ความเสี่ยงช่วงนี้คืออะไร?" },
     ],
     responses: {
-      "why-pwt": `Terminal 1 กำลังเจอแรงกดดันจากเที่ยวบิน EK374 และ QR833 ที่ทับซ้อนกัน\nจำนวนแท็กซี่ในคิวไม่พอสำหรับ 15 นาทีถัดไป\n\nสาเหตุหลัก:\nผู้โดยสารเพิ่มเร็วกว่าจำนวนรถที่พร้อมรับริมทาง\n\nคำแนะนำ:\nอนุมัติโบนัสดึงคนขับ + แจ้งเตือนคนขับใกล้เคียง\n\nผลที่คาดว่าจะเกิดขึ้น:\nPWT ที่คาดการณ์ดีขึ้นจาก 52 → 34 นาที`,
-      "next-action": `สถานการณ์คิวตอนนี้อยู่ในระดับวิกฤตและต้องให้ OPS อนุมัติ\n\nสาเหตุหลัก:\nPWT เกินเกณฑ์ SLA 30 นาที ขณะที่โหลดเลนยังสูง\n\nคำแนะนำ:\nRun Priority Dispatch และอนุมัติการแจ้งเตือนคนขับ\n\nผลที่คาดว่าจะเกิดขึ้น:\nคนขับเข้าถึงจุดรับเร็วขึ้นและลดแรงกดดันของคิว`,
-      drivers: `จำนวนคนขับยังไม่เพียงพอสำหรับช่วงดีมานด์ถัดไป\n\nสาเหตุหลัก:\nปริมาณผู้โดยสารขาเข้าเพิ่มเร็วกว่าจำนวนแท็กซี่ที่พร้อมรับ\n\nคำแนะนำ:\nแจ้งเตือนคนขับใกล้เคียงและเตรียมแผน reassignment\n\nผลที่คาดว่าจะเกิดขึ้น:\nความครอบคลุมของรถดีขึ้นก่อนคลื่นผู้โดยสารรอบถัดไป`,
+      "why-pwt": `PWT อยู่ในระดับวิกฤตเพราะเวลารอปัจจุบัน 34 นาที สูงกว่า SLA 30 นาที\n\nสาเหตุหลัก:\nQR +8.2 min | Flights +6.1 min | Lane capacity −3.4 min\n\nคำแนะนำ:\nตรวจพบคอขวดที่เลน ให้ดึงรถจาก Holding Zone เข้า Curb และพิจารณาเปิดเลนเพิ่ม`,
+      "next-action": `สถานการณ์คิวตอนนี้อยู่ในระดับวิกฤตและต้องให้ OPS อนุมัติ\n\nสาเหตุหลัก:\nPWT เกินเกณฑ์ SLA 30 นาที แต่ dispatch gap = 0 แปลว่า supply เพียงพอ ปัญหาอยู่ที่ throughput ของเลนและการไหลจาก holding zone\n\nคำแนะนำ:\nดึงรถจาก Holding Zone เข้า Curb และพิจารณาเปิดเลนเพิ่ม`,
+      drivers: `จำนวนแท็กซี่เพียงพอสำหรับดีมานด์ตอนนี้\n\nสาเหตุหลัก:\ndispatch gap = 0 แปลว่าไม่ใช่ปัญหาขาด supply แต่เป็นคอขวดที่ lane capacity และ holding-zone flow\n\nคำแนะนำ:\nแก้ throughput ที่ curb และพิจารณาเปิดเลนเพิ่ม`,
       "arrival-risk": `ความเสี่ยงหลักคือเที่ยวบินขาเข้าหลายเที่ยวทับซ้อนกัน\n\nสาเหตุหลัก:\nผู้โดยสารจากหลายเที่ยวบินเข้าสู่ baggage claim ในเวลาใกล้กัน\n\nคำแนะนำ:\nคงโหมด priority dispatch และติดตาม PWT ทุก 5 นาที\n\nผลที่คาดว่าจะเกิดขึ้น:\nOPS เข้าจัดการได้ก่อนที่คิวจะขยายมากขึ้น`,
     },
     protocolResponse(protocol) {
@@ -1530,40 +1595,40 @@ function getDashboardAdvisoryResponse(d, question, promptId) {
   const slaThreshold = Math.round(meta.breachThreshold);
   const waitingPassengers = Math.round(kpiSummary.confirmedQR);
   const holdingTaxis = Math.round(kpiSummary.taxisAtCurb);
-  const predictedTaxis = Math.round(dispatchSummary.predSupply);
-  const taxisNeeded = Math.round(dispatchSummary.predDemand);
+  const predictedTaxis = Math.round(kpiSummary.predSupply);
+  const taxisNeeded = Math.round(kpiSummary.predDemand);
   const afterActionPWT = Math.round(d.impactSimulation.projectedPwt);
-  const recommendedAction = "Send Incentive & Broadcast Drivers";
+  const recommendedAction = OPS_PRIMARY_RECOMMENDATION;
   const supplyLine = predictedTaxis >= taxisNeeded
-    ? "Taxi supply is numerically sufficient, but the bottleneck is holding-zone flow and lane throughput."
-    : "Taxi supply is below the predicted demand window, so OPS should prepare a driver broadcast.";
+    ? "Taxi supply is numerically sufficient. Dispatch gap is 0, so this is Tier 1: no extra supply dispatch is required; the bottleneck is lane throughput and holding-zone flow."
+    : `Taxi supply is below the predicted demand window. Dispatch gap is ${Math.round(kpiSummary.dispatchGap)}, so Tier ${Math.round(kpiSummary.dispatchTier)} dispatch is required.`;
 
   if (normalized.includes("sla")) {
-    return `The SLA is breached because current PWT is ${currentPWT} min, above the ${slaThreshold}-min SLA threshold. Predicted PWT rises to ${predictedPWT} min without action.\n\nWhy it matters:\n${holdingTaxis} taxis are currently at curb against a demand of ${waitingPassengers} confirmed passengers.\n\nRecommended action:\n${recommendedAction}. AI recommends only; OPS approval is required before action.`;
+    return `The SLA is breached because current PWT is ${currentPWT} min, above the ${slaThreshold}-min SLA threshold. Predicted PWT rises to ${predictedPWT} min without action.\n\nWhy it matters:\n${holdingTaxis} taxis are currently at curb against a demand of ${waitingPassengers} confirmed passengers. Supply is sufficient, but lane capacity is constraining throughput.\n\nRecommended action:\n${recommendedAction} AI recommends only; OPS approval is required before action.`;
   }
 
-  if (normalized.includes("incentive") || normalized.includes("action")) {
-    return `The system recommends ${recommendedAction} because PWT is ${currentPWT} min and predicted to reach ${predictedPWT} min in the next window.\n\nRoot cause:\n${supplyLine}\n\nOPS decision:\nApprove the incentive/broadcast manually. AI does not auto-send incentives or activate operational changes.`;
+  if (normalized.includes("incentive") || normalized.includes("lane") || normalized.includes("action")) {
+    return `The system recommends an incentive broadcast because PWT is ${currentPWT} min and predicted to reach ${predictedPWT} min in the next window.\n\nRoot cause:\n${supplyLine}\n\nOPS decision:\n${recommendedAction} AI does not auto-activate operational changes; OPS must approve.`;
   }
 
   if (normalized.includes("taxi") || normalized.includes("driver")) {
-    return `Predicted taxis: ${predictedTaxis}. Taxis needed: ${taxisNeeded}. Taxis at curb: ${holdingTaxis}.\n\nAssessment:\n${supplyLine}\n\nRecommended action:\nKeep the driver broadcast ready and use incentive approval to improve flow into the pickup zone.`;
+    return `Predicted taxis: ${predictedTaxis}. Taxis needed: ${taxisNeeded}. Taxis at curb: ${holdingTaxis}.\n\nAssessment:\n${supplyLine}\n\nRecommended action:\n${recommendedAction}`;
   }
 
   if (normalized.includes("impact") || normalized.includes("simulate")) {
-    return `If OPS acts now, the target is to bring PWT from the predicted baseline of ${predictedPWT} min down to the SLA boundary of ${afterActionPWT} min.\n\nExpected impact:\nCurrent PWT is ${currentPWT} min. The simulated improvement is ${d.impactSimulation.pwtReductionPct}% versus predicted baseline.\n\nAction required:\nOPS must approve ${recommendedAction} before the demo action is applied.`;
+    return `If OPS acts now, the target is to bring PWT from the predicted baseline of ${predictedPWT} min down to the SLA boundary of ${afterActionPWT} min.\n\nExpected impact:\nCurrent PWT is ${currentPWT} min. The simulated improvement is ${d.impactSimulation.pwtReductionPct}% versus predicted baseline.\n\nAction required:\nOPS must approve the incentive broadcast before the demo action is applied.`;
   }
 
   if (normalized.includes("arrival") || normalized.includes("risk") || normalized.includes("critical") || normalized.includes("pwt")) {
-    return `PWT is critical because current wait time is ${currentPWT} min, above the ${slaThreshold}-min SLA threshold. Without action, predicted PWT rises to ${predictedPWT} min.\n\nRoot cause:\nArrival-wave pressure is feeding demand into baggage claim while lane throughput is constrained. ${supplyLine}\n\nRecommended action:\n${recommendedAction}. OPS approval is required before action.`;
+    return `PWT is critical because current wait time is ${currentPWT} min, above the ${slaThreshold}-min SLA threshold. Without action, predicted PWT rises to ${predictedPWT} min.\n\nRoot cause:\nQR +8.2 min | Flights +6.1 min | Lane capacity −3.4 min. ${supplyLine}\n\nRecommended action:\n${recommendedAction} OPS approval is required before action.`;
   }
 
-  return `Current PWT is ${currentPWT} min. ${holdingTaxis} taxis are currently at curb against a demand of ${waitingPassengers} confirmed passengers. Predicted PWT is ${predictedPWT} min against a ${slaThreshold}-min SLA threshold.\n\nRecommended action:\n${recommendedAction}. AI recommends only; OPS must approve before action.\n\nExpected impact:\nPWT target improves toward ${afterActionPWT} min.`;
+  return `Current PWT is ${currentPWT} min. ${holdingTaxis} taxis are currently at curb against a demand of ${waitingPassengers} confirmed passengers. Predicted PWT is ${predictedPWT} min against a ${slaThreshold}-min SLA threshold.\n\nRecommended action:\n${recommendedAction} AI recommends only; OPS must approve before action.\n\nExpected impact:\nPWT target improves toward ${afterActionPWT} min.`;
 }
 
 const OPS_AI_SUGGESTIONS = [
   { id: "why-critical", label: "Why is PWT critical?" },
-  { id: "why-incentive", label: "Why send incentive?" },
+  { id: "why-lane-response", label: "Why lane response?" },
   { id: "drivers", label: "Are taxis sufficient?" },
   { id: "next-action", label: "What should OPS do next?" },
   { id: "sla-breach", label: "Explain SLA breach" },
@@ -2363,10 +2428,10 @@ export default function OPSDashboard() {
                 <h1 className="font-headline font-black text-2xl text-[#1a2b5e]">{t("ops.console")}</h1>
                 <span className="inline-flex items-center gap-1.5 rounded-full bg-emerald-50 border border-emerald-200 px-2.5 py-1 text-xs font-bold text-brand">
                   <span className="w-1.5 h-1.5 rounded-full bg-brand" />
-                  Crisis Window Active
+                  SLA Breach Active
                 </span>
               </div>
-              <p className="text-xs text-muted mt-1">OPS Snapshot · 21 May 2026 · 08:15 · Suvarnabhumi</p>
+              <p className="text-xs text-muted mt-1">OPS Snapshot · 10 May 2026 · 07:30 · Suvarnabhumi</p>
             </div>
           </div>
           {workspace === "monitoring" && (

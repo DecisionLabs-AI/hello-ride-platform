@@ -8,24 +8,28 @@
     "breachThreshold": 30
   },
   "kpiSummary": {
-    "currentPWT": 34.0,
-    "currentPWTPrediction": 38.0,
-    "breachRate": 38.0,
-    "taxisAtCurb": 41,
-    "activeLanes": 4,
-    "laneCapacity": 31,
-    "arrivingFlights": 6,
-    "confirmedQR": 24,
-    "totalPax": 29,
-    "tempC": 28.3,
-    "rainMm": 0.0,
-    "windKmh": 12.4,
-    "isWeekend": false,
-    "hourOfDay": 8,
+    "currentPWT": 84.08,
+    "currentPWTPrediction": 89.96,
+    "breachRate": 69.91,
+    "taxisAtCurb": 66,
+    "activeLanes": 7,
+    "laneCapacity": 31.81,
+    "arrivingFlights": 4,
+    "confirmedQR": 73,
+    "totalPax": 139,
+    "tempC": 28.72,
+    "rainMm": 0.89,
+    "windKmh": 7.42,
+    "isWeekend": true,
+    "hourOfDay": 7,
     "trend": "up",
-    "lastUpdated": "2026-05-21T08:15:00+07:00",
-    "predictedSupply": 40.0,
-    "dispatchGap": 0
+    "lastUpdated": "2026-05-10 07:30:00",
+    "predDemand": 73,
+    "predSupply": 66,
+    "dispatchGap": 12,
+    "dispatchTier": 2,
+    "isBreach": true,
+    "breachConfidence": 0.87
   },
   "demandChartData": [
     {
@@ -445,19 +449,19 @@
         "direction": "up"
       },
       {
-        "feature": "arrivingFlights",
-        "impact": "+6.1 min",
+        "feature": "hourOfDay",
+        "impact": "+5.2 min",
         "direction": "up"
       },
       {
         "feature": "avgLaneCapacity",
-        "impact": "-3.4 min",
+        "impact": "-4.1 min",
         "direction": "down"
       },
       {
         "feature": "isWeekend",
-        "impact": "+0.0 min",
-        "direction": "neutral"
+        "impact": "+2.8 min",
+        "direction": "up"
       }
     ],
     "recommendation": "เปิด Lane 5 และเรียก 12 คันจาก holding zone B ภายใน 10 นาที",

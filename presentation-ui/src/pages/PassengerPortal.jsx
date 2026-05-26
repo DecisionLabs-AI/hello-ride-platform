@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { RIDES, PAYMENT_OPTIONS, TIP_OPTIONS, DESTINATION_PRESETS } from "../data/mockPassenger.js";
 import PassengerSupportChat from "../components/passenger/PassengerSupportChat.jsx";
 import { HelloRideWordmark, MobileScrollArea, MobileShell } from "../components/shared/MobileShell.jsx";
@@ -15,6 +15,11 @@ function destinationLabel(activeTrip) {
 
 function pickupLabel(activeTrip) {
   return `${activeTrip.pickupGate}, ${activeTrip.pickupTerminal}`;
+}
+
+function canShowPassengerReview(activeTrip) {
+  return activeTrip.status === "completed" &&
+    (activeTrip.driverPaymentConfirmed === true || activeTrip.passengerReviewPending === true);
 }
 
 function fareToNumber(price) {
@@ -422,6 +427,7 @@ function RideScreen({ activeTrip, selectedPayment, specialAssistance, notes, onB
   const dest = destinationLabel(activeTrip) || "Where to?";
   const route = `${pickupLabel(activeTrip)} → ${dest}`;
   const tripCompleted = activeTrip.status === "completed";
+  const canReview = canShowPassengerReview(activeTrip);
 
   return (
     <div className="flex flex-col gap-4">
@@ -430,10 +436,10 @@ function RideScreen({ activeTrip, selectedPayment, specialAssistance, notes, onB
       {/* Booking confirmation */}
       <div className="bg-brand/10 border border-brand/25 rounded-2xl p-5">
         <p className="text-xs text-brand-deep uppercase tracking-widest font-medium">
-          {tripCompleted ? t("passenger.tripComplete") : t("passenger.rideConfirmed")}
+          {canReview ? t("passenger.tripComplete") : "Booking details"}
         </p>
         <h2 className="text-xl font-bold text-slate-900 mt-1">
-          {tripCompleted ? `Arrived at ${dest}` : `Ride booked to ${dest}`}
+          {canReview ? `Arrived at ${dest}` : `Ride booked to ${dest}`}
         </h2>
         <p className="text-sm text-slate-600 mt-1">
           {route}
@@ -480,12 +486,14 @@ function RideScreen({ activeTrip, selectedPayment, specialAssistance, notes, onB
         </div>
       </div>
 
-      <button
-        onClick={onNext}
-        className="w-full py-4 rounded-full bg-gradient-to-br from-brand to-brand-deep text-white font-headline font-extrabold text-lg shadow-[0_8px_24px_rgba(21,74,168,0.24)] active:scale-95 transition-transform"
-      >
-        Leave a Review →
-      </button>
+      {canReview && (
+        <button
+          onClick={onNext}
+          className="w-full py-4 rounded-full bg-gradient-to-br from-brand to-brand-deep text-white font-headline font-extrabold text-lg shadow-[0_8px_24px_rgba(21,74,168,0.24)] active:scale-95 transition-transform"
+        >
+          Leave a Review →
+        </button>
+      )}
 
       <button
         onClick={onBack}
@@ -611,16 +619,59 @@ function TripInfoRows({ rows }) {
   );
 }
 
+function FindingDriverScreen({ activeTrip }) {
+  const { resolveDemoPassengerMatch } = useDemoMatching();
+  const pendingDispatch = activeTrip.status === "pending_dispatch";
+
+  useEffect(() => {
+    if (!["booked", "finding_driver"].includes(activeTrip.status)) return undefined;
+
+    const timeoutId = window.setTimeout(() => {
+      resolveDemoPassengerMatch();
+    }, 8000);
+
+    return () => window.clearTimeout(timeoutId);
+  }, [activeTrip.status, resolveDemoPassengerMatch]);
+
+  return (
+    <div className="flex flex-col gap-4">
+      <MobileHeader title="Hello Ride" showAvatar />
+      {pendingDispatch ? (
+        <div className="bg-amber-50 border border-amber-200 rounded-2xl p-5">
+          <div className="flex items-start gap-3">
+            <span className="material-symbols-outlined text-amber-500 shrink-0 mt-0.5" style={{ fontSize: "22px" }}>hourglass_top</span>
+            <div>
+              <p className="text-xs font-black uppercase tracking-widest text-amber-600 mb-1">Still finding a driver</p>
+              <p className="text-base font-bold text-slate-900">OPS is reviewing available driver supply</p>
+              <p className="text-xs text-amber-700 mt-1 leading-relaxed">OPS is reviewing available driver supply and may re-dispatch your request shortly.</p>
+            </div>
+          </div>
+        </div>
+      ) : (
+        <div className="bg-brand/10 border border-brand/25 rounded-2xl p-5 text-center">
+          <div className="flex justify-center mb-3">
+            <div className="w-10 h-10 rounded-full border-4 border-brand border-t-transparent animate-spin" />
+          </div>
+          <p className="text-xs text-brand-deep uppercase tracking-widest font-medium mb-1">กำลังจัดรถให้คุณ</p>
+          <p className="text-base font-bold text-slate-900">กำลังค้นหาคนขับที่เหมาะสม</p>
+        </div>
+      )}
+      <TripInfoRows rows={[
+        ["จุดรับ", activeTrip.pickupGate || "ชั้น 1 ประตู 4 (Level 1, Gate 4)"],
+        ["ปลายทาง", activeTrip.destinationName || activeTrip.selectedDestination || "—"],
+      ]} />
+    </div>
+  );
+}
+
 function AssignedScreen({ activeTrip }) {
   return (
     <div className="flex flex-col gap-4">
       <MobileHeader title="Hello Ride" showAvatar />
-      <div className="bg-brand/10 border border-brand/25 rounded-2xl p-5 text-center">
-        <div className="flex justify-center mb-3">
-          <div className="w-10 h-10 rounded-full border-4 border-brand border-t-transparent animate-spin" />
-        </div>
-        <p className="text-xs text-brand-deep uppercase tracking-widest font-medium mb-1">กำลังจัดรถให้คุณ</p>
-        <p className="text-base font-bold text-slate-900">กำลังค้นหาคนขับที่เหมาะสม</p>
+      <div className="bg-brand/10 border border-brand/25 rounded-2xl p-5">
+        <p className="text-xs text-brand-deep uppercase tracking-widest font-medium mb-1">Driver assigned</p>
+        <p className="text-xl font-black text-slate-900 mt-1">Waiting for driver confirmation</p>
+        <p className="text-xs text-muted mt-0.5">We will update this screen when the driver accepts the trip.</p>
       </div>
       <TripInfoRows rows={[
         ["คนขับ", `${activeTrip.driverId} · ${activeTrip.vehicleType}`],
@@ -642,8 +693,8 @@ function AcceptedScreen({ activeTrip }) {
         <p className="text-xs text-muted mt-0.5">เวลาโดยประมาณก่อนถึงจุดรับ</p>
       </div>
       <TripInfoRows rows={[
-        ["คนขับ", activeTrip.driverId],
-        ["ยานพาหนะ", activeTrip.vehicleType],
+        ["คนขับ", `${activeTrip.driverId} · ${activeTrip.vehicleType}`],
+        ["เวลาถึง", `${activeTrip.etaMin} นาที`],
         ["จุดรับ", activeTrip.pickupGate || "ชั้น 1 ประตู 4 (Level 1, Gate 4)"],
       ]} />
     </div>
@@ -691,7 +742,7 @@ function PassengerMatchingStatus() {
           <div>
             <p className="text-xs font-black uppercase tracking-widest text-amber-600">Finding Driver</p>
             <p className="mt-1 text-sm font-bold text-amber-700">Finding your driver…</p>
-            <p className="mt-0.5 text-xs text-amber-600">Please wait while we locate the next available driver</p>
+            <p className="mt-0.5 text-xs text-amber-600">OPS is reviewing available driver supply and may re-dispatch your request shortly.</p>
           </div>
           <span className="material-symbols-outlined text-amber-500 leading-none" style={{ fontSize: "22px" }}>
             hourglass_top
@@ -729,7 +780,9 @@ function PassengerMatchingStatus() {
 // ── Main Passenger Portal ──────────────────────────────────────────────────
 
 const STATUS_SCREENS = {
-  booked: AssignedScreen,
+  booked: FindingDriverScreen,
+  finding_driver: FindingDriverScreen,
+  pending_dispatch: FindingDriverScreen,
   assigned: AssignedScreen,
   accepted: AcceptedScreen,
   arrived: ArrivedScreen,
@@ -764,11 +817,12 @@ export default function PassengerPortal() {
   }
 
   function handleRideNext() {
+    if (!canShowPassengerReview(activeTrip)) return;
     setStep("review");
   }
 
   function handleHome() {
-    if (activeTrip.status === "completed" || activeTrip.passengerReviewPending) {
+    if (canShowPassengerReview(activeTrip)) {
       completePassengerReview();
     }
     setStep("home");
@@ -776,8 +830,7 @@ export default function PassengerPortal() {
   }
 
   const StatusScreen = STATUS_SCREENS[activeTrip.status];
-  const shouldShowReview =
-    activeTrip.status === "completed" || activeTrip.passengerReviewPending;
+  const shouldShowReview = canShowPassengerReview(activeTrip);
 
   return (
     <MobileShell>

@@ -40,7 +40,7 @@ const T1 = {
     { time: "15:45", demand: 54, supply: 53 },
   ],
   flights: [
-    { flight: "BR62", airline: "Eva Air", origin: "Vienna (VIE)", eta: "07:01", status: "Bags on belt", pax: 168 },
+    { flight: "IGO1055", airline: "IndiGo", origin: "Bangalore (BLR)", eta: "07:07", status: "Bags on belt", pax: 180 },
     { flight: "EK374", airline: "Emirates", origin: "Dubai (DXB)", eta: "07:24", status: "Bags on belt", pax: 283 },
     { flight: "SQ706", airline: "Singapore Airlines", origin: "Singapore (SIN)", eta: "07:42", status: "Bags on belt", pax: 196 },
     { flight: "8M019", airline: "Myanmar Airways", origin: "Yangon (RGN)", eta: "08:17", status: "Taxiing", pax: 142 },
@@ -100,7 +100,7 @@ const T2 = {
     { time: "15:45", demand: 25, supply: 31 },
   ],
   flights: [
-    { flight: "BR62", airline: "Eva Air", origin: "Vienna (VIE)", eta: "07:01", status: "Bags on belt", pax: 168 },
+    { flight: "IGO1055", airline: "IndiGo", origin: "Bangalore (BLR)", eta: "07:07", status: "Bags on belt", pax: 180 },
     { flight: "EK374", airline: "Emirates", origin: "Dubai (DXB)", eta: "07:24", status: "Bags on belt", pax: 283 },
     { flight: "SQ706", airline: "Singapore Airlines", origin: "Singapore (SIN)", eta: "07:42", status: "Bags on belt", pax: 196 },
     { flight: "8M019", airline: "Myanmar Airways", origin: "Yangon (RGN)", eta: "08:17", status: "Taxiing", pax: 142 },
@@ -160,7 +160,7 @@ const ALL = {
     { time: "15:45", demand: 79, supply: 84 },
   ],
   flights: [
-    { flight: "BR62", airline: "Eva Air", origin: "Vienna (VIE)", eta: "07:01", status: "Bags on belt", pax: 168 },
+    { flight: "IGO1055", airline: "IndiGo", origin: "Bangalore (BLR)", eta: "07:07", status: "Bags on belt", pax: 180 },
     { flight: "EK374", airline: "Emirates", origin: "Dubai (DXB)", eta: "07:24", status: "Bags on belt", pax: 283 },
     { flight: "SQ706", airline: "Singapore Airlines", origin: "Singapore (SIN)", eta: "07:42", status: "Bags on belt", pax: 196 },
     { flight: "8M019", airline: "Myanmar Airways", origin: "Yangon (RGN)", eta: "08:17", status: "Taxiing", pax: 142 },

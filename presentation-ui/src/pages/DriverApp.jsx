@@ -7,6 +7,7 @@ import { OPS_ACTION, canRecommendIncentive, getPwtSeverity } from "../lib/busine
 import { useLanguage } from "../context/useLanguage.js";
 
 const D = DRIVER;
+const DRIVER_ONLINE_KEY = "helloride_driverOnline";
 
 const FORECAST_HOURS = new Set([14, 16, 18, 20, 22, 0]);
 const forecastBars = demandChartData
@@ -28,6 +29,14 @@ function fullPickup(activeTrip) {
 
 function fullDestination(activeTrip) {
   return activeTrip.destinationName || activeTrip.selectedDestination || "ยังไม่ได้เลือกปลายทาง";
+}
+
+function readStoredDriverOnline() {
+  if (typeof window === "undefined") return true;
+  const stored = window.localStorage.getItem(DRIVER_ONLINE_KEY);
+  if (stored === "false") return false;
+  if (stored === "true") return true;
+  return true;
 }
 
 // ── Shared ─────────────────────────────────────────────────────────────────
@@ -370,20 +379,33 @@ function SecondaryButton({ children, onClick }) {
 
 function StatusToggle({ isOnline, onToggle }) {
   const { t } = useLanguage();
+  const statusLabel = isOnline ? "Online, สมชาย" : "Offline, สมชาย";
   return (
     <div className="rounded-3xl border border-slate-100 bg-white p-5 shadow-sm">
       <div className="flex items-center justify-between gap-4">
-        <div>
+        <div className="min-w-0 flex-1">
           <p className="text-xs font-bold uppercase tracking-widest text-muted">{t("driver.driverStatus")}</p>
-          <p className="mt-0.5 text-xl font-black text-slate-900">{isOnline ? `${t("driver.online")}, สมชาย` : t("driver.offline")}</p>
-          <p className="mt-1 text-xs text-muted">ยืนยันตัวตนแล้ว · มีสิทธิ์เข้าคิวสนามบิน</p>
+          <p className="mt-0.5 text-xl font-black text-slate-900">{statusLabel}</p>
+          <p className="mt-1 text-xs leading-relaxed text-muted">
+            {isOnline
+              ? "You are online. New airport jobs will appear automatically when assigned by OPS or the Matching Agent."
+              : "Go online to receive airport dispatch jobs."}
+          </p>
         </div>
         <button
+          type="button"
           onClick={onToggle}
-          className={`relative h-10 w-[68px] shrink-0 rounded-full transition-colors ${isOnline ? "bg-brand-mid" : "bg-slate-200"}`}
-          aria-label={isOnline ? "ออฟไลน์" : "ออนไลน์"}
+          aria-pressed={isOnline}
+          aria-label={isOnline ? "Go offline" : "Go online"}
+          className={`relative h-8 w-14 shrink-0 rounded-full p-1 transition-colors ${
+            isOnline ? "bg-emerald-500" : "bg-slate-300"
+          }`}
         >
-          <span className={`absolute top-1 h-8 w-8 rounded-full bg-white shadow transition-all ${isOnline ? "left-[32px]" : "left-1"}`} />
+          <span
+            className={`block h-6 w-6 rounded-full bg-white shadow-md transition-transform ${
+              isOnline ? "translate-x-6" : "translate-x-0"
+            }`}
+          />
         </button>
       </div>
     </div>
@@ -411,41 +433,40 @@ function DemandTeasers() {
   );
 }
 
-function QueueHome({ isOnline, onOnlineToggle, inQueue, onJoinQueue, showIncentive }) {
+function QueueHome({ isOnline, inQueue, showIncentive, onToggleOnline }) {
   const { t } = useLanguage();
+  const queueAvailable = isOnline || inQueue;
   return (
     <div className="flex flex-col gap-4">
-      <StatusToggle isOnline={isOnline} onToggle={onOnlineToggle} />
+      <StatusToggle isOnline={isOnline} onToggle={onToggleOnline} />
 
       <div className="rounded-3xl border border-slate-100 bg-white p-5 shadow-sm">
         <p className="text-xs font-bold uppercase tracking-widest text-muted">{t("driver.airportQueue")}</p>
         <div className="mt-3 grid grid-cols-2 gap-3">
-          <DriverMetric label={inQueue ? t("driver.queuePosition") : t("driver.airportQueue")} value={inQueue ? `#${D.queue.position}` : "--"} />
-          <DriverMetric label={t("driver.expectedWait")} value={inQueue ? `${D.queue.waitMin} นาที` : "--"} />
+          <DriverMetric label={t("driver.queuePosition")} value={queueAvailable ? `#${D.queue.position}` : "--"} />
+          <DriverMetric label={t("driver.expectedWait")} value={queueAvailable ? `${D.queue.waitMin} นาที` : "--"} />
         </div>
         <div className="mt-4">
-          {!inQueue ? (
-            <PrimaryButton onClick={onJoinQueue} disabled={!isOnline}>{t("driver.acceptNext")}</PrimaryButton>
-          ) : (
-            <div className="rounded-2xl border border-[#154aa8]/15 bg-[#e8f0fe] px-4 py-3">
-              <div className="flex items-start justify-between gap-3">
-                <div>
-                  <p className="text-sm font-black text-slate-900">Waiting for airport dispatch</p>
-                  <p className="mt-1 text-xs leading-relaxed text-slate-600">
-                    You are online and eligible. The next assigned airport job will appear here.
-                  </p>
-                </div>
-                <span className="shrink-0 rounded-full bg-white px-2.5 py-1 text-[10px] font-black uppercase tracking-widest text-[#154aa8] shadow-sm">
-                  Waiting
-                </span>
+          <div className="rounded-2xl border border-[#154aa8]/15 bg-[#e8f0fe] px-4 py-3">
+            <div className="flex items-start justify-between gap-3">
+              <div>
+                <p className="text-sm font-black text-slate-900">Waiting for airport dispatch</p>
+                <p className="mt-1 text-xs leading-relaxed text-slate-600">
+                  {isOnline
+                    ? "You are online. New airport jobs will appear here automatically when assigned by OPS or the Matching Agent."
+                    : "Go online to receive airport dispatch jobs."}
+                </p>
               </div>
+              <span className="shrink-0 rounded-full bg-white px-2.5 py-1 text-[10px] font-black uppercase tracking-widest text-[#154aa8] shadow-sm">
+                Waiting
+              </span>
             </div>
-          )}
+          </div>
         </div>
         <p className="mt-3 text-center text-xs text-muted">
           {isOnline
-            ? inQueue ? "รอบริเวณชั้น 1 ประตู 4 เพื่อรับการ dispatch จากระบบ" : "เข้าร่วมคิวเพื่อรับงานรับส่งผู้โดยสาร"
-            : "เปิดออนไลน์เพื่อเข้าร่วมคิว"}
+            ? "รอบริเวณชั้น 1 ประตู 4 เพื่อรับการ dispatch จากระบบ"
+            : "เปิดออนไลน์เพื่อรับ dispatch จาก OPS หรือ Matching Agent"}
         </p>
       </div>
 
@@ -527,7 +548,7 @@ function JobOfferHome({ activeTrip, onAccept, onReject }) {
         </div>
         <p className="mt-4 rounded-2xl bg-brand/5 p-3 text-xs leading-relaxed text-slate-600">{activeTrip.matchingReason}</p>
         <div className="mt-5 flex flex-col gap-2">
-          <PrimaryButton onClick={onAccept}>{t("driver.acceptJob")}</PrimaryButton>
+          <PrimaryButton onClick={onAccept}>Accept Trip</PrimaryButton>
           <SecondaryButton onClick={onReject}>{t("driver.reject")}</SecondaryButton>
         </div>
       </div>
@@ -688,8 +709,8 @@ function CompletedTripHome({ activeTrip, onConfirmPayment }) {
   );
 }
 
-function DriverHome({ activeTrip, isOnline, onOnlineToggle, inQueue, onJoinQueue, onAccept, onReject, onArrived, onComplete, onConfirmPayment, showIncentive }) {
-  if (activeTrip.status === "assigned") {
+function DriverHome({ activeTrip, isOnline, inQueue, onToggleOnline, onAccept, onReject, onArrived, onComplete, onConfirmPayment, showIncentive }) {
+  if (isOnline && activeTrip.status === "assigned") {
     return <JobOfferHome key={activeTrip.driverId} activeTrip={activeTrip} onAccept={onAccept} onReject={onReject} />;
   }
 
@@ -708,9 +729,8 @@ function DriverHome({ activeTrip, isOnline, onOnlineToggle, inQueue, onJoinQueue
   return (
     <QueueHome
       isOnline={isOnline}
-      onOnlineToggle={onOnlineToggle}
       inQueue={inQueue}
-      onJoinQueue={onJoinQueue}
+      onToggleOnline={onToggleOnline}
       showIncentive={showIncentive}
     />
   );
@@ -773,10 +793,10 @@ function WalletTab({ activeTrip, showIncentive }) {
   );
 }
 
-function ProfileTab({ isOnline, onOnlineToggle, onLogout }) {
+function ProfileTab({ isOnline, onToggleOnline, onLogout }) {
   return (
     <div className="flex flex-col gap-4">
-      <StatusToggle isOnline={isOnline} onToggle={onOnlineToggle} />
+      <StatusToggle isOnline={isOnline} onToggle={onToggleOnline} />
       <InfoCard eyebrow="คนขับ" title={D.profile.name} body={`${D.profile.score} · ยืนยันตัวตนแล้ว`} tone="driver" />
       <InfoCard eyebrow="ยานพาหนะ" title={D.profile.vehicle} body="มีสิทธิ์รับงานสนามบิน · พาร์ทเนอร์ Hello Ride" tone="neutral" />
       <div className="rounded-3xl border border-slate-100 bg-white p-2 shadow-sm">
@@ -829,15 +849,14 @@ function DriverWorkspace({
   activeTab,
   setActiveTab,
   isOnline,
-  onOnlineToggle,
   inQueue,
-  onJoinQueue,
   onAccept,
   onReject,
   onArrived,
   onComplete,
   onConfirmPayment,
   onLogout,
+  onToggleOnline,
   showIncentive,
 }) {
   return (
@@ -848,9 +867,8 @@ function DriverWorkspace({
           <DriverHome
             activeTrip={activeTrip}
             isOnline={isOnline}
-            onOnlineToggle={onOnlineToggle}
             inQueue={inQueue}
-            onJoinQueue={onJoinQueue}
+            onToggleOnline={onToggleOnline}
             onAccept={onAccept}
             onReject={onReject}
             onArrived={onArrived}
@@ -861,7 +879,7 @@ function DriverWorkspace({
         )}
         {activeTab === "trips" && <TripsTab activeTrip={activeTrip} />}
         {activeTab === "wallet" && <WalletTab activeTrip={activeTrip} showIncentive={showIncentive} />}
-        {activeTab === "profile" && <ProfileTab isOnline={isOnline} onOnlineToggle={onOnlineToggle} onLogout={onLogout} />}
+        {activeTab === "profile" && <ProfileTab isOnline={isOnline} onToggleOnline={onToggleOnline} onLogout={onLogout} />}
       </MobileScrollArea>
       <DriverBottomNav activeTab={activeTab} onTabChange={setActiveTab} />
     </>
@@ -873,13 +891,17 @@ function DriverWorkspace({
 export default function DriverApp() {
   const [step, setStep] = useState("login");
   const [activeTab, setActiveTab] = useState("home");
-  const [isOnline, setIsOnline] = useState(false);
+  const [isOnline, setIsOnline] = useState(readStoredDriverOnline);
   const [inQueue, setInQueue] = useState(false);
   const { activeTrip, acceptMatch, markArrived, completeMatch, confirmDriverPayment, resetMatch, rejectAndRematch } = useDemoMatching();
   const driverSeverity = getPwtSeverity(kpiSummary.currentPWTPrediction);
   const showIncentive =
     canRecommendIncentive(driverSeverity) &&
     [OPS_ACTION.INCENTIVE_SENT, OPS_ACTION.OVERFLOW_ACTIVATED, OPS_ACTION.MAX_INCENTIVE_SENT].includes(activeTrip.opsAction);
+
+  useEffect(() => {
+    window.localStorage.setItem(DRIVER_ONLINE_KEY, String(isOnline));
+  }, [isOnline]);
 
   function handleLogout() {
     setStep("login");
@@ -888,12 +910,12 @@ export default function DriverApp() {
     setInQueue(false);
   }
 
-  function handleJoinQueue() {
-    setInQueue(true);
-  }
-
   function handleReject() {
     rejectAndRematch();
+  }
+
+  function handleToggleOnline() {
+    setIsOnline((value) => !value);
   }
 
   function handleConfirmPayment() {
@@ -917,23 +939,25 @@ export default function DriverApp() {
           activeTrip={driverViewTrip}
           activeTab={visibleTab}
           setActiveTab={setActiveTab}
-          isOnline={isOnline || activeTrip.status !== "idle"}
-          onOnlineToggle={() => setIsOnline((v) => !v)}
+          isOnline={isOnline}
           inQueue={inQueue}
-          onJoinQueue={handleJoinQueue}
           onAccept={acceptMatch}
           onReject={handleReject}
           onArrived={markArrived}
           onComplete={completeMatch}
           onConfirmPayment={handleConfirmPayment}
           onLogout={handleLogout}
+          onToggleOnline={handleToggleOnline}
           showIncentive={showIncentive}
         />
       ) : (
         <MobileScrollArea className="pb-8">
           {step === "login" && (
             <LoginScreen
-              onLogin={() => setStep("app")}
+              onLogin={() => {
+                setIsOnline(true);
+                setStep("app");
+              }}
               onRegister={() => setStep("registration")}
             />
           )}

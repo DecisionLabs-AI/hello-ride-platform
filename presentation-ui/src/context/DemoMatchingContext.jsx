@@ -6,12 +6,13 @@ const STORAGE_KEY_TRIP = "helloride_activeTrip";
 const STORAGE_KEY_OPS = "helloride_opsAction";
 const STORAGE_KEY_ESCALATION = "helloride_activeEscalation";
 const STORAGE_KEY_DISPATCH_MODE = "helloride_dispatchMode";
-const DEFAULT_DISPATCH_MODE = "priority";
+const DEFAULT_DISPATCH_MODE = "auto";
 
 const DEFAULT_ACTIVE_TRIP = {
   tripId: "TRIP-20260522-001",
   passengerId: "P001",
-  driverId: "D101",
+  driverId: null,
+  assignedDriver: null,
   passengerName: "Tanaka K.",
   pickupTerminal: "",
   pickupGate: "ชั้น 1 ประตู 4 (Level 1, Gate 4)",
@@ -19,20 +20,22 @@ const DEFAULT_ACTIVE_TRIP = {
   selectedDestination: "",
   destinationName: "",
   destinationArea: "",
-  vehicleType: "Hello Taxi",
+  requestedVehicleType: "Hello Taxi",
+  vehicleType: null,
   fareTHB: 385,
   distanceKM: 32.4,
   tripTimeMin: 45,
   bookingFeeTHB: 15,
   paymentStatus: "รอรับชำระเงิน",
-  etaMin: 4,
+  etaMin: null,
   passengerCount: 3,
   luggageCount: 4,
   flightCode: "TG401",
-  matchingReason: "ผู้โดยสารรอ 18 นาที · เวลาถึง 4 นาที · รถว่างพอรับได้",
+  matchingReason: "",
   status: "idle",
   driverPaymentConfirmed: false,
   passengerReviewPending: false,
+  completedAt: null,
   matchingMode: null,
   matchingDecision: null,
   rejectedDriverIds: [],
@@ -50,14 +53,15 @@ function readStoredTrip() {
       parsed.destinationName ||
       parsed.destination ||
       DEFAULT_ACTIVE_TRIP.selectedDestination;
-    return {
+    return normalizeTripState({
       ...DEFAULT_ACTIVE_TRIP,
       ...parsed,
       selectedDestination,
       destinationName: parsed.destinationName || selectedDestination,
       destinationArea: parsed.destinationArea || selectedDestination,
       status: parsed.status || DEFAULT_ACTIVE_TRIP.status,
-    };
+      rejectedDriverIds: Array.isArray(parsed.rejectedDriverIds) ? parsed.rejectedDriverIds : [],
+    });
   } catch {
     return DEFAULT_ACTIVE_TRIP;
   }
@@ -100,6 +104,109 @@ function splitDestination(value) {
   };
 }
 
+function clearAssignmentFields(trip) {
+  return {
+    ...trip,
+    driverId: null,
+    assignedDriver: null,
+    vehicleType: null,
+    etaMin: null,
+    matchingReason: "",
+    matchingMode: null,
+    matchingDecision: null,
+  };
+}
+
+function resetLifecycleFields(trip) {
+  return {
+    ...trip,
+    driverPaymentConfirmed: false,
+    passengerReviewPending: false,
+    completedAt: null,
+  };
+}
+
+function makePendingDispatch(prev, rejectedDriverIds = prev.rejectedDriverIds || [], opsContext = {}) {
+  const pwt = opsContext.pwt ?? prev.opsPwt ?? prev.assignmentContext?.pwt ?? null;
+  return resetLifecycleFields({
+    ...clearAssignmentFields(prev),
+    status: "pending_dispatch",
+    rejectedDriverIds,
+    opsPwt: pwt,
+    assignmentContext: { pwt },
+  });
+}
+
+function normalizeTripState(trip) {
+  if (trip.status === "pending_dispatch") {
+    return buildDemoFallbackAssignment({ ...trip, rejectedDriverIds: [] }, {
+      pwt: trip.opsPwt ?? trip.assignmentContext?.pwt ?? null,
+    });
+  }
+
+  if (trip.status === "assigned" && (!trip.driverId || !trip.vehicleType || trip.etaMin == null || !trip.matchingDecision)) {
+    return buildDemoFallbackAssignment({ ...trip, rejectedDriverIds: [] }, {
+      pwt: trip.opsPwt ?? trip.assignmentContext?.pwt ?? null,
+    });
+  }
+
+  if (trip.status === "idle") {
+    return resetLifecycleFields({
+      ...clearAssignmentFields(trip),
+      status: "idle",
+      rejectedDriverIds: [],
+    });
+  }
+
+  return trip;
+}
+
+function buildDemoFallbackAssignment(prev, opsContext = {}) {
+  if (!MOCK_DRIVER_POOL.length) {
+    return makePendingDispatch(prev, prev.rejectedDriverIds || [], opsContext);
+  }
+
+  const fallbackDriver = MOCK_DRIVER_POOL.find((driver) => driver.id === "D101") || MOCK_DRIVER_POOL[0];
+  const pwt = opsContext.pwt ?? prev.opsPwt ?? prev.assignmentContext?.pwt ?? 0;
+  const decision = {
+    mode: "Demo Fallback Matching",
+    selectedDriverId: fallbackDriver.id,
+    selectedDriverName: fallbackDriver.name,
+    confidence: 1,
+    score: 100,
+    reasons: [
+      "Demo fallback selected an available driver",
+      `Capacity fits passenger request (${prev.passengerCount} pax / ${prev.luggageCount} bags)`,
+      "Fallback prevents the presentation flow from stalling",
+    ],
+    candidateScores: MOCK_DRIVER_POOL.map((driver) => ({
+      driverId: driver.id,
+      name: driver.name,
+      score: driver.id === fallbackDriver.id ? 100 : 80,
+      etaMin: driver.etaMin,
+      reason: driver.id === fallbackDriver.id ? "Selected demo fallback" : "Available fallback candidate",
+    })),
+    rejectedCandidates: [],
+    recommendedAction: `Assign ${fallbackDriver.name} (${fallbackDriver.id}) to passenger`,
+    createdAt: new Date().toISOString(),
+  };
+
+  return resetLifecycleFields({
+    ...prev,
+    status: "assigned",
+    driverId: fallbackDriver.id,
+    assignedDriver: fallbackDriver,
+    vehicleType: fallbackDriver.vehicle,
+    etaMin: fallbackDriver.etaMin,
+    matchingReason: decision.reasons.slice(0, 2).join(" · "),
+    matchingMode: decision.mode,
+    matchingDecision: decision,
+    rejectedDriverIds: [],
+    opsPwt: pwt,
+    assignmentContext: { pwt },
+  });
+}
+
 export function DemoMatchingProvider({ children }) {
   const [activeTrip, setActiveTripState] = useState(readStoredTrip);
   const [opsAction, setOpsActionState] = useState(readStoredOpsAction);
@@ -136,11 +243,7 @@ export function DemoMatchingProvider({ children }) {
   useEffect(() => {
     function handleStorage(e) {
       if (e.key === STORAGE_KEY_TRIP) {
-        setActiveTripState(
-          e.newValue
-            ? { ...DEFAULT_ACTIVE_TRIP, ...JSON.parse(e.newValue) }
-            : DEFAULT_ACTIVE_TRIP
-        );
+        setActiveTripState(e.newValue ? readStoredTrip() : DEFAULT_ACTIVE_TRIP);
       }
       if (e.key === STORAGE_KEY_OPS) {
         setOpsActionState(e.newValue ? JSON.parse(e.newValue) : null);
@@ -173,28 +276,25 @@ export function DemoMatchingProvider({ children }) {
       opsContext
     );
     if (!decision.selectedDriverId) {
-      return {
-        ...prev,
-        status: "pending_dispatch",
-        matchingDecision: null,
-        matchingMode: null,
-        opsPwt: opsContext.pwt ?? null,
-      };
+      return buildDemoFallbackAssignment(
+        { ...prev, rejectedDriverIds: [] },
+        opsContext
+      );
     }
     const driver = MOCK_DRIVER_POOL.find((d) => d.id === decision.selectedDriverId);
-    return {
+    return resetLifecycleFields({
       ...prev,
       status: "assigned",
       driverId: driver.id,
+      assignedDriver: driver,
       vehicleType: driver.vehicle,
       etaMin: driver.etaMin,
       matchingReason: decision.reasons.slice(0, 2).join(" · "),
       matchingMode: decision.mode,
       matchingDecision: decision,
       opsPwt: opsContext.pwt ?? null,
-      driverPaymentConfirmed: false,
-      passengerReviewPending: false,
-    };
+      assignmentContext: { pwt: opsContext.pwt ?? null },
+    });
   }
 
   const value = useMemo(() => {
@@ -216,7 +316,8 @@ export function DemoMatchingProvider({ children }) {
     function updateRideSelection({ vehicleType, fareTHB, distanceKM, tripTimeMin } = {}) {
       setActiveTripState((prev) => ({
         ...prev,
-        vehicleType: vehicleType || prev.vehicleType,
+        requestedVehicleType: vehicleType || prev.requestedVehicleType,
+        vehicleType: prev.status === "idle" ? null : prev.vehicleType,
         fareTHB: fareTHB ?? prev.fareTHB,
         distanceKM: distanceKM ?? prev.distanceKM,
         tripTimeMin: tripTimeMin ?? prev.tripTimeMin,
@@ -230,21 +331,17 @@ export function DemoMatchingProvider({ children }) {
     }
 
     function bookPassengerTrip() {
-      if (dispatchMode === "auto") {
-        setActiveTripState((prev) => {
-          const resolved = prev.selectedDestination || prev.destinationName || "Sukhumvit";
-          const base = { ...prev, ...splitDestination(resolved) };
-          return _buildAssignment(base, {});
-        });
-        return;
-      }
-
-      setActiveTripState((prev) => ({
-        ...prev,
-        status: "booked",
-        driverPaymentConfirmed: false,
-        passengerReviewPending: false,
-      }));
+      setActiveTripState((prev) => {
+        const resolved = prev.selectedDestination || prev.destinationName || "Sukhumvit";
+        const pwt = prev.opsPwt ?? prev.assignmentContext?.pwt ?? 0;
+        const base = {
+          ...resetLifecycleFields(clearAssignmentFields(prev)),
+          ...splitDestination(resolved),
+          status: "finding_driver",
+          rejectedDriverIds: [],
+        };
+        return _buildAssignment(base, { pwt });
+      });
     }
 
     function assignMatch(destination, opsContext = {}) {
@@ -255,14 +352,38 @@ export function DemoMatchingProvider({ children }) {
       });
     }
 
+    function resolveDemoPassengerMatch() {
+      setActiveTripState((prev) => {
+        if (!["booked", "finding_driver"].includes(prev.status)) return prev;
+        const next = _buildAssignment(
+          {
+            ...resetLifecycleFields(clearAssignmentFields(prev)),
+            rejectedDriverIds: [],
+            status: "finding_driver",
+          },
+          { pwt: prev.opsPwt ?? prev.assignmentContext?.pwt ?? 0 }
+        );
+        window.localStorage.setItem(STORAGE_KEY_TRIP, JSON.stringify(next));
+        window.localStorage.setItem("DemoMatchingContext", JSON.stringify(next));
+        return next;
+      });
+    }
+
     function rejectAndRematch() {
       setActiveTripState((prev) => {
         const rejectedIds = [...(prev.rejectedDriverIds || []), prev.driverId].filter(Boolean);
         const eligible = MOCK_DRIVER_POOL.filter((d) => !rejectedIds.includes(d.id));
-        const opsContext = { pwt: prev.opsPwt ?? 0 };
+        const opsContext = { pwt: prev.opsPwt ?? prev.assignmentContext?.pwt ?? 0 };
 
         if (!eligible.length) {
-          return { ...prev, status: "pending_dispatch", rejectedDriverIds: rejectedIds };
+          return _buildAssignment(
+            {
+              ...resetLifecycleFields(clearAssignmentFields(prev)),
+              rejectedDriverIds: [],
+              status: "finding_driver",
+            },
+            opsContext
+          );
         }
         const decision = runMatchingAgent(
           { passengerCount: prev.passengerCount, luggageCount: prev.luggageCount },
@@ -270,20 +391,44 @@ export function DemoMatchingProvider({ children }) {
           opsContext
         );
         if (!decision.selectedDriverId) {
-          return { ...prev, status: "pending_dispatch", rejectedDriverIds: rejectedIds };
+          return _buildAssignment(
+            {
+              ...resetLifecycleFields(clearAssignmentFields(prev)),
+              rejectedDriverIds: [],
+              status: "finding_driver",
+            },
+            opsContext
+          );
         }
         const driver = MOCK_DRIVER_POOL.find((d) => d.id === decision.selectedDriverId);
-        return {
+        return resetLifecycleFields({
           ...prev,
           status: "assigned",
           driverId: driver.id,
+          assignedDriver: driver,
           vehicleType: driver.vehicle,
           etaMin: driver.etaMin,
           matchingReason: decision.reasons.slice(0, 2).join(" · "),
           matchingMode: decision.mode,
           matchingDecision: decision,
           rejectedDriverIds: rejectedIds,
+          opsPwt: opsContext.pwt,
+          assignmentContext: { pwt: opsContext.pwt },
+        });
+      });
+    }
+
+    function reDispatchTrip(opsContext = {}) {
+      setActiveTripState((prev) => {
+        const pwt = opsContext.pwt ?? prev.opsPwt ?? prev.assignmentContext?.pwt ?? 0;
+        const base = {
+          ...resetLifecycleFields(clearAssignmentFields(prev)),
+          status: "finding_driver",
+          rejectedDriverIds: [],
+          opsPwt: pwt,
+          assignmentContext: { pwt },
         };
+        return _buildAssignment(base, { ...opsContext, pwt });
       });
     }
 
@@ -333,7 +478,8 @@ export function DemoMatchingProvider({ children }) {
         status: "completed",
         paymentStatus: "paid",
         driverPaymentConfirmed: false,
-        passengerReviewPending: true,
+        passengerReviewPending: false,
+        completedAt: new Date().toISOString(),
       }));
     }
 
@@ -343,10 +489,13 @@ export function DemoMatchingProvider({ children }) {
         paymentStatus: "paid",
         driverPaymentConfirmed: true,
         passengerReviewPending: true,
+        completedAt: prev.completedAt || new Date().toISOString(),
       }));
     }
 
     function completePassengerReview() {
+      window.localStorage.removeItem(STORAGE_KEY_DISPATCH_MODE);
+      setDispatchModeState(DEFAULT_DISPATCH_MODE);
       setActiveTripState((prev) => ({
         ...DEFAULT_ACTIVE_TRIP,
         selectedDestination: "",
@@ -354,15 +503,17 @@ export function DemoMatchingProvider({ children }) {
         destinationArea: "",
         passengerCount: prev.passengerCount,
         luggageCount: prev.luggageCount,
-        vehicleType: prev.vehicleType,
+        requestedVehicleType: prev.requestedVehicleType,
+        vehicleType: null,
         fareTHB: prev.fareTHB,
         distanceKM: prev.distanceKM,
         tripTimeMin: prev.tripTimeMin,
         bookingFeeTHB: prev.bookingFeeTHB,
         paymentStatus: DEFAULT_ACTIVE_TRIP.paymentStatus,
         status: "idle",
-        driverPaymentConfirmed: true,
+        driverPaymentConfirmed: false,
         passengerReviewPending: false,
+        completedAt: null,
         matchingMode: null,
         matchingDecision: null,
         rejectedDriverIds: [],
@@ -374,6 +525,7 @@ export function DemoMatchingProvider({ children }) {
       window.localStorage.removeItem(STORAGE_KEY_TRIP);
       window.localStorage.removeItem(STORAGE_KEY_OPS);
       window.localStorage.removeItem(STORAGE_KEY_ESCALATION);
+      window.localStorage.removeItem(STORAGE_KEY_DISPATCH_MODE);
       setActiveTripState((prev) => ({
         ...DEFAULT_ACTIVE_TRIP,
         selectedDestination: prev.selectedDestination,
@@ -381,7 +533,8 @@ export function DemoMatchingProvider({ children }) {
         destinationArea: prev.destinationArea,
         passengerCount: prev.passengerCount,
         luggageCount: prev.luggageCount,
-        vehicleType: prev.vehicleType,
+        requestedVehicleType: prev.requestedVehicleType,
+        vehicleType: null,
         fareTHB: prev.fareTHB,
         distanceKM: prev.distanceKM,
         tripTimeMin: prev.tripTimeMin,
@@ -390,6 +543,7 @@ export function DemoMatchingProvider({ children }) {
         status: "idle",
         driverPaymentConfirmed: false,
         passengerReviewPending: false,
+        completedAt: null,
         matchingMode: null,
         matchingDecision: null,
         rejectedDriverIds: [],
@@ -397,6 +551,7 @@ export function DemoMatchingProvider({ children }) {
       }));
       setOpsActionState(null);
       setActiveEscalationState(null);
+      setDispatchModeState(DEFAULT_DISPATCH_MODE);
     }
 
     return {
@@ -410,7 +565,9 @@ export function DemoMatchingProvider({ children }) {
       setDispatchMode,
       bookPassengerTrip,
       assignMatch,
+      resolveDemoPassengerMatch,
       rejectAndRematch,
+      reDispatchTrip,
       setOpsAction,
       createEscalation,
       acknowledgeEscalation,
