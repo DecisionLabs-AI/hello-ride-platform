@@ -13,6 +13,7 @@ import {
   OPS_ACTION,
   PWT_SEVERITY,
   PWT_THRESHOLDS,
+  MOCK_DRIVER_POOL,
 } from "../lib/businessLogic.js";
 import { useLanguage } from "../context/useLanguage.js";
 import { matchProtocol } from "../lib/protocolMatcher.js";
@@ -21,6 +22,7 @@ const OPS_SYNC_STORAGE_KEYS = [
   "helloride_activeEscalation",
   "helloride_opsAction",
   "helloride_activeTrip",
+  "helloride_passengerMessages",
 ];
 
 function readStorageJson(key) {
@@ -35,6 +37,35 @@ function readStorageJson(key) {
 
 function isPassengerHelpEscalation(escalation) {
   return escalation?.sourceRole === "Passenger Support Chat";
+}
+
+function getActiveEscalationCount(escalations) {
+  const records = Array.isArray(escalations) ? escalations : [escalations];
+  return records.filter((record) => {
+    if (!record || !isPassengerHelpEscalation(record)) return false;
+    const status = String(record.status || "").toLowerCase();
+    if (["acknowledged", "resolved", "closed"].includes(status)) return false;
+
+    const severity = String(record.severity || "").toUpperCase();
+    const type = String(record.type || "").toUpperCase();
+    const protocol = `${record.protocolId || ""} ${record.protocolName || ""}`.toLowerCase();
+    const text = String(record.text || record.message || "").toLowerCase();
+
+    return (
+      ["SAFETY", "SOS", "EMERGENCY"].includes(type) ||
+      ["HIGH", "CRITICAL"].includes(severity) ||
+      protocol.includes("sos") ||
+      protocol.includes("safety") ||
+      protocol.includes("emergency") ||
+      text.includes("emergency") ||
+      text.includes("safety")
+    );
+  }).length;
+}
+
+function readPassengerMessages() {
+  const messages = readStorageJson("helloride_passengerMessages");
+  return Array.isArray(messages) ? messages : [];
 }
 
 function buildOpsView() {
@@ -174,16 +205,45 @@ function getCardSeverityAccent(severity) {
   return "";
 }
 
+function SLAStatusRow({ currentPWT }) {
+  const levels = [
+    { id: "normal", label: "Normal", threshold: "≤15 min", active: currentPWT <= 15, color: "#9CA3AF" },
+    { id: "watch", label: "Watch", threshold: "15–30 min", active: currentPWT > 15 && currentPWT <= 30, color: "#F59E0B" },
+    { id: "critical", label: "Critical", threshold: ">30 min", active: currentPWT > 30, color: "#DC2626" },
+  ];
+
+  return (
+    <div className="flex flex-wrap items-center gap-3 rounded-lg border border-gray-100 bg-gray-50 px-4 py-2.5">
+      <p className="shrink-0 text-xs font-semibold uppercase tracking-widest text-gray-400">SLA Status</p>
+      <div className="flex min-w-0 flex-1 items-center justify-between gap-3">
+        {levels.map((level) => (
+          <div key={level.id} className="min-w-0">
+            <div className="flex items-center gap-1.5">
+              <span
+                className="text-sm leading-none"
+                style={{ color: level.active ? level.color : "#CBD5E1" }}
+              >
+                {level.active ? "●" : "○"}
+              </span>
+              <p className="text-[11px] font-bold uppercase tracking-wider text-gray-600">{level.label}</p>
+            </div>
+            <p className="mt-0.5 text-[10px] font-medium text-gray-400">{level.threshold}</p>
+          </div>
+        ))}
+      </div>
+    </div>
+  );
+}
+
 function HealthCard({ d }) {
   const severity = getPwtSeverity(d.pwt);
   const severityTone = getSeverityTone(severity);
   const loadTone = {
-    [PWT_SEVERITY.CRITICAL]: { pill: `${severityTone.bg} ${severityTone.text} border ${severityTone.border}`, label: "Critical", hint: "PWT is above the 30-min SLA threshold; activate critical response." },
-    [PWT_SEVERITY.WARNING]: { pill: `${severityTone.bg} ${severityTone.text} border ${severityTone.border}`, label: "High Load", hint: "PWT has passed the 20-min action buffer; prepare approved intervention." },
-    [PWT_SEVERITY.WATCH]: { pill: `${severityTone.bg} ${severityTone.text} border ${severityTone.border}`, label: "Watch", hint: "PWT is rising above early watch range; monitor closely." },
-    [PWT_SEVERITY.NORMAL]: { pill: `${severityTone.bg} ${severityTone.text} border ${severityTone.border}`, label: "Normal Load", hint: "PWT is within normal range." },
+    [PWT_SEVERITY.CRITICAL]: { pill: `${severityTone.bg} ${severityTone.text} border ${severityTone.border}`, label: "Critical" },
+    [PWT_SEVERITY.WARNING]: { pill: `${severityTone.bg} ${severityTone.text} border ${severityTone.border}`, label: "High Load" },
+    [PWT_SEVERITY.WATCH]: { pill: `${severityTone.bg} ${severityTone.text} border ${severityTone.border}`, label: "Watch" },
+    [PWT_SEVERITY.NORMAL]: { pill: `${severityTone.bg} ${severityTone.text} border ${severityTone.border}`, label: "Normal Load" },
   }[severity];
-  const isCritical = severity === PWT_SEVERITY.CRITICAL;
   const severityAccent = getCardSeverityAccent(severity);
 
   return (
@@ -212,7 +272,6 @@ function HealthCard({ d }) {
               {d.waitingTrend}
             </span>
           </div>
-          <p className="mt-1 text-xs text-gray-400">Est. clearing 45m</p>
         </div>
 
         <div className="hidden w-px bg-gray-100 md:block" />
@@ -225,7 +284,6 @@ function HealthCard({ d }) {
               {d.taxiTrend}
             </span>
           </div>
-          <p className="mt-1 text-xs text-gray-400">Throughput {Math.round(kpiSummary.laneCapacity)} /m</p>
         </div>
       </div>
 
@@ -242,21 +300,7 @@ function HealthCard({ d }) {
         </p>
       </div>
 
-      <div className="grid grid-cols-2 gap-3">
-        <div className="rounded-lg bg-gray-50 px-4 py-2">
-          <p className="text-xs font-semibold uppercase tracking-widest text-gray-400">Active Lanes</p>
-          <p className="mt-1 text-sm font-bold text-gray-900">{Math.round(kpiSummary.activeLanes)}</p>
-        </div>
-        <div className="rounded-lg bg-gray-50 px-4 py-2">
-          <p className="text-xs font-semibold uppercase tracking-widest text-gray-400">Lane Throughput</p>
-          <p className="mt-1 text-sm font-bold text-gray-900">{Math.round(kpiSummary.laneCapacity)} taxis/slot</p>
-        </div>
-        {isCritical && (
-          <div className="col-span-2">
-            <p className="text-xs font-semibold text-red-600">{loadTone.hint}</p>
-          </div>
-        )}
-      </div>
+      <SLAStatusRow currentPWT={d.pwt} />
     </div>
   );
 }
@@ -321,9 +365,6 @@ function AlertCard({ d, laneActivated, broadcastSent, onApproveAction }) {
             ? `Pull ${dispatchSummary.dispatchGap} taxis from Holding Zone`
             : "Taxis are sufficient · problem is holding zone flow"}
         </p>
-        <p className={`mt-1.5 text-[9px] ${severity === PWT_SEVERITY.CRITICAL ? "text-red-300" : "text-slate-400"}`}>
-          AI forecast · {dispatchSummary.horizon.replace(/^T\+/, "")} ahead
-        </p>
       </div>
     </div>
   );
@@ -336,7 +377,7 @@ function AISituationBrief({ d }) {
   const currentPWT = Math.round(kpiSummary.currentPWT);
   const slaTarget = Math.round(meta.breachThreshold);
   const briefText = severity === PWT_SEVERITY.CRITICAL
-    ? `Suvarnabhumi Airport is entering a queue pressure window. PWT is ${d.pwt} min with ${d.waitingPassengers.toLocaleString()} waiting passengers and ${d.laneLoad}% lane load. The 30-min SLA threshold is exceeded; OPS approval required before action.`
+    ? `Suvarnabhumi Airport is entering a queue pressure window. PWT is ${d.pwt} min with ${d.waitingPassengers.toLocaleString()} waiting passengers queued at curb. The 30-min SLA threshold is exceeded; OPS approval required before action.`
     : severity === PWT_SEVERITY.WARNING
     ? "Queue approaching threshold. Monitor and prepare incentive response."
     : "Queue operating within normal parameters. No immediate action required.";
@@ -829,16 +870,43 @@ function DemoAssignmentStatus() {
 
   if (activeTrip.status === "idle") return null;
 
+  if (activeTrip.status === "pending_dispatch") {
+    return (
+      <div className="flex flex-wrap items-center justify-between gap-3 rounded-2xl border border-amber-200 bg-amber-50 px-4 py-3">
+        <div className="flex items-center gap-2">
+          <span className="material-symbols-outlined text-amber-600 leading-none" style={{ fontSize: "18px" }}>warning</span>
+          <p className="text-sm font-bold text-slate-900">No eligible driver — re-dispatch required</p>
+          <span className="rounded-full bg-white/80 px-2 py-0.5 text-[10px] font-black uppercase text-amber-600">
+            pending dispatch
+          </span>
+        </div>
+        <button
+          onClick={resetMatch}
+          className="rounded-lg border border-amber-300 bg-white px-2.5 py-1.5 text-xs font-bold text-amber-700 hover:bg-white/70 transition-colors"
+        >
+          Reset demo
+        </button>
+      </div>
+    );
+  }
+
   return (
     <div className="flex flex-wrap items-center justify-between gap-3 rounded-2xl border border-emerald-200 bg-emerald-50 px-4 py-3">
-      <div className="flex items-center gap-2">
-        <span className="material-symbols-outlined text-brand leading-none" style={{ fontSize: "18px" }}>hub</span>
-        <p className="text-sm font-bold text-slate-900">
-          Assigned: {activeTrip.passengerId} → {activeTrip.driverId} · ETA {activeTrip.etaMin} min
-        </p>
-        <span className="rounded-full bg-white/80 px-2 py-0.5 text-[10px] font-black uppercase text-brand">
-          {activeTrip.status}
-        </span>
+      <div className="flex flex-col gap-0.5 min-w-0">
+        <div className="flex items-center gap-2 flex-wrap">
+          <span className="material-symbols-outlined text-brand leading-none" style={{ fontSize: "18px" }}>hub</span>
+          <p className="text-sm font-bold text-slate-900">
+            Assigned: {activeTrip.passengerId} → {activeTrip.driverId} · ETA {activeTrip.etaMin} min
+          </p>
+          <span className="rounded-full bg-white/80 px-2 py-0.5 text-[10px] font-black uppercase text-brand">
+            {activeTrip.status}
+          </span>
+        </div>
+        {activeTrip.matchingDecision && (
+          <p className="text-xs text-slate-600 pl-6">
+            <span className="font-bold">Matching Agent</span> · {activeTrip.matchingMode} · {activeTrip.matchingDecision.reasons[0]}
+          </p>
+        )}
       </div>
       <button
         onClick={resetMatch}
@@ -942,14 +1010,14 @@ const SECONDARY_MATCHING_DRIVERS = [
 
 function MatchingSimulation({ d }) {
   const { t } = useLanguage();
-  const { activeTrip, assignMatch, resetMatch, setOpsAction, dispatchMode, setDispatchMode } = useDemoMatching();
+  const { activeTrip } = useDemoMatching();
   const matchingMode = getMatchingMode(d.pwt);
   const isCritical = matchingMode === "CRITICAL_MATCHING";
   const isPriority = matchingMode === "PRIORITY_MATCHING";
   const mode = {
     NORMAL_MATCHING: "Normal Matching",
     PRIORITY_MATCHING: "Priority Matching",
-    CRITICAL_MATCHING: "Critical Matching",
+    CRITICAL_MATCHING: "Critical Priority Matching",
   }[matchingMode];
   const modeTone = isCritical
     ? "bg-red-50 text-red-700 border-red-200"
@@ -969,79 +1037,33 @@ function MatchingSimulation({ d }) {
     flight: activeTrip.flightCode,
     priorityScore: 96,
   };
+  const agentDecision = activeTrip.matchingDecision;
   const bestDriver = {
     id: activeTrip.driverId,
     vehicle: activeTrip.vehicleType,
     etaMin: activeTrip.etaMin,
     acceptanceRate: 94,
     capacityFit: `${activeTrip.passengerCount} pax / ${activeTrip.luggageCount} bags`,
-    score: 92,
+    score: agentDecision?.score ?? 92,
   };
   const matchingPassengers = [bestPassenger, ...SECONDARY_MATCHING_PASSENGERS];
-  const matchingDrivers = [bestDriver, ...SECONDARY_MATCHING_DRIVERS];
 
-  function handleRunMatching() {
-    if (matchingMode === "CRITICAL_MATCHING") {
-      setOpsAction(OPS_ACTION.OVERFLOW_ACTIVATED);
-    } else if (matchingMode === "PRIORITY_MATCHING") {
-      setOpsAction(OPS_ACTION.INCENTIVE_SENT);
-    }
-    assignMatch();
-  }
+  // Use live candidateScores from agent when available; fall back to static secondary list
+  const liveDriverPool = agentDecision?.candidateScores
+    ? agentDecision.candidateScores.map((c) => ({
+        id: c.driverId,
+        vehicle: MOCK_DRIVER_POOL.find((d) => d.id === c.driverId)?.vehicle ?? "Taxi",
+        etaMin: c.etaMin,
+        acceptanceRate: MOCK_DRIVER_POOL.find((d) => d.id === c.driverId)?.acceptanceRate ?? 90,
+        capacityFit: `${MOCK_DRIVER_POOL.find((d) => d.id === c.driverId)?.maxPassengers ?? 4} pax / ${MOCK_DRIVER_POOL.find((d) => d.id === c.driverId)?.maxLuggage ?? 4} bags`,
+        score: c.score,
+      }))
+    : [bestDriver, ...SECONDARY_MATCHING_DRIVERS];
+  const matchingDrivers = liveDriverPool;
 
   return (
     <section>
       <SectionHeading eyebrow={t("ops.dispatchIntelligence")} title={t("ops.matchingSimulation")} />
-      <div className="mb-4 flex flex-wrap items-center justify-between gap-3 rounded-2xl border border-[#154aa8]/15 bg-[#e8f0fe] px-4 py-3">
-        <div>
-          <p className="text-xs font-black uppercase tracking-widest text-[#154aa8]">Dispatch Mode</p>
-          <p className="mt-0.5 text-xs text-slate-600">
-            Auto assigns after booking. OPS Priority waits for manual dispatch.
-          </p>
-        </div>
-        <div className="inline-flex rounded-full border border-slate-200 bg-white p-1 shadow-sm">
-          {[
-            ["auto", "Auto Dispatch"],
-            ["priority", "OPS Priority Dispatch"],
-          ].map(([mode, label]) => (
-            <button
-              key={mode}
-              onClick={() => setDispatchMode(mode)}
-              className={`rounded-full px-3 py-1.5 text-xs font-black transition-colors ${
-                dispatchMode === mode
-                  ? "bg-[#154aa8] text-white"
-                  : "text-slate-500 hover:text-slate-800"
-              }`}
-            >
-              {label}
-            </button>
-          ))}
-        </div>
-      </div>
-      <div className="mb-4 flex flex-wrap items-center justify-between gap-3 rounded-2xl border border-slate-200 bg-white px-4 py-3 shadow-sm">
-        <div>
-          <p className="text-sm font-bold text-slate-900">
-            {activeTrip.status === "idle"
-              ? "No active demo assignment"
-              : `Assigned: ${activeTrip.passengerId} → ${activeTrip.driverId} · ETA ${activeTrip.etaMin} min`}
-          </p>
-          <p className="text-xs text-muted mt-0.5">Local demo state persists across OPS, Driver, and Passenger tabs.</p>
-        </div>
-        <div className="flex items-center gap-2">
-          <button
-            onClick={handleRunMatching}
-            className="rounded-xl bg-[#154aa8] px-3 py-2 text-xs font-bold text-white shadow-sm transition-colors hover:bg-[#0f2f68] active:scale-95"
-          >
-            Run Priority Dispatch
-          </button>
-          <button
-            onClick={resetMatch}
-            className="rounded-xl border border-slate-200 bg-white px-3 py-2 text-xs font-bold text-slate-500 transition-colors hover:border-slate-300 hover:text-slate-700 active:scale-95"
-          >
-            Reset demo
-          </button>
-        </div>
-      </div>
       <div className="grid grid-cols-1 xl:grid-cols-[0.85fr_1fr_1fr] gap-4">
         <div className="bg-white rounded-2xl border border-slate-100 shadow-sm overflow-hidden">
           <div className={`h-0.5 ${isCritical ? "bg-danger" : "bg-brand"}`} />
@@ -1069,9 +1091,11 @@ function MatchingSimulation({ d }) {
               </p>
             </div>
             <div className="rounded-xl border border-emerald-200 bg-emerald-50 px-4 py-3">
-              <p className="text-xs font-bold uppercase tracking-widest text-emerald-700">Best Match</p>
+              <p className="text-xs font-bold uppercase tracking-widest text-emerald-700">
+                {agentDecision ? "Matching Agent — Best Match" : "Best Match"}
+              </p>
               <p className="mt-1 text-lg font-black text-slate-900">{bestPassenger.id} → {bestDriver.id}</p>
-              <div className="mt-2 grid grid-cols-3 gap-2 text-xs">
+              <div className="mt-2 grid grid-cols-4 gap-2 text-xs">
                 <div>
                   <p className="text-muted">ETA</p>
                   <p className="font-bold text-slate-900">{bestDriver.etaMin} min</p>
@@ -1084,9 +1108,17 @@ function MatchingSimulation({ d }) {
                   <p className="text-muted">Score</p>
                   <p className="font-bold text-brand">{bestDriver.score}</p>
                 </div>
+                <div>
+                  <p className="text-muted">Confidence</p>
+                  <p className="font-bold text-brand">
+                    {agentDecision ? `${Math.round(agentDecision.confidence * 100)}%` : "—"}
+                  </p>
+                </div>
               </div>
               <p className="mt-3 text-xs leading-relaxed text-slate-600">
-                {activeTrip.matchingReason}
+                {agentDecision
+                  ? agentDecision.reasons.join(" · ")
+                  : activeTrip.matchingReason}
               </p>
             </div>
           </div>
@@ -1141,6 +1173,154 @@ function MatchingSimulation({ d }) {
             ))}
           </div>
         </div>
+      </div>
+    </section>
+  );
+}
+
+function ResponseActionFramework() {
+  const actions = [
+    {
+      layer: "Action 1 — Quick Win",
+      action: "Send Incentive & Broadcast Drivers",
+      description: "ทำได้ทันที — ส่ง signal ให้ driver เข้า curb เร็วขึ้น เป็น action หลักที่ dashboard recommend",
+      tone: "border-emerald-200 bg-emerald-50",
+    },
+    {
+      layer: "Action 2 — Supply",
+      action: "เรียกรถจาก Holding Area",
+      description: "ดึงรถจาก holding zone ออกมา curb โดยตรง แก้ปัญหา supply routing",
+      tone: "border-blue-200 bg-blue-50",
+    },
+    {
+      layer: "Action 3 — Throughput",
+      action: "เปิด Lanes เพิ่ม",
+      description: "เพิ่ม lane รับ-ส่งผู้โดยสาร ลดคอขวด แก้ปัญหา \"แท็กซี่เยอะแต่รอนาน\" Root Cause: Lane Capacity −3.4 min",
+      tone: "border-amber-200 bg-amber-50",
+    },
+  ];
+
+  return (
+    <section>
+      <SectionHeading eyebrow="Response action framework" title="Response Action Framework" />
+      <div className="overflow-hidden rounded-2xl border border-slate-100 bg-white shadow-sm">
+        <div className="grid grid-cols-[0.85fr_1fr_1.7fr] gap-3 border-b border-slate-100 bg-slate-50 px-4 py-3 text-[10px] font-black uppercase tracking-widest text-slate-400">
+          <p>Action Layer</p>
+          <p>Action</p>
+          <p>Description</p>
+        </div>
+        <div className="divide-y divide-slate-100">
+          {actions.map((item) => (
+            <div key={item.layer} className="grid grid-cols-1 gap-3 px-4 py-4 md:grid-cols-[0.85fr_1fr_1.7fr] md:items-start">
+              <div>
+                <span className={`inline-flex rounded-full border px-2.5 py-1 text-xs font-black text-slate-800 ${item.tone}`}>
+                  {item.layer}
+                </span>
+              </div>
+              <p className="text-sm font-black text-slate-900">{item.action}</p>
+              <p className="text-sm leading-relaxed text-slate-600">{item.description}</p>
+            </div>
+          ))}
+        </div>
+      </div>
+    </section>
+  );
+}
+
+function MatchingAgentLogic() {
+  const { activeTrip } = useDemoMatching();
+  const agentFlow = [
+    {
+      step: "Observe",
+      detail: "Passenger request + driver pool + OPS context",
+      icon: "visibility",
+    },
+    {
+      step: "Select Mode",
+      detail: "Normal / Priority / Critical Priority based on current PWT",
+      icon: "rule_settings",
+    },
+    {
+      step: "Score Drivers",
+      detail: "ETA + capacity fit + queue priority + acceptance probability + PWT urgency",
+      icon: "scoreboard",
+    },
+    {
+      step: "Assign / Re-match",
+      detail: "Assign best-fit driver with reason; if rejected, exclude driver and re-score next candidate",
+      icon: "hub",
+    },
+  ];
+  const modes = [
+    {
+      name: "Normal Matching",
+      threshold: "PWT ≤ 20 min",
+      rule: "FCFS + capacity fit",
+      tone: "border-emerald-200 bg-emerald-50 text-emerald-700",
+    },
+    {
+      name: "Priority Matching",
+      threshold: "PWT 20–30 min",
+      rule: "Queue order + ETA + capacity",
+      tone: "border-amber-200 bg-amber-50 text-amber-700",
+    },
+    {
+      name: "Critical Priority Matching",
+      threshold: "PWT > 30 min",
+      rule: "Fastest ETA + capacity + queue pressure",
+      tone: "border-red-200 bg-red-50 text-red-700",
+    },
+  ];
+  const decision = activeTrip.matchingDecision;
+  const firstReason = decision?.reasons?.[0];
+
+  return (
+    <section>
+      <SectionHeading eyebrow="Dispatch Intelligence" title="Matching Agent Logic" />
+      <div className="rounded-2xl border border-slate-100 bg-white p-5 shadow-sm">
+        <p className="text-sm text-slate-600">
+          How the system selects the best driver using passenger demand, driver pool, and OPS context.
+        </p>
+        <p className="mt-3 text-sm leading-relaxed text-slate-600">
+          The Matching Agent observes passenger request, driver pool, and OPS context, then scores eligible drivers using ETA,
+          capacity fit, queue priority, acceptance probability, and current PWT urgency. The selected driver is assigned with
+          an explainable reason. If the driver rejects, the agent excludes that driver and re-runs the matching process for
+          the next-best candidate.
+        </p>
+
+        <div className="mt-4 grid grid-cols-1 gap-3 md:grid-cols-4">
+          {agentFlow.map((item, index) => (
+            <div key={item.step} className="rounded-xl border border-[#154aa8]/15 bg-[#154aa8]/[0.03] p-4">
+              <div className="flex items-center gap-2">
+                <span className="flex h-8 w-8 items-center justify-center rounded-lg bg-[#154aa8]/10 text-[#154aa8]">
+                  <span className="material-symbols-outlined leading-none" style={{ fontSize: "18px" }}>{item.icon}</span>
+                </span>
+                <p className="text-[10px] font-black uppercase tracking-widest text-slate-400">Step {index + 1}</p>
+              </div>
+              <p className="mt-3 text-sm font-black text-slate-900">{item.step}</p>
+              <p className="mt-1 text-xs leading-relaxed text-slate-600">{item.detail}</p>
+            </div>
+          ))}
+        </div>
+
+        <div className="mt-4 grid grid-cols-1 gap-3 md:grid-cols-3">
+          {modes.map((mode) => (
+            <div key={mode.name} className={`rounded-xl border p-3 ${mode.tone}`}>
+              <p className="text-sm font-black">{mode.name}</p>
+              <p className="mt-1 text-xs font-bold opacity-80">{mode.threshold}</p>
+              <p className="mt-2 text-xs leading-relaxed text-slate-600">{mode.rule}</p>
+            </div>
+          ))}
+        </div>
+
+        {decision?.matchingMode && firstReason && (
+          <div className="mt-4 rounded-xl border border-slate-200 bg-slate-50 px-4 py-3">
+            <p className="text-xs font-bold uppercase tracking-widest text-slate-400">Current decision</p>
+            <p className="mt-1 text-sm font-semibold text-slate-800">
+              {decision.matchingMode} · {firstReason}
+            </p>
+          </div>
+        )}
       </div>
     </section>
   );
@@ -1267,31 +1447,33 @@ function makeMessage(role, content) {
 const ADVISORY_COPY = {
   en: {
     defaultMessage:
-      "I’m ready to help with queue pressure, arrival-wave risk, driver supply, and next operational actions.",
+      "I’m ready to help with PWT, queue pressure, SLA risk, dispatch actions, and expected impact.",
     contextEyebrow: "Advisory context",
     contextTitle: "Current terminal context",
-    chatTitle: "AI Advisory",
+    chatTitle: "OPS AI Advisory",
     terminal: "TERMINAL",
     pwt: "PWT",
     breachRate: "Breach Rate",
     confirmedQr: "Confirmed QR",
     taxis: "Taxis",
     flights: "Flights",
-    subtitle: "Ask about deficits, arrival waves, driver supply, and next actions.",
-    suggested: "Suggested operational questions",
+    subtitle: "Ask operational questions about PWT, queue pressure, dispatch actions, SLA risk, and expected impact.",
+    suggested: "Suggested OPS questions",
     placeholder: "Ask about queue situation...",
     send: "Send",
     generating: "Generating advisory...",
     escalationPrefix: "Active demo escalation",
     prompts: [
-      { id: "why-pwt", label: "Why is PWT high?" },
-      { id: "next-action", label: "What should we do now?" },
-      { id: "drivers", label: "Are drivers sufficient?" },
-      { id: "arrival-risk", label: "What is the current risk?" },
+      { id: "why-critical", label: "Why is PWT critical?" },
+      { id: "sla-breach", label: "Explain the SLA breach" },
+      { id: "why-incentive", label: "Why send incentive?" },
+      { id: "drivers", label: "Are taxis sufficient?" },
+      { id: "next-action", label: "What should OPS do next?" },
+      { id: "simulate-impact", label: "Simulate impact" },
     ],
     responses: {
       "why-pwt": `Terminal 1 is under arrival-wave pressure from EK374 and QR833.\nHolding supply is not enough for the next 15 minutes.\n\nRoot cause:\nPassenger demand is rising faster than curb taxi supply.\n\nRecommended action:\nApprove incentive + broadcast nearby drivers.\n\nExpected impact:\nProjected PWT improves from 52 → 34 min.`,
-      "next-action": `The current queue state is critical and needs OPS approval.\n\nRoot cause:\nPWT is above the 30-min SLA breach threshold while lane load remains high.\n\nRecommended action:\nRun Priority Dispatch and approve driver broadcast.\n\nExpected impact:\nDriver supply reaches the pickup zone earlier and reduces queue pressure.`,
+      "next-action": `The current queue state is critical and needs OPS approval.\n\nRoot cause:\nPWT is above the 30-min SLA breach threshold while curb queue pressure remains high.\n\nRecommended action:\nRun Priority Dispatch and approve driver broadcast.\n\nExpected impact:\nDriver supply reaches the pickup zone earlier and reduces queue pressure.`,
       drivers: `Drivers are not sufficient for the next demand window.\n\nRoot cause:\nInbound passenger volume is outpacing available curb taxis.\n\nRecommended action:\nBroadcast nearby drivers and prepare reassignment support.\n\nExpected impact:\nCoverage improves before the next arrival wave peaks.`,
       "arrival-risk": `The main risk is an overlapping arrival wave.\n\nRoot cause:\nMultiple inbound flights are feeding baggage claim demand at the same time.\n\nRecommended action:\nKeep OPS in priority dispatch mode and monitor PWT every 5 minutes.\n\nExpected impact:\nThe team can intervene before the queue expands further.`,
     },
@@ -1341,11 +1523,207 @@ const ADVISORY_COPY = {
   },
 };
 
+function getDashboardAdvisoryResponse(d, question, promptId) {
+  const normalized = `${promptId || ""} ${question || ""}`.toLowerCase();
+  const currentPWT = Math.round(kpiSummary.currentPWT);
+  const predictedPWT = Math.round(kpiSummary.currentPWTPrediction);
+  const slaThreshold = Math.round(meta.breachThreshold);
+  const waitingPassengers = Math.round(kpiSummary.confirmedQR);
+  const holdingTaxis = Math.round(kpiSummary.taxisAtCurb);
+  const predictedTaxis = Math.round(dispatchSummary.predSupply);
+  const taxisNeeded = Math.round(dispatchSummary.predDemand);
+  const afterActionPWT = Math.round(d.impactSimulation.projectedPwt);
+  const recommendedAction = "Send Incentive & Broadcast Drivers";
+  const supplyLine = predictedTaxis >= taxisNeeded
+    ? "Taxi supply is numerically sufficient, but the bottleneck is holding-zone flow and lane throughput."
+    : "Taxi supply is below the predicted demand window, so OPS should prepare a driver broadcast.";
+
+  if (normalized.includes("sla")) {
+    return `The SLA is breached because current PWT is ${currentPWT} min, above the ${slaThreshold}-min SLA threshold. Predicted PWT rises to ${predictedPWT} min without action.\n\nWhy it matters:\n${holdingTaxis} taxis are currently at curb against a demand of ${waitingPassengers} confirmed passengers.\n\nRecommended action:\n${recommendedAction}. AI recommends only; OPS approval is required before action.`;
+  }
+
+  if (normalized.includes("incentive") || normalized.includes("action")) {
+    return `The system recommends ${recommendedAction} because PWT is ${currentPWT} min and predicted to reach ${predictedPWT} min in the next window.\n\nRoot cause:\n${supplyLine}\n\nOPS decision:\nApprove the incentive/broadcast manually. AI does not auto-send incentives or activate operational changes.`;
+  }
+
+  if (normalized.includes("taxi") || normalized.includes("driver")) {
+    return `Predicted taxis: ${predictedTaxis}. Taxis needed: ${taxisNeeded}. Taxis at curb: ${holdingTaxis}.\n\nAssessment:\n${supplyLine}\n\nRecommended action:\nKeep the driver broadcast ready and use incentive approval to improve flow into the pickup zone.`;
+  }
+
+  if (normalized.includes("impact") || normalized.includes("simulate")) {
+    return `If OPS acts now, the target is to bring PWT from the predicted baseline of ${predictedPWT} min down to the SLA boundary of ${afterActionPWT} min.\n\nExpected impact:\nCurrent PWT is ${currentPWT} min. The simulated improvement is ${d.impactSimulation.pwtReductionPct}% versus predicted baseline.\n\nAction required:\nOPS must approve ${recommendedAction} before the demo action is applied.`;
+  }
+
+  if (normalized.includes("arrival") || normalized.includes("risk") || normalized.includes("critical") || normalized.includes("pwt")) {
+    return `PWT is critical because current wait time is ${currentPWT} min, above the ${slaThreshold}-min SLA threshold. Without action, predicted PWT rises to ${predictedPWT} min.\n\nRoot cause:\nArrival-wave pressure is feeding demand into baggage claim while lane throughput is constrained. ${supplyLine}\n\nRecommended action:\n${recommendedAction}. OPS approval is required before action.`;
+  }
+
+  return `Current PWT is ${currentPWT} min. ${holdingTaxis} taxis are currently at curb against a demand of ${waitingPassengers} confirmed passengers. Predicted PWT is ${predictedPWT} min against a ${slaThreshold}-min SLA threshold.\n\nRecommended action:\n${recommendedAction}. AI recommends only; OPS must approve before action.\n\nExpected impact:\nPWT target improves toward ${afterActionPWT} min.`;
+}
+
+const OPS_AI_SUGGESTIONS = [
+  { id: "why-critical", label: "Why is PWT critical?" },
+  { id: "why-incentive", label: "Why send incentive?" },
+  { id: "drivers", label: "Are taxis sufficient?" },
+  { id: "next-action", label: "What should OPS do next?" },
+  { id: "sla-breach", label: "Explain SLA breach" },
+];
+
+function OPSAIChatWidget({ d }) {
+  const [isOpen, setIsOpen] = useState(false);
+  const [messages, setMessages] = useState([]);
+  const [input, setInput] = useState("");
+  const [loading, setLoading] = useState(false);
+  const messagesEndRef = useRef(null);
+
+  useEffect(() => {
+    if (!isOpen) return;
+    messagesEndRef.current?.scrollIntoView({ behavior: "smooth", block: "end" });
+  }, [messages, loading, isOpen]);
+
+  function send(question, promptId = null) {
+    const text = String(question || "").trim();
+    if (!text) return;
+    setMessages((prev) => [...prev, makeMessage("user", text)]);
+    setInput("");
+    setLoading(true);
+    window.setTimeout(() => {
+      setMessages((prev) => [
+        ...prev,
+        makeMessage("assistant", getDashboardAdvisoryResponse(d, text, promptId)),
+      ]);
+      setLoading(false);
+    }, 350);
+  }
+
+  const visibleMessages = messages.length
+    ? messages
+    : [{
+        role: "assistant",
+        content: "Hi, I’m your OPS AI Advisory. I can explain the current PWT, SLA risk, supply pressure, and recommended dispatch action.",
+        timestamp: "",
+      }];
+
+  return (
+    <>
+      {isOpen && (
+        <section className="fixed bottom-24 right-6 z-[80] flex h-[560px] max-h-[calc(100vh-8rem)] w-[380px] max-w-[calc(100vw-2rem)] flex-col overflow-hidden rounded-2xl border border-slate-200 bg-white shadow-2xl">
+          <div className="flex-none border-b border-slate-100 bg-[#154aa8] px-4 py-3 text-white">
+            <div className="flex items-start justify-between gap-3">
+              <div>
+                <div className="flex items-center gap-2">
+                  <span className="h-2 w-2 rounded-full bg-emerald-300" />
+                  <h2 className="text-sm font-black">OPS AI Advisory</h2>
+                </div>
+                <p className="mt-1 text-xs leading-snug text-blue-100">
+                  Ask about PWT, SLA risk, dispatch actions, and queue pressure
+                </p>
+              </div>
+              <button
+                type="button"
+                onClick={() => setIsOpen(false)}
+                aria-label="Close OPS AI Advisory"
+                className="flex h-8 w-8 items-center justify-center rounded-full bg-white/10 text-lg leading-none text-white transition-colors hover:bg-white/20"
+              >
+                ×
+              </button>
+            </div>
+          </div>
+
+          <div className="min-h-0 flex-1 overflow-y-auto bg-slate-50 px-4 py-4">
+            <div className="flex flex-col gap-3">
+              {visibleMessages.map((message, index) => (
+                <div key={`${message.timestamp}-${index}`} className={`flex gap-2 ${message.role === "user" ? "justify-end" : "justify-start"}`}>
+                  {message.role === "assistant" && (
+                    <div className="mt-1 flex h-7 w-7 shrink-0 items-center justify-center rounded-full bg-[#154aa8]/10 text-[#154aa8]">
+                      <span className="material-symbols-outlined leading-none" style={{ fontSize: "16px" }}>auto_awesome</span>
+                    </div>
+                  )}
+                  <div className={`max-w-[82%] rounded-2xl px-3.5 py-2.5 text-sm leading-relaxed shadow-sm ${
+                    message.role === "user"
+                      ? "rounded-br-md bg-[#154aa8] text-white"
+                      : "rounded-bl-md border border-slate-200 bg-white text-slate-800"
+                  }`}>
+                    <p className="whitespace-pre-line">{message.content}</p>
+                    {message.timestamp && (
+                      <p className={`mt-1 text-[10px] ${message.role === "user" ? "text-white/65" : "text-slate-400"}`}>{message.timestamp}</p>
+                    )}
+                  </div>
+                </div>
+              ))}
+              {loading && (
+                <div className="flex gap-2">
+                  <div className="mt-1 flex h-7 w-7 shrink-0 items-center justify-center rounded-full bg-[#154aa8]/10 text-[#154aa8]">
+                    <span className="material-symbols-outlined leading-none" style={{ fontSize: "16px" }}>auto_awesome</span>
+                  </div>
+                  <div className="rounded-2xl rounded-bl-md border border-slate-200 bg-white px-3.5 py-2.5 text-sm text-slate-500 shadow-sm">
+                    Reviewing dashboard context...
+                  </div>
+                </div>
+              )}
+              <div ref={messagesEndRef} />
+            </div>
+          </div>
+
+          <div className="flex-none border-t border-slate-100 bg-white px-4 py-3">
+            <div className="mb-2 flex gap-2 overflow-x-auto pb-1">
+              {OPS_AI_SUGGESTIONS.map((suggestion) => (
+                <button
+                  key={suggestion.id}
+                  type="button"
+                  onClick={() => send(suggestion.label, suggestion.id)}
+                  className="shrink-0 rounded-full border border-slate-200 bg-white px-3 py-1.5 text-xs font-bold text-slate-600 transition-colors hover:border-[#154aa8]/30 hover:bg-[#154aa8]/5 hover:text-[#154aa8]"
+                >
+                  {suggestion.label}
+                </button>
+              ))}
+            </div>
+            <div className="flex gap-2">
+              <input
+                type="text"
+                value={input}
+                onChange={(event) => setInput(event.target.value)}
+                onKeyDown={(event) => {
+                  if (event.key === "Enter") send(input);
+                }}
+                placeholder="Ask about the current operation..."
+                className="min-w-0 flex-1 rounded-xl border border-slate-200 bg-slate-50 px-3 py-2.5 text-sm text-slate-900 placeholder:text-slate-400 transition-all focus:border-[#154aa8] focus:bg-white focus:outline-none focus:ring-2 focus:ring-[#154aa8]/10"
+              />
+              <button
+                type="button"
+                onClick={() => send(input)}
+                disabled={!input.trim()}
+                className="rounded-xl bg-[#154aa8] px-3.5 py-2.5 text-sm font-bold text-white transition-colors hover:bg-[#0f2f68] disabled:opacity-40"
+              >
+                Send
+              </button>
+            </div>
+          </div>
+        </section>
+      )}
+
+      <button
+        type="button"
+        onClick={() => setIsOpen((value) => !value)}
+        aria-label="Open OPS AI Advisory"
+        title="OPS AI"
+        className="fixed bottom-6 right-6 z-[80] flex h-14 w-14 items-center justify-center rounded-full bg-[#154aa8] text-white shadow-[0_14px_30px_rgba(21,74,168,0.35)] transition-all hover:bg-[#0f2f68] hover:shadow-[0_18px_36px_rgba(21,74,168,0.45)] active:scale-95"
+      >
+        <span className="material-symbols-outlined" style={{ fontSize: "24px" }}>
+          {isOpen ? "close" : "chat"}
+        </span>
+      </button>
+    </>
+  );
+}
+
 function HelpRequestsWorkspace() {
   const { activeEscalation, acknowledgeEscalation } = useDemoMatching();
+  const [activeTab, setActiveTab] = useState("help");
   const [storedEscalation, setStoredEscalation] = useState(() =>
     readStorageJson("helloride_activeEscalation")
   );
+  const [passengerMessages, setPassengerMessages] = useState(readPassengerMessages);
 
   useEffect(() => {
     // Auto-clear escalations older than 60 min on mount
@@ -1369,18 +1747,30 @@ function HelpRequestsWorkspace() {
 
     function syncFromStorage() {
       setStoredEscalation(readStorageJson("helloride_activeEscalation"));
+      setPassengerMessages(readPassengerMessages());
     }
     function handleStorage(e) {
       if (OPS_SYNC_STORAGE_KEYS.includes(e.key)) syncFromStorage();
     }
+    function handlePassengerMessages(e) {
+      setPassengerMessages(Array.isArray(e.detail) ? e.detail : readPassengerMessages());
+    }
+    function handleEscalationEvent(e) {
+      setStoredEscalation(e.detail || readStorageJson("helloride_activeEscalation"));
+    }
     window.addEventListener("storage", handleStorage);
+    window.addEventListener("helloride:passengerMessages", handlePassengerMessages);
+    window.addEventListener("helloride:activeEscalation", handleEscalationEvent);
     syncFromStorage();
-    return () => window.removeEventListener("storage", handleStorage);
+    return () => {
+      window.removeEventListener("storage", handleStorage);
+      window.removeEventListener("helloride:passengerMessages", handlePassengerMessages);
+      window.removeEventListener("helloride:activeEscalation", handleEscalationEvent);
+    };
   }, []);
 
   const escalation = storedEscalation ?? activeEscalation;
-  const isActiveHelp =
-    isPassengerHelpEscalation(escalation) && escalation?.status === "open";
+  const isActiveHelp = getActiveEscalationCount(escalation) > 0;
   const highSeverity = escalation?.severity === "HIGH";
   const createdAt = escalation?.createdAt
     ? new Date(escalation.createdAt).toLocaleTimeString("en-GB", { hour: "2-digit", minute: "2-digit" })
@@ -1391,25 +1781,75 @@ function HelpRequestsWorkspace() {
     window.localStorage.setItem("helloride_activeEscalation", JSON.stringify(acknowledged));
     setStoredEscalation(acknowledged);
     acknowledgeEscalation();
+    window.dispatchEvent(new CustomEvent("helloride:activeEscalation", { detail: acknowledged }));
+  }
+
+  function handleResetHelpDemoData() {
+    window.localStorage.removeItem("helloride_activeEscalation");
+    window.localStorage.removeItem("helloride_passengerMessages");
+    setStoredEscalation(null);
+    setPassengerMessages([]);
+    acknowledgeEscalation();
+    window.dispatchEvent(new CustomEvent("helloride:activeEscalation", { detail: null }));
+    window.dispatchEvent(new CustomEvent("helloride:passengerMessages", { detail: [] }));
   }
 
   const emptyState = (
     <div className="mt-6 flex flex-col items-center gap-2 rounded-2xl bg-slate-50 py-12 text-center">
       <span className="material-symbols-outlined text-4xl text-slate-300">support_agent</span>
       <p className="text-sm font-semibold text-slate-500">No active help requests</p>
-      <p className="text-xs text-slate-400">Passenger escalations will appear here when triggered from the Passenger Portal</p>
+      <p className="text-xs text-slate-400">Urgent passenger help requests will appear here when triggered from the Passenger Portal.</p>
     </div>
   );
+
+  const messageEmptyState = (
+    <div className="mt-6 flex flex-col items-center gap-2 rounded-2xl bg-slate-50 py-12 text-center">
+      <span className="material-symbols-outlined text-4xl text-slate-300">chat_bubble</span>
+      <p className="text-sm font-semibold text-slate-500">No messages yet</p>
+      <p className="text-xs text-slate-400">Passenger support chat messages will appear here in chronological order</p>
+    </div>
+  );
+
+  const sortedMessages = [...passengerMessages].sort((a, b) => (a.timestamp ?? 0) - (b.timestamp ?? 0));
 
   return (
     <div className="flex flex-col gap-5">
       <section className="overflow-hidden rounded-2xl border border-slate-100 bg-white shadow-sm">
         <div className={`h-0.5 ${isActiveHelp && highSeverity ? "bg-red-500" : isActiveHelp ? "bg-amber-500" : "bg-slate-200"}`} />
         <div className="p-5">
-          <h2 className="text-xl font-bold text-slate-900">Help Requests</h2>
-          <p className="mt-1 text-sm text-muted">Passenger escalations from Support Chat</p>
+          <div className="flex flex-wrap items-start justify-between gap-3">
+            <div>
+              <h2 className="text-xl font-bold text-slate-900">Help Requests</h2>
+              <p className="mt-1 text-sm text-muted">Passenger support requests from the mobile portal</p>
+            </div>
+            <div className="flex flex-wrap items-center justify-end gap-2">
+              <div className="flex rounded-xl bg-slate-100 p-1">
+                {[
+                  ["help", "Help"],
+                  ["feedback", "Feedback"],
+                ].map(([id, label]) => (
+                <button
+                  key={id}
+                  onClick={() => setActiveTab(id)}
+                  className={`rounded-lg px-3 py-1.5 text-xs font-bold transition-colors ${
+                    activeTab === id ? "bg-white text-[#154aa8] shadow-sm" : "text-slate-500 hover:text-slate-700"
+                  }`}
+                >
+                  {label}
+                </button>
+                ))}
+              </div>
+              <button
+                type="button"
+                onClick={handleResetHelpDemoData}
+                className="rounded-lg border border-slate-200 bg-white px-3 py-1.5 text-xs font-bold text-slate-500 transition-colors hover:bg-slate-50 hover:text-slate-700"
+              >
+                Reset Help Demo Data
+              </button>
+            </div>
+          </div>
 
-          {!isActiveHelp ? emptyState : (
+          {activeTab === "help" && (!isActiveHelp ? emptyState : (
             <div className={`mt-4 rounded-2xl border p-4 ${highSeverity ? "border-red-200 bg-red-50" : "border-amber-200 bg-amber-50"}`}>
               <div className="flex flex-wrap items-start justify-between gap-4">
                 <div className="min-w-0 flex-1">
@@ -1465,6 +1905,24 @@ function HelpRequestsWorkspace() {
                 </button>
               </div>
             </div>
+          ))}
+
+          {activeTab === "feedback" && (
+            sortedMessages.length === 0 ? messageEmptyState : (
+              <div className="mt-4 overflow-hidden rounded-2xl border border-slate-100">
+                <div className="divide-y divide-slate-100">
+                  {sortedMessages.map((message) => (
+                    <div key={message.id} className="grid grid-cols-[88px_1fr_190px] gap-3 px-4 py-3 text-sm">
+                      <p className="text-xs font-bold text-slate-400">
+                        {new Date(message.timestamp).toLocaleTimeString("en-GB", { hour: "2-digit", minute: "2-digit" })}
+                      </p>
+                      <p className="min-w-0 text-slate-800">{message.text}</p>
+                      <p className="min-w-0 truncate text-right text-xs font-semibold text-slate-500">{message.quickOption}</p>
+                    </div>
+                  ))}
+                </div>
+              </div>
+            )
           )}
         </div>
       </section>
@@ -1472,39 +1930,23 @@ function HelpRequestsWorkspace() {
   );
 }
 
-function AIAdvisoryWorkspace({ d }) {
+function AIAdvisoryWorkspace({ d, initialQuestion }) {
   const { language } = useLanguage();
   const copy = ADVISORY_COPY[language] ?? ADVISORY_COPY.en;
-  const { createEscalation, activeEscalation, acknowledgeEscalation } = useDemoMatching();
-  const passengerEscalation = isPassengerHelpEscalation(activeEscalation)
-    ? activeEscalation
-    : null;
+  const { createEscalation } = useDemoMatching();
   const [messages, setMessages] = useState([]);
   const [input, setInput] = useState("");
   const [loading, setLoading] = useState(false);
   const messagesEndRef = useRef(null);
 
   useEffect(() => {
-    const raw = window.localStorage.getItem("helloride_activeEscalation");
-    if (!raw) return;
-    try {
-      const stored = JSON.parse(raw);
-      if (stored.status === "open" && stored.createdAt) {
-        const ageMs = Date.now() - new Date(stored.createdAt).getTime();
-        if (ageMs > 30 * 60 * 1000) {
-          const cleared = { ...stored, status: "acknowledged" };
-          window.localStorage.setItem("helloride_activeEscalation", JSON.stringify(cleared));
-          acknowledgeEscalation();
-        }
-      }
-    } catch {
-      // ignore parse errors
-    }
-  }, []);
-
-  useEffect(() => {
     messagesEndRef.current?.scrollIntoView({ behavior: "smooth", block: "end" });
   }, [messages, loading]);
+
+  useEffect(() => {
+    if (!initialQuestion?.question) return;
+    handleSend(initialQuestion.question, initialQuestion.promptId ?? null);
+  }, [initialQuestion?.id]);
 
   function getResponse(question, promptId) {
     const protocol = matchProtocol(question);
@@ -1515,6 +1957,10 @@ function AIAdvisoryWorkspace({ d }) {
 
     if (promptId && copy.responses[promptId]) {
       return copy.responses[promptId];
+    }
+
+    if (language === "en") {
+      return getDashboardAdvisoryResponse(d, question, promptId);
     }
 
     if (language === "en" && ADVISORY_RESPONSES[question]) {
@@ -1561,27 +2007,6 @@ function AIAdvisoryWorkspace({ d }) {
               </div>
             ))}
           </div>
-
-          {passengerEscalation?.status === "open" && (
-            <div className="mt-4 rounded-xl border border-red-100 border-l-4 border-l-red-500 bg-red-50 px-3 py-3">
-              <div className="flex items-center gap-2">
-                <span className="rounded-full bg-red-100 px-2 py-0.5 text-[10px] font-black uppercase tracking-wider text-red-700">
-                  {passengerEscalation.severity}
-                </span>
-                <p className="min-w-0 truncate text-sm font-bold text-slate-900">{passengerEscalation.protocolName}</p>
-              </div>
-              <p className="mt-2 text-xs leading-relaxed text-slate-600">{passengerEscalation.recommendedAction}</p>
-            </div>
-          )}
-
-          {passengerEscalation?.status === "acknowledged" && (
-            <div className="mt-4 rounded-xl border border-slate-200 border-l-4 border-l-slate-300 bg-slate-50 px-3 py-2.5">
-              <p className="text-xs font-bold text-slate-700">Recent escalation acknowledged</p>
-              <p className="mt-0.5 text-xs text-slate-500">
-                {passengerEscalation.protocolName} · OPS acknowledged
-              </p>
-            </div>
-          )}
         </div>
       </section>
 
@@ -1730,9 +2155,9 @@ function SystemIntelligenceWorkspace({ d, terminal }) {
           This workspace explains why Hello Ride recommends actions: passenger-driver matching evidence, dispatch mode logic, and model interpretation.
         </p>
       </div>
-      <MatchingSimulation d={d} />
+      <ResponseActionFramework />
+      <MatchingAgentLogic />
       <EdgeCaseProtocolsSection />
-      <MLPredictionCard terminal={terminal} />
     </div>
   );
 }
@@ -1849,12 +2274,18 @@ export default function OPSDashboard() {
     setOpsLoggedIn(false);
   }
 
+  if (!opsLoggedIn) {
+    return <OPSLoginScreen onLogin={() => setOpsLoggedIn(true)} />;
+  }
+
+  const d = buildOpsView();
+
   function handleApproveOpsAction(severity) {
     if (severity === PWT_SEVERITY.CRITICAL) {
       setLaneActivated(true);
       setBroadcastSent(true);
       setOpsAction(OPS_ACTION.OVERFLOW_ACTIVATED);
-      assignMatch();
+      assignMatch(undefined, { pwt: d.pwt });
       return;
     }
 
@@ -1864,23 +2295,10 @@ export default function OPSDashboard() {
     }
   }
 
-  if (!opsLoggedIn) {
-    return <OPSLoginScreen onLogin={() => setOpsLoggedIn(true)} />;
-  }
-
-  const d = buildOpsView();
-
   const workspaceOptions = [
     { id: "monitoring", label: t("ops.liveMonitoring") },
-    { id: "advisory", label: t("ops.aiAdvisory") },
   ];
-  const helpRequestCount =
-    isPassengerHelpEscalation(activeEscalation) && activeEscalation.status === "open"
-      ? 1
-      : 0;
-  const workspaceTitle = workspace === "intelligence"
-    ? t("ops.systemIntelligence")
-    : workspaceOptions.find((item) => item.id === workspace)?.label ?? t("ops.liveMonitoring");
+  const helpRequestCount = getActiveEscalationCount(activeEscalation);
 
   return (
     <div className="flex h-[calc(100vh-56px)] bg-[#f8f9fb]">
@@ -1902,8 +2320,10 @@ export default function OPSDashboard() {
           <button
             onClick={() => setWorkspace("help")}
             className={`mb-1 flex w-full items-center justify-between rounded-xl px-3 py-2 text-left text-sm font-semibold transition-all ${
-              workspace === "help" || helpRequestCount > 0
+              helpRequestCount > 0
                 ? "bg-red-50 text-red-700"
+                : workspace === "help"
+                ? "bg-[#154aa8]/10 text-[#154aa8]"
                 : "text-slate-600 hover:bg-slate-50"
             }`}
           >
@@ -1958,11 +2378,11 @@ export default function OPSDashboard() {
               onApproveAction={handleApproveOpsAction}
             />
           )}
-          {workspace === "advisory" && <AIAdvisoryWorkspace d={d} />}
           {workspace === "help" && <HelpRequestsWorkspace />}
           {workspace === "intelligence" && <SystemIntelligenceWorkspace d={d} terminal={terminal} />}
         </div>
       </main>
+      {workspace === "monitoring" && <OPSAIChatWidget d={d} />}
     </div>
   );
 }

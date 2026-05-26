@@ -690,7 +690,7 @@ function CompletedTripHome({ activeTrip, onConfirmPayment }) {
 
 function DriverHome({ activeTrip, isOnline, onOnlineToggle, inQueue, onJoinQueue, onAccept, onReject, onArrived, onComplete, onConfirmPayment, showIncentive }) {
   if (activeTrip.status === "assigned") {
-    return <JobOfferHome activeTrip={activeTrip} onAccept={onAccept} onReject={onReject} />;
+    return <JobOfferHome key={activeTrip.driverId} activeTrip={activeTrip} onAccept={onAccept} onReject={onReject} />;
   }
 
   if (activeTrip.status === "accepted") {
@@ -875,7 +875,7 @@ export default function DriverApp() {
   const [activeTab, setActiveTab] = useState("home");
   const [isOnline, setIsOnline] = useState(false);
   const [inQueue, setInQueue] = useState(false);
-  const { activeTrip, acceptMatch, markArrived, completeMatch, confirmDriverPayment, resetMatch } = useDemoMatching();
+  const { activeTrip, acceptMatch, markArrived, completeMatch, confirmDriverPayment, resetMatch, rejectAndRematch } = useDemoMatching();
   const driverSeverity = getPwtSeverity(kpiSummary.currentPWTPrediction);
   const showIncentive =
     canRecommendIncentive(driverSeverity) &&
@@ -893,9 +893,7 @@ export default function DriverApp() {
   }
 
   function handleReject() {
-    resetMatch();
-    setInQueue(false);
-    setActiveTab("home");
+    rejectAndRematch();
   }
 
   function handleConfirmPayment() {

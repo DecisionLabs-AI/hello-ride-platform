@@ -1,5 +1,6 @@
 import { useEffect, useMemo, useState } from "react";
 import { DemoMatchingContext } from "./DemoMatchingContextCore.js";
+import { MOCK_DRIVER_POOL, runMatchingAgent } from "../lib/businessLogic.js";
 
 const STORAGE_KEY_TRIP = "helloride_activeTrip";
 const STORAGE_KEY_OPS = "helloride_opsAction";
@@ -32,6 +33,10 @@ const DEFAULT_ACTIVE_TRIP = {
   status: "idle",
   driverPaymentConfirmed: false,
   passengerReviewPending: false,
+  matchingMode: null,
+  matchingDecision: null,
+  rejectedDriverIds: [],
+  opsPwt: null,
 };
 
 function readStoredTrip() {
@@ -147,9 +152,50 @@ export function DemoMatchingProvider({ children }) {
         setDispatchModeState(e.newValue === "auto" || e.newValue === "priority" ? e.newValue : DEFAULT_DISPATCH_MODE);
       }
     }
+    function handleEscalationEvent(e) {
+      setActiveEscalationState(e.detail || readStoredEscalation());
+    }
     window.addEventListener("storage", handleStorage);
-    return () => window.removeEventListener("storage", handleStorage);
+    window.addEventListener("helloride:activeEscalation", handleEscalationEvent);
+    return () => {
+      window.removeEventListener("storage", handleStorage);
+      window.removeEventListener("helloride:activeEscalation", handleEscalationEvent);
+    };
   }, []);
+
+  function _buildAssignment(prev, opsContext = {}) {
+    const eligible = MOCK_DRIVER_POOL.filter(
+      (d) => !(prev.rejectedDriverIds || []).includes(d.id)
+    );
+    const decision = runMatchingAgent(
+      { passengerCount: prev.passengerCount, luggageCount: prev.luggageCount },
+      eligible,
+      opsContext
+    );
+    if (!decision.selectedDriverId) {
+      return {
+        ...prev,
+        status: "pending_dispatch",
+        matchingDecision: null,
+        matchingMode: null,
+        opsPwt: opsContext.pwt ?? null,
+      };
+    }
+    const driver = MOCK_DRIVER_POOL.find((d) => d.id === decision.selectedDriverId);
+    return {
+      ...prev,
+      status: "assigned",
+      driverId: driver.id,
+      vehicleType: driver.vehicle,
+      etaMin: driver.etaMin,
+      matchingReason: decision.reasons.slice(0, 2).join(" · "),
+      matchingMode: decision.mode,
+      matchingDecision: decision,
+      opsPwt: opsContext.pwt ?? null,
+      driverPaymentConfirmed: false,
+      passengerReviewPending: false,
+    };
+  }
 
   const value = useMemo(() => {
     function setPassengerDestination(destination) {
@@ -186,18 +232,9 @@ export function DemoMatchingProvider({ children }) {
     function bookPassengerTrip() {
       if (dispatchMode === "auto") {
         setActiveTripState((prev) => {
-          const resolvedDestination =
-            prev.selectedDestination ||
-            prev.destinationName ||
-            "Sukhumvit";
-          return {
-            ...DEFAULT_ACTIVE_TRIP,
-            ...prev,
-            ...splitDestination(resolvedDestination),
-            status: "assigned",
-            driverPaymentConfirmed: false,
-            passengerReviewPending: false,
-          };
+          const resolved = prev.selectedDestination || prev.destinationName || "Sukhumvit";
+          const base = { ...prev, ...splitDestination(resolved) };
+          return _buildAssignment(base, {});
         });
         return;
       }
@@ -210,20 +247,42 @@ export function DemoMatchingProvider({ children }) {
       }));
     }
 
-    function assignMatch(destination) {
+    function assignMatch(destination, opsContext = {}) {
       setActiveTripState((prev) => {
-        const resolvedDestination =
-          destination ||
-          prev.selectedDestination ||
-          prev.destinationName ||
-          "Sukhumvit";
+        const resolved = destination || prev.selectedDestination || prev.destinationName || "Sukhumvit";
+        const base = { ...prev, ...splitDestination(resolved) };
+        return _buildAssignment(base, opsContext);
+      });
+    }
+
+    function rejectAndRematch() {
+      setActiveTripState((prev) => {
+        const rejectedIds = [...(prev.rejectedDriverIds || []), prev.driverId].filter(Boolean);
+        const eligible = MOCK_DRIVER_POOL.filter((d) => !rejectedIds.includes(d.id));
+        const opsContext = { pwt: prev.opsPwt ?? 0 };
+
+        if (!eligible.length) {
+          return { ...prev, status: "pending_dispatch", rejectedDriverIds: rejectedIds };
+        }
+        const decision = runMatchingAgent(
+          { passengerCount: prev.passengerCount, luggageCount: prev.luggageCount },
+          eligible,
+          opsContext
+        );
+        if (!decision.selectedDriverId) {
+          return { ...prev, status: "pending_dispatch", rejectedDriverIds: rejectedIds };
+        }
+        const driver = MOCK_DRIVER_POOL.find((d) => d.id === decision.selectedDriverId);
         return {
-          ...DEFAULT_ACTIVE_TRIP,
           ...prev,
-          ...splitDestination(resolvedDestination),
           status: "assigned",
-          driverPaymentConfirmed: false,
-          passengerReviewPending: false,
+          driverId: driver.id,
+          vehicleType: driver.vehicle,
+          etaMin: driver.etaMin,
+          matchingReason: decision.reasons.slice(0, 2).join(" · "),
+          matchingMode: decision.mode,
+          matchingDecision: decision,
+          rejectedDriverIds: rejectedIds,
         };
       });
     }
@@ -304,6 +363,10 @@ export function DemoMatchingProvider({ children }) {
         status: "idle",
         driverPaymentConfirmed: true,
         passengerReviewPending: false,
+        matchingMode: null,
+        matchingDecision: null,
+        rejectedDriverIds: [],
+        opsPwt: null,
       }));
     }
 
@@ -327,6 +390,10 @@ export function DemoMatchingProvider({ children }) {
         status: "idle",
         driverPaymentConfirmed: false,
         passengerReviewPending: false,
+        matchingMode: null,
+        matchingDecision: null,
+        rejectedDriverIds: [],
+        opsPwt: null,
       }));
       setOpsActionState(null);
       setActiveEscalationState(null);
@@ -343,6 +410,7 @@ export function DemoMatchingProvider({ children }) {
       setDispatchMode,
       bookPassengerTrip,
       assignMatch,
+      rejectAndRematch,
       setOpsAction,
       createEscalation,
       acknowledgeEscalation,

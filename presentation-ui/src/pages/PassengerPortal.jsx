@@ -684,6 +684,23 @@ function PassengerMatchingStatus() {
     return null;
   }
 
+  if (activeTrip.status === "pending_dispatch") {
+    return (
+      <div className="mb-4 rounded-2xl border border-amber-200 bg-amber-50 p-4 shadow-sm">
+        <div className="flex items-start justify-between gap-3">
+          <div>
+            <p className="text-xs font-black uppercase tracking-widest text-amber-600">Finding Driver</p>
+            <p className="mt-1 text-sm font-bold text-amber-700">Finding your driver…</p>
+            <p className="mt-0.5 text-xs text-amber-600">Please wait while we locate the next available driver</p>
+          </div>
+          <span className="material-symbols-outlined text-amber-500 leading-none" style={{ fontSize: "22px" }}>
+            hourglass_top
+          </span>
+        </div>
+      </div>
+    );
+  }
+
   const statusCopy = activeTrip.status === "arrived"
     ? t("passenger.driverArrived")
     : t("passenger.driverAssigned");
