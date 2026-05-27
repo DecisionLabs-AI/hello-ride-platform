@@ -63,6 +63,7 @@ function MobileHeader({ title, backLabel, onBack, rightLabel }) {
 // ── Route Summary Card ─────────────────────────────────────────────────────
 
 function RouteSummary({ pickup, destination }) {
+  const { t } = useLanguage();
   return (
     <div className="bg-white rounded-2xl border border-slate-200 shadow-sm p-4 flex items-stretch gap-3">
       <div className="flex flex-col items-center gap-1 pt-1.5">
@@ -72,14 +73,14 @@ function RouteSummary({ pickup, destination }) {
       </div>
       <div className="flex-1 flex flex-col gap-3 min-w-0">
         <div>
-          <p className="text-[10px] text-slate-400 uppercase tracking-widest font-black mb-0.5">From</p>
+          <p className="text-[10px] text-slate-400 uppercase tracking-widest font-black mb-0.5">{t("passenger.from")}</p>
           <p className="text-sm font-bold text-[#1a2b5e]">Suvarnabhumi Airport, Terminal 1</p>
           {pickup && <p className="text-xs text-muted mt-0.5">{pickup}</p>}
         </div>
         <div className="pt-3 border-t border-slate-100">
-          <p className="text-[10px] text-slate-400 uppercase tracking-widest font-black mb-0.5">To</p>
+          <p className="text-[10px] text-slate-400 uppercase tracking-widest font-black mb-0.5">{t("passenger.to")}</p>
           <p className={`text-sm font-bold ${destination ? "text-slate-900" : "text-slate-400"}`}>
-            {destination || "Where to?"}
+            {destination || t("passenger.whereTo")}
           </p>
         </div>
       </div>
@@ -197,7 +198,7 @@ function HomeScreen({ initialData = {}, onNext }) {
     <div className="flex flex-col gap-3.5">
       <MobileHeader title="Hello Ride" />
 
-      <FlowSection title="Passenger name">
+      <FlowSection title={t("passenger.passengerName")}>
         <div className="bg-white border border-slate-200 rounded-2xl p-3.5 shadow-sm">
           <div className="relative">
             <span className="material-symbols-outlined absolute left-3 top-1/2 -translate-y-1/2 text-slate-400 text-xl">person</span>
@@ -205,12 +206,12 @@ function HomeScreen({ initialData = {}, onNext }) {
               type="text"
               value={passengerName}
               onChange={(e) => setPassengerName(e.target.value)}
-              placeholder="Your name or initials"
+              placeholder={t("passenger.namePlaceholder")}
               className="w-full bg-slate-50 border border-slate-200 rounded-2xl pl-10 pr-4 py-3 text-slate-900 placeholder:text-slate-400 text-sm focus:outline-none focus:border-brand focus:bg-white focus:ring-2 focus:ring-brand/10 transition-all"
             />
           </div>
           {!passengerNameValue && (
-            <p className="mt-2 text-xs font-semibold text-red-600">Please enter passenger name</p>
+            <p className="mt-2 text-xs font-semibold text-red-600">{t("passenger.nameRequired")}</p>
           )}
         </div>
       </FlowSection>
@@ -230,7 +231,7 @@ function HomeScreen({ initialData = {}, onNext }) {
                 setShowSuggestions(true);
               }}
               onFocus={() => setShowSuggestions(true)}
-              placeholder="Search Bangkok destination"
+              placeholder={t("passenger.destPlaceholder")}
               className="w-full bg-slate-50 border border-slate-200 rounded-2xl pl-10 pr-4 py-3 text-slate-900 placeholder:text-slate-400 text-sm focus:outline-none focus:border-brand focus:bg-white focus:ring-2 focus:ring-brand/10 transition-all"
             />
             {showSuggestions && destInput && filtered.length > 0 && (
@@ -270,8 +271,8 @@ function HomeScreen({ initialData = {}, onNext }) {
       <FlowSection title={t("passenger.tripDetails")}>
         <div className="flex flex-col gap-2.5">
           <Counter
-            label="Passengers"
-            subtitle="Travelers in your party"
+            label={t("passenger.passengers")}
+            subtitle={t("passenger.passengerSubtitle")}
             value={passengers}
             onChange={setPassengers}
             min={1}
@@ -279,8 +280,8 @@ function HomeScreen({ initialData = {}, onNext }) {
             icon="person"
           />
           <Counter
-            label="Luggage"
-            subtitle="Bags and suitcases"
+            label={t("passenger.luggage")}
+            subtitle={t("passenger.luggageSubtitle")}
             value={luggage}
             onChange={setLuggage}
             min={0}
@@ -293,8 +294,8 @@ function HomeScreen({ initialData = {}, onNext }) {
       <FlowSection title={t("passenger.notesAssistance")}>
         <div className="bg-white shadow-sm border border-slate-200 rounded-2xl p-4 flex items-center justify-between gap-4">
           <div>
-            <p className="text-sm font-bold text-slate-900">Special assistance</p>
-            <p className="text-xs text-muted mt-0.5">Notify airport staff before pickup.</p>
+            <p className="text-sm font-bold text-slate-900">{t("passenger.specialAssistance")}</p>
+            <p className="text-xs text-muted mt-0.5">{t("passenger.specialAssistanceNote")}</p>
           </div>
           <button
             onClick={() => setSpecialAssistance((v) => !v)}
@@ -307,7 +308,7 @@ function HomeScreen({ initialData = {}, onNext }) {
         <textarea
           value={notes}
           onChange={(e) => setNotes(e.target.value)}
-          placeholder="Optional note for airport staff or driver"
+          placeholder={t("passenger.notePlaceholder")}
           rows={2}
           className="w-full bg-white border border-slate-200 rounded-2xl px-4 py-3 text-sm text-slate-900 placeholder:text-slate-400 focus:outline-none focus:border-brand focus:ring-2 focus:ring-brand/10 transition-all resize-none shadow-sm"
         />
@@ -360,7 +361,7 @@ function CarTypeScreen({ activeTrip, destination, passengers, luggage, onBack, o
       {/* Ride selection */}
       <div>
         <p className="text-xl font-extrabold font-headline text-slate-900 leading-tight">{t("passenger.selectRide")}</p>
-        <p className="text-xs text-muted mt-0.5 mb-4">Estimated arrival: {activeTrip.etaMin} mins</p>
+        <p className="text-xs text-muted mt-0.5 mb-4">{t("passenger.estimatedArrival")} {activeTrip.etaMin} {t("passenger.minUnit")}</p>
         <div className="flex flex-col gap-3">
           {RIDES.map((ride) => {
             const eligible = isEligible(ride);
@@ -475,7 +476,7 @@ function RideScreen({ activeTrip, selectedPayment, specialAssistance, notes, onB
       {/* Booking confirmation */}
       <div className="bg-brand/10 border border-brand/25 rounded-2xl p-5">
         <p className="text-xs text-brand-deep uppercase tracking-widest font-medium">
-          {canReview ? t("passenger.tripComplete") : "Booking details"}
+          {canReview ? t("passenger.tripComplete") : t("passenger.bookingDetails")}
         </p>
         <h2 className="text-xl font-bold text-slate-900 mt-1">
           {canReview ? `Arrived at ${dest}` : `Ride booked to ${dest}`}
@@ -492,12 +493,12 @@ function RideScreen({ activeTrip, selectedPayment, specialAssistance, notes, onB
 
       {/* Trip summary */}
       <div className="bg-white shadow-sm border border-slate-100 rounded-2xl p-5">
-        <p className="text-sm font-bold text-slate-900 mb-4">Trip summary</p>
+        <p className="text-sm font-bold text-slate-900 mb-4">{t("passenger.tripSummary")}</p>
         {[
-          ["Route", route],
-          ["Party", `${activeTrip.passengerCount} passengers · ${activeTrip.luggageCount} luggage`],
-          ["Ride", `${activeTrip.vehicleType} · ${activeTrip.distanceKM} km · ${activeTrip.tripTimeMin} mins`],
-          ...(specialAssistance ? [["Support", "Special assistance requested"]] : []),
+          [t("passenger.route"), route],
+          [t("passenger.party"), `${activeTrip.passengerCount} passengers · ${activeTrip.luggageCount} luggage`],
+          [t("passenger.rideSummary"), `${activeTrip.vehicleType} · ${activeTrip.distanceKM} km · ${activeTrip.tripTimeMin} mins`],
+          ...(specialAssistance ? [[t("passenger.support"), "Special assistance requested"]] : []),
         ].map(([label, value]) => (
           <div key={label} className="flex justify-between gap-4 py-2 border-b border-slate-100">
             <p className="text-xs text-muted">{label}</p>
@@ -506,7 +507,7 @@ function RideScreen({ activeTrip, selectedPayment, specialAssistance, notes, onB
         ))}
         {notes && (
           <div className="flex justify-between gap-4 py-2">
-            <p className="text-xs text-muted">Notes</p>
+            <p className="text-xs text-muted">{t("passenger.notes")}</p>
             <p className="text-xs text-muted text-right">{notes}</p>
           </div>
         )}
@@ -516,11 +517,11 @@ function RideScreen({ activeTrip, selectedPayment, specialAssistance, notes, onB
       <div className="bg-white shadow-sm border border-slate-100 rounded-2xl p-5">
         <p className="text-sm font-bold text-slate-900 mb-4">{t("passenger.payment")}</p>
         <div className="flex justify-between py-2 border-b border-slate-100">
-          <p className="text-xs text-muted">Method</p>
+          <p className="text-xs text-muted">{t("passenger.method")}</p>
           <p className="text-sm text-slate-900">{payment?.label} · {payment?.detail}</p>
         </div>
         <div className="flex justify-between py-2">
-          <p className="text-xs text-muted">Total</p>
+          <p className="text-xs text-muted">{t("passenger.total")}</p>
           <p className="text-lg font-bold text-slate-900">{fareLabel(activeTrip)}</p>
         </div>
       </div>
@@ -530,7 +531,7 @@ function RideScreen({ activeTrip, selectedPayment, specialAssistance, notes, onB
           onClick={onNext}
           className="w-full py-4 rounded-full bg-gradient-to-br from-brand to-brand-deep text-white font-headline font-extrabold text-lg shadow-[0_8px_24px_rgba(21,74,168,0.24)] active:scale-95 transition-transform"
         >
-          Leave a Review →
+          {t("passenger.leaveReview")}
         </button>
       )}
 
@@ -538,7 +539,7 @@ function RideScreen({ activeTrip, selectedPayment, specialAssistance, notes, onB
         onClick={onBack}
         className="w-full py-2.5 rounded-xl border border-slate-200 text-slate-500 text-sm hover:border-slate-400 hover:text-slate-700 transition-colors"
       >
-        Done
+        {t("passenger.done")}
       </button>
     </div>
   );
@@ -547,6 +548,7 @@ function RideScreen({ activeTrip, selectedPayment, specialAssistance, notes, onB
 // ── Review Screen ──────────────────────────────────────────────────────────
 
 function ReviewScreen({ activeTrip, onBack, onHome }) {
+  const { t } = useLanguage();
   const [rating, setRating] = useState(5);
   const [tip, setTip] = useState("฿50");
   const [comment, setComment] = useState("");
@@ -558,15 +560,15 @@ function ReviewScreen({ activeTrip, onBack, onHome }) {
       <div className="flex flex-col gap-4">
         <MobileHeader title="Hello Ride" backLabel="Close" onBack={onBack} />
         <div className="bg-brand/10 border border-brand/25 rounded-2xl p-6 text-center">
-          <p className="text-xs text-brand-deep uppercase tracking-widest font-medium mb-2">Review submitted!</p>
-          <p className="text-xl font-bold text-slate-900">Thanks for your feedback</p>
+          <p className="text-xs text-brand-deep uppercase tracking-widest font-medium mb-2">{t("passenger.reviewSubmitted")}</p>
+          <p className="text-xl font-bold text-slate-900">{t("passenger.thanksForFeedback")}</p>
           <p className="text-sm text-muted mt-2">Thank you for your feedback, {driverFirst}.</p>
         </div>
         <button
           onClick={onHome}
           className="w-full py-4 rounded-full bg-gradient-to-br from-brand to-brand-deep text-white font-headline font-extrabold text-lg shadow-[0_8px_24px_rgba(21,74,168,0.24)] active:scale-95 transition-transform"
         >
-          Back to Home
+          {t("passenger.backToHome")}
         </button>
       </div>
     );
@@ -578,15 +580,15 @@ function ReviewScreen({ activeTrip, onBack, onHome }) {
 
       {/* Driver card */}
       <div className="bg-white shadow-sm border border-slate-100 rounded-2xl p-5">
-        <p className="text-xs text-muted uppercase tracking-widest font-medium mb-2">Driver</p>
+        <p className="text-xs text-muted uppercase tracking-widest font-medium mb-2">{t("passenger.driver")}</p>
         <p className="text-base font-bold text-slate-900">{activeTrip.driverId}</p>
         <p className="text-xs text-muted">{activeTrip.vehicleType} · {fareLabel(activeTrip)}</p>
       </div>
 
       {/* Star rating */}
       <div>
-        <p className="text-sm font-bold text-slate-900 mb-1">Tap to rate</p>
-        <p className="text-xs text-muted mb-3">Choose a star rating</p>
+        <p className="text-sm font-bold text-slate-900 mb-1">{t("passenger.tapToRate")}</p>
+        <p className="text-xs text-muted mb-3">{t("passenger.chooseRating")}</p>
         <div className="flex gap-2">
           {[1, 2, 3, 4, 5].map((star) => (
             <button
@@ -605,8 +607,8 @@ function ReviewScreen({ activeTrip, onBack, onHome }) {
       {/* Tip */}
       <div>
         <div className="flex items-center justify-between mb-3">
-          <p className="text-sm font-bold text-slate-900">Add a tip for {driverFirst}?</p>
-          <p className="text-xs text-muted">Optional</p>
+          <p className="text-sm font-bold text-slate-900">{t("passenger.addTipFor")} {driverFirst}?</p>
+          <p className="text-xs text-muted">{t("passenger.optional")}</p>
         </div>
         <div className="grid grid-cols-4 gap-2">
           {TIP_OPTIONS.map((t) => (
@@ -625,11 +627,11 @@ function ReviewScreen({ activeTrip, onBack, onHome }) {
 
       {/* Comment */}
       <div>
-        <p className="text-sm font-bold text-slate-900 mb-2">Leave a comment</p>
+        <p className="text-sm font-bold text-slate-900 mb-2">{t("passenger.leaveComment")}</p>
         <textarea
           value={comment}
           onChange={(e) => setComment(e.target.value)}
-          placeholder="Share your experience (e.g. 'Great driver, clean car!')"
+          placeholder={t("passenger.commentPlaceholder")}
           rows={3}
           className="w-full bg-white border border-slate-200 rounded-xl px-4 py-3 text-sm text-slate-900 placeholder:text-slate-400 focus:outline-none focus:border-brand focus:ring-2 focus:ring-brand/10 transition-all resize-none shadow-sm"
         />
@@ -639,7 +641,7 @@ function ReviewScreen({ activeTrip, onBack, onHome }) {
         onClick={() => setSubmitted(true)}
         className="w-full py-4 rounded-full bg-gradient-to-br from-brand to-brand-deep text-white font-headline font-extrabold text-lg shadow-[0_8px_24px_rgba(21,74,168,0.24)] active:scale-95 transition-transform"
       >
-        Submit Review →
+        {t("passenger.submitReview")}
       </button>
     </div>
   );
@@ -659,21 +661,23 @@ function TripInfoRows({ rows }) {
 }
 
 function CancelRequestBlock({ onCancel }) {
+  const { t } = useLanguage();
   return (
     <div className="rounded-2xl border border-slate-200 bg-white p-4 shadow-sm">
-      <p className="mb-3 text-xs text-muted">No charge before driver confirmation.</p>
+      <p className="mb-3 text-xs text-muted">{t("passenger.noCharge")}</p>
       <button
         type="button"
         onClick={onCancel}
         className="w-full rounded-2xl border border-red-200 bg-red-50 py-3 text-sm font-bold text-red-700 transition-colors hover:bg-red-100 active:scale-95"
       >
-        Cancel Request
+        {t("passenger.cancelRequest")}
       </button>
     </div>
   );
 }
 
 function FindingDriverScreen({ activeTrip, onCancel }) {
+  const { t } = useLanguage();
   const { resolveDemoPassengerMatch } = useDemoMatching();
   const pendingDispatch = activeTrip.status === "pending_dispatch";
 
@@ -695,9 +699,9 @@ function FindingDriverScreen({ activeTrip, onCancel }) {
           <div className="flex items-start gap-3">
             <span className="material-symbols-outlined text-amber-500 shrink-0 mt-0.5" style={{ fontSize: "22px" }}>hourglass_top</span>
             <div>
-              <p className="text-xs font-black uppercase tracking-widest text-amber-600 mb-1">Still finding a driver</p>
-              <p className="text-base font-bold text-slate-900">OPS is reviewing available driver supply</p>
-              <p className="text-xs text-amber-700 mt-1 leading-relaxed">OPS is reviewing available driver supply and may re-dispatch your request shortly.</p>
+              <p className="text-xs font-black uppercase tracking-widest text-amber-600 mb-1">{t("passenger.stillFindingDriver")}</p>
+              <p className="text-base font-bold text-slate-900">{t("passenger.opsReviewingTitle")}</p>
+              <p className="text-xs text-amber-700 mt-1 leading-relaxed">{t("passenger.opsReviewingBody")}</p>
             </div>
           </div>
         </div>
@@ -706,13 +710,13 @@ function FindingDriverScreen({ activeTrip, onCancel }) {
           <div className="flex justify-center mb-3">
             <div className="w-10 h-10 rounded-full border-4 border-brand border-t-transparent animate-spin" />
           </div>
-          <p className="text-xs text-brand-deep uppercase tracking-widest font-medium mb-1">กำลังจัดรถให้คุณ</p>
-          <p className="text-base font-bold text-slate-900">กำลังค้นหาคนขับที่เหมาะสม</p>
+          <p className="text-xs text-brand-deep uppercase tracking-widest font-medium mb-1">{t("passenger.findingRide")}</p>
+          <p className="text-base font-bold text-slate-900">{t("passenger.findingDriver2")}</p>
         </div>
       )}
       <TripInfoRows rows={[
-        ["จุดรับ", activeTrip.pickupGate || "ชั้น 1 ประตู 4 (Level 1, Gate 4)"],
-        ["ปลายทาง", activeTrip.destinationName || activeTrip.selectedDestination || "—"],
+        [t("passenger.pickup"), activeTrip.pickupGate || "Level 1, Gate 4"],
+        [t("passenger.destination"), activeTrip.destinationName || activeTrip.selectedDestination || "—"],
       ]} />
       <CancelRequestBlock onCancel={onCancel} />
     </div>
@@ -720,27 +724,28 @@ function FindingDriverScreen({ activeTrip, onCancel }) {
 }
 
 function AssignedScreen({ activeTrip, onCancel }) {
+  const { t } = useLanguage();
   return (
     <div className="flex flex-col gap-4">
       <MobileHeader title="Hello Ride" showAvatar />
       <div className="bg-brand/10 border border-brand/25 rounded-2xl p-5">
         <div className="flex items-center gap-2">
           <span className="h-2.5 w-2.5 rounded-full bg-brand animate-pulse" />
-          <p className="text-xs text-brand-deep uppercase tracking-widest font-medium">Driver assigned</p>
+          <p className="text-xs text-brand-deep uppercase tracking-widest font-medium">{t("passenger.driverAssigned")}</p>
         </div>
         <div className="mt-2 flex items-center gap-3">
           <div className="h-5 w-5 rounded-full border-2 border-brand border-t-transparent animate-spin" />
-          <p className="text-xl font-black text-slate-900">Waiting for driver confirmation...</p>
+          <p className="text-xl font-black text-slate-900">{t("passenger.waitingConfirmation")}</p>
         </div>
         <p className="text-xs text-muted mt-2">
-          Driver {activeTrip.driverId} has been notified. We’ll update this screen once the driver accepts.
+          {t("passenger.driverLabel")} {activeTrip.driverId} {t("passenger.driverNotifiedNote")}
         </p>
       </div>
       <TripInfoRows rows={[
-        ["คนขับ", `${activeTrip.driverId} · ${activeTrip.vehicleType}`],
-        ["เวลาถึง", `${activeTrip.etaMin} นาที`],
-        ["จุดรับ", activeTrip.pickupGate || "ชั้น 1 ประตู 4 (Level 1, Gate 4)"],
-        ["ปลายทาง", activeTrip.destinationName || activeTrip.selectedDestination || "—"],
+        [t("passenger.driverLabel"), `${activeTrip.driverId} · ${activeTrip.vehicleType}`],
+        [t("passenger.etaLabel"), `${activeTrip.etaMin} ${t("passenger.minUnit")}`],
+        [t("passenger.pickup"), activeTrip.pickupGate || "Level 1, Gate 4"],
+        [t("passenger.destination"), activeTrip.destinationName || activeTrip.selectedDestination || "—"],
       ]} />
       <CancelRequestBlock onCancel={onCancel} />
     </div>
@@ -748,24 +753,26 @@ function AssignedScreen({ activeTrip, onCancel }) {
 }
 
 function AcceptedScreen({ activeTrip }) {
+  const { t } = useLanguage();
   return (
     <div className="flex flex-col gap-4">
       <MobileHeader title="Hello Ride" showAvatar />
       <div className="bg-brand/10 border border-brand/25 rounded-2xl p-5">
-        <p className="text-xs text-brand-deep uppercase tracking-widest font-medium mb-1">คนขับกำลังเดินทางมารับคุณ</p>
-        <p className="text-2xl font-black text-slate-900 mt-1">{activeTrip.etaMin} นาที</p>
-        <p className="text-xs text-muted mt-0.5">เวลาโดยประมาณก่อนถึงจุดรับ</p>
+        <p className="text-xs text-brand-deep uppercase tracking-widest font-medium mb-1">{t("passenger.driverOnTheWay")}</p>
+        <p className="text-2xl font-black text-slate-900 mt-1">{activeTrip.etaMin} {t("passenger.minUnit")}</p>
+        <p className="text-xs text-muted mt-0.5">{t("passenger.etaNote")}</p>
       </div>
       <TripInfoRows rows={[
-        ["คนขับ", `${activeTrip.driverId} · ${activeTrip.vehicleType}`],
-        ["เวลาถึง", `${activeTrip.etaMin} นาที`],
-        ["จุดรับ", activeTrip.pickupGate || "ชั้น 1 ประตู 4 (Level 1, Gate 4)"],
+        [t("passenger.driverLabel"), `${activeTrip.driverId} · ${activeTrip.vehicleType}`],
+        [t("passenger.etaLabel"), `${activeTrip.etaMin} ${t("passenger.minUnit")}`],
+        [t("passenger.pickup"), activeTrip.pickupGate || "Level 1, Gate 4"],
       ]} />
     </div>
   );
 }
 
 function ArrivedScreen({ activeTrip }) {
+  const { t } = useLanguage();
   return (
     <div className="flex flex-col gap-4">
       <MobileHeader title="Hello Ride" showAvatar />
@@ -780,12 +787,12 @@ function ArrivedScreen({ activeTrip }) {
             </span>
           </div>
         </div>
-        <p className="text-xs text-brand-deep uppercase tracking-widest font-medium mb-1">คนขับถึงจุดรับแล้ว</p>
-        <p className="text-base font-bold text-slate-900">กรุณาไปที่ชั้น 1 ประตู 4</p>
+        <p className="text-xs text-brand-deep uppercase tracking-widest font-medium mb-1">{t("passenger.driverArrived")}</p>
+        <p className="text-base font-bold text-slate-900">{t("passenger.goPtoPickup")}</p>
       </div>
       <TripInfoRows rows={[
-        ["คนขับ", activeTrip.driverId],
-        ["ยานพาหนะ", activeTrip.vehicleType],
+        [t("passenger.driverLabel"), activeTrip.driverId],
+        [t("passenger.vehicleLabel"), activeTrip.vehicleType],
       ]} />
     </div>
   );

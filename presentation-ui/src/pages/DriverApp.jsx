@@ -396,8 +396,8 @@ function StatusToggle({ isOnline, onToggle }) {
           <p className="mt-0.5 text-xl font-black text-slate-900">{statusLabel}</p>
           <p className="mt-1 text-xs leading-relaxed text-muted">
             {isOnline
-              ? "You are online. New airport jobs will appear automatically when assigned by OPS or the Matching Agent."
-              : "Go online to receive airport dispatch jobs."}
+              ? t("driver.onlineStatusDesc")
+              : t("driver.offlineStatusDesc")}
           </p>
         </div>
         <button
@@ -452,29 +452,29 @@ function QueueHome({ isOnline, inQueue, showIncentive, onToggleOnline }) {
         <p className="text-xs font-bold uppercase tracking-widest text-muted">{t("driver.airportQueue")}</p>
         <div className="mt-3 grid grid-cols-2 gap-3">
           <DriverMetric label={t("driver.queuePosition")} value={queueAvailable ? `#${D.queue.position}` : "--"} />
-          <DriverMetric label={t("driver.expectedWait")} value={queueAvailable ? `${D.queue.waitMin} นาที` : "--"} />
+          <DriverMetric label={t("driver.expectedWait")} value={queueAvailable ? `${D.queue.waitMin} ${t("driver.minUnit")}` : "--"} />
         </div>
         <div className="mt-4">
           <div className="rounded-2xl border border-[#154aa8]/15 bg-[#e8f0fe] px-4 py-3">
             <div className="flex items-start justify-between gap-3">
               <div>
-                <p className="text-sm font-black text-slate-900">Waiting for airport dispatch</p>
+                <p className="text-sm font-black text-slate-900">{t("driver.waitingDispatch")}</p>
                 <p className="mt-1 text-xs leading-relaxed text-slate-600">
                   {isOnline
-                    ? "You are online. New airport jobs will appear here automatically when assigned by OPS or the Matching Agent."
-                    : "Go online to receive airport dispatch jobs."}
+                    ? t("driver.onlineQueueMsg")
+                    : t("driver.offlineQueueMsg")}
                 </p>
               </div>
               <span className="shrink-0 rounded-full bg-white px-2.5 py-1 text-[10px] font-black uppercase tracking-widest text-[#154aa8] shadow-sm">
-                Waiting
+                {t("driver.waiting")}
               </span>
             </div>
           </div>
         </div>
         <p className="mt-3 text-center text-xs text-muted">
           {isOnline
-            ? "รอบริเวณชั้น 1 ประตู 4 เพื่อรับการ dispatch จากระบบ"
-            : "เปิดออนไลน์เพื่อรับ dispatch จาก OPS หรือ Matching Agent"}
+            ? t("driver.queueOnlineNote")
+            : t("driver.queueOfflineNote")}
         </p>
       </div>
 
@@ -536,7 +536,7 @@ function JobOfferHome({ activeTrip, onAccept, onReject }) {
           <div>
             <p className="mb-1 text-xs font-black uppercase tracking-widest text-brand">{t("driver.newJobOffer")}</p>
             <p className="font-headline font-black text-3xl text-brand">{fareLabel(activeTrip)}</p>
-            <p className="mt-2 text-[10px] font-black uppercase tracking-widest text-slate-400">Passenger</p>
+            <p className="mt-2 text-[10px] font-black uppercase tracking-widest text-slate-400">{t("driver.passenger")}</p>
             <p className="mt-0.5 text-sm font-bold text-slate-900">{passengerDisplayName(activeTrip)}</p>
             <p className="text-xs text-muted">{passengerLoadLabel(activeTrip)}</p>
             <p className="text-xs text-muted">สหกรณ์แท็กซี่สุวรรณภูมิ · แจ้งเตือนอัตโนมัติ</p>
@@ -552,13 +552,13 @@ function JobOfferHome({ activeTrip, onAccept, onReject }) {
         />
 
         <div className="mt-4 grid grid-cols-3 gap-2">
-          <DriverMetric label="เวลาถึง" value={`${activeTrip.etaMin} นาที`} />
-          <DriverMetric label="ผู้โดยสาร" value={activeTrip.passengerCount} />
-          <DriverMetric label="กระเป๋า" value={activeTrip.luggageCount} />
+          <DriverMetric label={t("driver.eta")} value={`${activeTrip.etaMin} ${t("driver.minUnit")}`} />
+          <DriverMetric label={t("driver.passengers")} value={activeTrip.passengerCount} />
+          <DriverMetric label={t("driver.luggageLabel")} value={activeTrip.luggageCount} />
         </div>
         <p className="mt-4 rounded-2xl bg-brand/5 p-3 text-xs leading-relaxed text-slate-600">{activeTrip.matchingReason}</p>
         <div className="mt-5 flex flex-col gap-2">
-          <PrimaryButton onClick={onAccept}>Accept Trip</PrimaryButton>
+          <PrimaryButton onClick={onAccept}>{t("driver.acceptTrip")}</PrimaryButton>
           <SecondaryButton onClick={onReject}>{t("driver.reject")}</SecondaryButton>
         </div>
       </div>
@@ -600,7 +600,7 @@ function NavigationHome({ activeTrip, onArrived }) {
           <span className="material-symbols-outlined text-[25px]">location_on</span>
         </div>
         <div className="absolute left-5 top-5 rounded-2xl border border-slate-200/70 bg-white/95 px-4 py-3 shadow-lg backdrop-blur">
-          <p className="text-sm font-black leading-none text-slate-900">{activeTrip.etaMin} นาที · 200 เมตร ถึงจุดรับผู้โดยสาร</p>
+          <p className="text-sm font-black leading-none text-slate-900">{activeTrip.etaMin} {t("driver.minUnit")} · 200m {t("driver.to")} {t("driver.pickupLabel")}</p>
           <p className="mt-1 text-xs leading-none text-slate-500">{activeTrip.pickupGate}</p>
         </div>
       </div>
@@ -608,9 +608,9 @@ function NavigationHome({ activeTrip, onArrived }) {
       <div className="relative -mt-7 flex-1 rounded-t-[2rem] bg-white px-5 pb-6 pt-5 shadow-[0_-18px_42px_rgba(15,35,68,0.16)]">
         <div className="mx-auto mb-4 h-1 w-10 rounded-full bg-slate-200" />
 
-        <p className="text-xs font-black uppercase tracking-widest text-brand">การนำทาง</p>
+        <p className="text-xs font-black uppercase tracking-widest text-brand">{t("driver.navigation")}</p>
         <h2 className="mt-1 text-2xl font-black leading-snug text-slate-900">{t("driver.headPickup")}</h2>
-        <p className="mt-1 text-sm text-muted">{activeTrip.etaMin} นาที ถึง {activeTrip.pickupGate}</p>
+        <p className="mt-1 text-sm text-muted">{activeTrip.etaMin} {t("driver.minUnit")} {t("driver.to")} {activeTrip.pickupGate}</p>
 
         <div className="mt-4 rounded-2xl border border-slate-100 bg-slate-50 p-4">
           <div className="flex gap-3">
@@ -621,12 +621,12 @@ function NavigationHome({ activeTrip, onArrived }) {
             </div>
             <div className="flex flex-col gap-4 flex-1">
               <div>
-                <p className="text-[10px] font-bold text-muted uppercase tracking-wider">จุดรับ</p>
+                <p className="text-[10px] font-bold text-muted uppercase tracking-wider">{t("driver.pickupLabel")}</p>
                 <p className="text-sm font-bold text-slate-900 mt-0.5">{activeTrip.pickupGate}</p>
                 <p className="mt-0.5 text-xs leading-relaxed text-muted">{activeTrip.pickupAddress}</p>
               </div>
               <div>
-                <p className="text-[10px] font-bold text-muted uppercase tracking-wider">ปลายทาง</p>
+                <p className="text-[10px] font-bold text-muted uppercase tracking-wider">{t("driver.destinationLabel")}</p>
                 <p className="text-sm font-semibold text-slate-900 mt-0.5">{fullDestination(activeTrip)}</p>
               </div>
             </div>
@@ -638,7 +638,7 @@ function NavigationHome({ activeTrip, onArrived }) {
             <span className="material-symbols-outlined text-slate-400 text-[18px]" style={{ fontVariationSettings: "'FILL' 1" }}>person</span>
           </div>
           <div className="flex-1 min-w-0">
-            <p className="text-[10px] font-bold text-muted uppercase tracking-wider">Passenger</p>
+            <p className="text-[10px] font-bold text-muted uppercase tracking-wider">{t("driver.passenger")}</p>
             <p className="text-sm font-bold text-slate-900">{passengerDisplayName(activeTrip)}</p>
             <p className="text-xs text-muted">{passengerLoadLabel(activeTrip)}</p>
           </div>
@@ -668,8 +668,8 @@ function TripInProgressHome({ activeTrip, onComplete }) {
   return (
     <div className="flex flex-col gap-4">
       <InfoCard
-        eyebrow="กำลังเดินทาง"
-        title={`มุ่งหน้าไป ${fullDestination(activeTrip)}`}
+        eyebrow={t("driver.inTransit")}
+        title={`${t("driver.headPickup")} → ${fullDestination(activeTrip)}`}
         body={`${activeTrip.distanceKM} กม. · ประมาณ ${activeTrip.tripTimeMin} นาที`}
         tone="driver"
       />
@@ -680,7 +680,7 @@ function TripInProgressHome({ activeTrip, onComplete }) {
         dropoffAddress={activeTrip.destinationArea}
       />
       <InfoCard
-        eyebrow="Passenger"
+        eyebrow={t("driver.passenger")}
         title={passengerDisplayName(activeTrip)}
         body={passengerLoadLabel(activeTrip)}
         tone="neutral"
@@ -700,14 +700,14 @@ function CompletedTripHome({ activeTrip, onConfirmPayment }) {
         <p className="mt-1 text-sm text-white/80">{activeTrip.paymentStatus}</p>
       </div>
       <div className="rounded-3xl border border-slate-100 bg-white p-5 shadow-sm">
-        <p className="mb-4 text-xs font-bold uppercase tracking-widest text-muted">สรุปค่าโดยสาร</p>
+        <p className="mb-4 text-xs font-bold uppercase tracking-widest text-muted">{t("driver.fareSummary")}</p>
         {[
-          [`ค่าโดยสารรวม`, fareLabel(activeTrip), true],
-          [`ระยะทาง (${activeTrip.distanceKM} กม.)`, "รวมในค่าโดยสาร"],
-          [`เวลาเดินทาง (${activeTrip.tripTimeMin} นาที)`, "รวมในค่าโดยสาร"],
-          ["ค่าธรรมเนียมการจองรวมแล้ว", `THB ${activeTrip.bookingFeeTHB}`],
-          ["ปลายทาง", fullDestination(activeTrip)],
-          ["ประเภทรถ", activeTrip.vehicleType],
+          [t("driver.totalFare"), fareLabel(activeTrip), true],
+          [`${t("driver.distanceLabel")} (${activeTrip.distanceKM} ${t("driver.km")})`, t("driver.includedInFare")],
+          [`${t("driver.tripTimeLabel")} (${activeTrip.tripTimeMin} ${t("driver.minUnit")})`, t("driver.includedInFare")],
+          [t("driver.bookingFeeIncluded"), `THB ${activeTrip.bookingFeeTHB}`],
+          [t("driver.destinationLabel"), fullDestination(activeTrip)],
+          [t("driver.vehicleType"), activeTrip.vehicleType],
         ].map(([label, value, isTotal]) => (
           <div key={label} className="flex items-center justify-between border-b border-slate-100 py-2.5 last:border-0">
             <p className={isTotal ? "text-sm font-bold text-slate-900" : "text-sm text-muted"}>{label}</p>

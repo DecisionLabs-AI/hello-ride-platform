@@ -1,34 +1,14 @@
 import { useState, useRef, useEffect } from "react";
 import { matchProtocol } from "../../lib/protocolMatcher.js";
+import { useLanguage } from "../../context/useLanguage.js";
 
 const ESCALATION_STORAGE_KEY = "helloride_activeEscalation";
 const PASSENGER_MESSAGES_KEY = "helloride_passengerMessages";
 
-const MENU_OPTIONS = [
-  {
-    id: "emergency",
-    icon: "emergency_home",
-    title: "Emergency / Safety",
-    subtitle: "Urgent help from airport staff",
-    triggerText: "ช่วยด้วย",
-    iconColor: "text-red-500",
-  },
-  {
-    id: "pickup",
-    icon: "luggage",
-    title: "Pickup / Luggage Help",
-    subtitle: "Pickup point, driver, or baggage",
-    triggerText: null,
-    iconColor: "text-blue-500",
-  },
-  {
-    id: "message",
-    icon: "chat",
-    title: "Message OPS Staff",
-    subtitle: "Send a general message",
-    triggerText: null,
-    iconColor: "text-slate-500",
-  },
+const MENU_OPTION_IDS = [
+  { id: "emergency", icon: "emergency_home", triggerText: "ช่วยด้วย", iconColor: "text-red-500" },
+  { id: "pickup",    icon: "luggage",        triggerText: null,       iconColor: "text-blue-500" },
+  { id: "message",   icon: "chat",           triggerText: null,       iconColor: "text-slate-500" },
 ];
 
 const PICKUP_RESPONSE =
@@ -109,11 +89,22 @@ function getMenuResponse(option) {
 }
 
 export default function PassengerSupportChat() {
+  const { t } = useLanguage();
   const [isOpen, setIsOpen] = useState(false);
   const [messages, setMessages] = useState([]);
   const [showInput, setShowInput] = useState(false);
   const [input, setInput] = useState("");
   const messagesEndRef = useRef(null);
+
+  const menuOptions = MENU_OPTION_IDS.map((base) => {
+    if (base.id === "emergency") {
+      return { ...base, title: t("support.emergency"), subtitle: t("support.emergencySubtitle") };
+    }
+    if (base.id === "pickup") {
+      return { ...base, title: t("support.pickupHelp"), subtitle: t("support.pickupHelpSubtitle") };
+    }
+    return { ...base, title: t("support.messageOps"), subtitle: t("support.messageOpsSubtitle") };
+  });
 
   useEffect(() => {
     if (!isOpen) return;
@@ -144,7 +135,7 @@ export default function PassengerSupportChat() {
     if (!text) return;
     recordPassengerMessage({
       text,
-      quickOption: "Message OPS Staff",
+      quickOption: t("support.messageOps"),
     });
     setMessages((prev) => [
       ...prev,
@@ -188,8 +179,8 @@ export default function PassengerSupportChat() {
           <div className="flex-none border-b border-slate-200/70 bg-white px-5 pb-3 pt-5">
             <div className="flex items-start justify-between">
               <div>
-                <p className="text-[1.05rem] font-extrabold text-[#1a2b5e] leading-tight">Passenger Support</p>
-                <p className="text-xs text-muted mt-0.5">Airport pickup assistance</p>
+                <p className="text-[1.05rem] font-extrabold text-[#1a2b5e] leading-tight">{t("support.title")}</p>
+                <p className="text-xs text-muted mt-0.5">{t("support.subtitle")}</p>
               </div>
               <button
                 onClick={() => setIsOpen(false)}
@@ -203,9 +194,9 @@ export default function PassengerSupportChat() {
 
           {/* Chat area */}
           <div className="flex-none bg-slate-50 px-5 pb-2 pt-3">
-            <p className="text-base font-extrabold text-slate-900">How can we help?</p>
+            <p className="text-base font-extrabold text-slate-900">{t("support.howCanWeHelp")}</p>
             <p className="mt-0.5 text-xs leading-relaxed text-muted">
-              Choose a topic so our airport team can assist faster.
+              {t("support.chooseATopic")}
             </p>
           </div>
 
@@ -231,7 +222,7 @@ export default function PassengerSupportChat() {
           {/* Menu rows */}
           <div className="flex-none bg-slate-50 px-4 pb-4 pt-2">
             <div className="flex flex-col gap-2">
-              {MENU_OPTIONS.map((option) => (
+              {menuOptions.map((option) => (
                 <button
                   key={option.id}
                   onClick={() => handleOption(option)}
@@ -257,7 +248,7 @@ export default function PassengerSupportChat() {
                     if (e.key === "Enter") handleSendMessage();
                   }}
                   autoFocus
-                  placeholder="Type your message..."
+                  placeholder={t("support.messagePlaceholder")}
                   className="min-w-0 flex-1 bg-transparent px-2 py-2 text-sm text-slate-900 placeholder:text-slate-400 focus:outline-none"
                 />
                 <button

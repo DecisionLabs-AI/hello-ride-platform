@@ -526,7 +526,7 @@ function DemandChart({ series, currentPwt = kpiSummary.currentPWT }) {
           </text>
         </svg>
         <div className="mt-3 text-center text-xs font-semibold text-slate-500">
-          Time of Day (Suvarnabhumi · 10 May 2026)
+          Time of Day
         </div>
       </div>
     </div>
@@ -1234,19 +1234,19 @@ function ResponseActionFramework() {
     {
       layer: "Action 1 — Quick Win",
       action: "Supply shortage response",
-      description: "ทำได้ทันที — ส่ง incentive broadcast เรียกแท็กซี่จาก holding zone เข้า curb เป็น action หลักที่ dashboard recommend",
+      description: "Immediate action — send incentive broadcast to call taxis from holding zone to curb. Primary action recommended by dashboard.",
       tone: "border-emerald-200 bg-emerald-50",
     },
     {
       layer: "Action 2 — Supply",
-      action: "เรียกรถจาก Holding Area",
-      description: "ดึงรถจาก holding zone ออกมา curb โดยตรง แก้ปัญหา supply routing",
+      action: "Call from Holding Area",
+      description: "Pull taxis directly from holding zone to curb. Resolves supply routing bottleneck.",
       tone: "border-blue-200 bg-blue-50",
     },
     {
       layer: "Action 3 — Throughput",
-      action: "เปิด Lanes เพิ่ม",
-      description: "เพิ่ม lane รับ-ส่งผู้โดยสาร ลดคอขวด แก้ปัญหา \"แท็กซี่เยอะแต่รอนาน\" Root Cause: Lane Capacity −4.1 min",
+      action: "Open Additional Lanes",
+      description: "Add taxi pickup lanes to reduce congestion. Resolves 'taxis available but passengers still waiting' issue. Root Cause: Lane Capacity −4.1 min",
       tone: "border-amber-200 bg-amber-50",
     },
   ];
