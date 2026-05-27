@@ -57,8 +57,8 @@ export const RIDES = [
 ];
 
 export const PAYMENT_OPTIONS = [
-  { id: "wallet", label: "Wallet", detail: "Hello Pay Wallet", value: "THB 142.50 available" },
-  { id: "card", label: "Card", detail: "Visa ending 2048", value: "Business card" },
+  { id: "cash", label: "Cash Payment", detail: "Cash Payment", value: "Pay directly to driver after the ride" },
+  { id: "card", label: "Credit / Debit Card", detail: "Credit / Debit Card", value: "Pay by card after the ride" },
 ];
 
 export const TIP_OPTIONS = ["฿10", "฿20", "฿50", "฿100"];

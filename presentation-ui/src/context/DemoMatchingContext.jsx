@@ -13,7 +13,7 @@ const DEFAULT_ACTIVE_TRIP = {
   passengerId: "P001",
   driverId: null,
   assignedDriver: null,
-  passengerName: "Tanaka K.",
+  passengerName: "",
   pickupTerminal: "",
   pickupGate: "ชั้น 1 ประตู 4 (Level 1, Gate 4)",
   pickupAddress: "ท่าอากาศยานสุวรรณภูมิ, สมุทรปราการ",
@@ -25,7 +25,7 @@ const DEFAULT_ACTIVE_TRIP = {
   fareTHB: 385,
   distanceKM: 32.4,
   tripTimeMin: 45,
-  bookingFeeTHB: 15,
+  bookingFeeTHB: 50,
   paymentStatus: "รอรับชำระเงิน",
   etaMin: null,
   passengerCount: 3,
@@ -59,6 +59,7 @@ function readStoredTrip() {
       selectedDestination,
       destinationName: parsed.destinationName || selectedDestination,
       destinationArea: parsed.destinationArea || selectedDestination,
+      bookingFeeTHB: DEFAULT_ACTIVE_TRIP.bookingFeeTHB,
       status: parsed.status || DEFAULT_ACTIVE_TRIP.status,
       rejectedDriverIds: Array.isArray(parsed.rejectedDriverIds) ? parsed.rejectedDriverIds : [],
     });
@@ -303,11 +304,15 @@ export function DemoMatchingProvider({ children }) {
       setActiveTripState((prev) => ({ ...prev, ...nextDestination }));
     }
 
-    function updatePassengerTrip({ destination, passengers, luggage } = {}) {
+    function updatePassengerTrip({ destination, passengerName, passengers, luggage, pickupGate, pickupAddress, pickupTerminal } = {}) {
       const nextDestination = destination ? splitDestination(destination) : {};
       setActiveTripState((prev) => ({
         ...prev,
         ...nextDestination,
+        passengerName: passengerName ?? prev.passengerName,
+        pickupGate: pickupGate ?? prev.pickupGate,
+        pickupAddress: pickupAddress ?? prev.pickupAddress,
+        pickupTerminal: pickupTerminal ?? prev.pickupTerminal,
         passengerCount: passengers ?? prev.passengerCount,
         luggageCount: luggage ?? prev.luggageCount,
       }));
@@ -493,6 +498,32 @@ export function DemoMatchingProvider({ children }) {
       }));
     }
 
+    function cancelPassengerRequest() {
+      setActiveTripState((prev) => ({
+        ...DEFAULT_ACTIVE_TRIP,
+        selectedDestination: prev.selectedDestination,
+        destinationName: prev.destinationName,
+        destinationArea: prev.destinationArea,
+        passengerCount: prev.passengerCount,
+        luggageCount: prev.luggageCount,
+        requestedVehicleType: prev.requestedVehicleType,
+        vehicleType: null,
+        fareTHB: prev.fareTHB,
+        distanceKM: prev.distanceKM,
+        tripTimeMin: prev.tripTimeMin,
+        bookingFeeTHB: DEFAULT_ACTIVE_TRIP.bookingFeeTHB,
+        paymentStatus: DEFAULT_ACTIVE_TRIP.paymentStatus,
+        status: "idle",
+        driverPaymentConfirmed: false,
+        passengerReviewPending: false,
+        completedAt: null,
+        matchingMode: null,
+        matchingDecision: null,
+        rejectedDriverIds: [],
+        opsPwt: null,
+      }));
+    }
+
     function completePassengerReview() {
       window.localStorage.removeItem(STORAGE_KEY_DISPATCH_MODE);
       setDispatchModeState(DEFAULT_DISPATCH_MODE);
@@ -508,7 +539,7 @@ export function DemoMatchingProvider({ children }) {
         fareTHB: prev.fareTHB,
         distanceKM: prev.distanceKM,
         tripTimeMin: prev.tripTimeMin,
-        bookingFeeTHB: prev.bookingFeeTHB,
+        bookingFeeTHB: DEFAULT_ACTIVE_TRIP.bookingFeeTHB,
         paymentStatus: DEFAULT_ACTIVE_TRIP.paymentStatus,
         status: "idle",
         driverPaymentConfirmed: false,
@@ -538,7 +569,7 @@ export function DemoMatchingProvider({ children }) {
         fareTHB: prev.fareTHB,
         distanceKM: prev.distanceKM,
         tripTimeMin: prev.tripTimeMin,
-        bookingFeeTHB: prev.bookingFeeTHB,
+        bookingFeeTHB: DEFAULT_ACTIVE_TRIP.bookingFeeTHB,
         paymentStatus: prev.paymentStatus,
         status: "idle",
         driverPaymentConfirmed: false,
@@ -576,6 +607,7 @@ export function DemoMatchingProvider({ children }) {
       markArrived,
       completeMatch,
       confirmDriverPayment,
+      cancelPassengerRequest,
       completePassengerReview,
       resetMatch,
     };

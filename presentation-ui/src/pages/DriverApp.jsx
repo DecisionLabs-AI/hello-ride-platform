@@ -31,6 +31,14 @@ function fullDestination(activeTrip) {
   return activeTrip.destinationName || activeTrip.selectedDestination || "ยังไม่ได้เลือกปลายทาง";
 }
 
+function passengerDisplayName(activeTrip) {
+  return activeTrip.passengerName || "Passenger P001";
+}
+
+function passengerLoadLabel(activeTrip) {
+  return `${activeTrip.passengerCount} passenger · ${activeTrip.luggageCount} bag`;
+}
+
 function readStoredDriverOnline() {
   if (typeof window === "undefined") return true;
   const stored = window.localStorage.getItem(DRIVER_ONLINE_KEY);
@@ -528,7 +536,9 @@ function JobOfferHome({ activeTrip, onAccept, onReject }) {
           <div>
             <p className="mb-1 text-xs font-black uppercase tracking-widest text-brand">{t("driver.newJobOffer")}</p>
             <p className="font-headline font-black text-3xl text-brand">{fareLabel(activeTrip)}</p>
-            <p className="mt-1 text-sm font-bold text-slate-900">{activeTrip.passengerName}</p>
+            <p className="mt-2 text-[10px] font-black uppercase tracking-widest text-slate-400">Passenger</p>
+            <p className="mt-0.5 text-sm font-bold text-slate-900">{passengerDisplayName(activeTrip)}</p>
+            <p className="text-xs text-muted">{passengerLoadLabel(activeTrip)}</p>
             <p className="text-xs text-muted">สหกรณ์แท็กซี่สุวรรณภูมิ · แจ้งเตือนอัตโนมัติ</p>
           </div>
           <TimerRing seconds={seconds} total={12} />
@@ -628,8 +638,9 @@ function NavigationHome({ activeTrip, onArrived }) {
             <span className="material-symbols-outlined text-slate-400 text-[18px]" style={{ fontVariationSettings: "'FILL' 1" }}>person</span>
           </div>
           <div className="flex-1 min-w-0">
-            <p className="text-sm font-bold text-slate-900">{activeTrip.passengerName}</p>
-            <p className="text-xs text-muted">{activeTrip.passengerCount} คน · {activeTrip.luggageCount} กระเป๋า</p>
+            <p className="text-[10px] font-bold text-muted uppercase tracking-wider">Passenger</p>
+            <p className="text-sm font-bold text-slate-900">{passengerDisplayName(activeTrip)}</p>
+            <p className="text-xs text-muted">{passengerLoadLabel(activeTrip)}</p>
           </div>
         </div>
 
@@ -669,9 +680,9 @@ function TripInProgressHome({ activeTrip, onComplete }) {
         dropoffAddress={activeTrip.destinationArea}
       />
       <InfoCard
-        eyebrow="ผู้โดยสาร"
-        title={activeTrip.passengerName}
-        body={`${activeTrip.passengerCount} คน · ${activeTrip.luggageCount} กระเป๋า`}
+        eyebrow="Passenger"
+        title={passengerDisplayName(activeTrip)}
+        body={passengerLoadLabel(activeTrip)}
         tone="neutral"
       />
       <PrimaryButton onClick={onComplete}>{t("driver.completeTrip")}</PrimaryButton>
@@ -694,7 +705,7 @@ function CompletedTripHome({ activeTrip, onConfirmPayment }) {
           [`ค่าโดยสารรวม`, fareLabel(activeTrip), true],
           [`ระยะทาง (${activeTrip.distanceKM} กม.)`, "รวมในค่าโดยสาร"],
           [`เวลาเดินทาง (${activeTrip.tripTimeMin} นาที)`, "รวมในค่าโดยสาร"],
-          ["ค่าธรรมเนียมการจอง", `THB ${activeTrip.bookingFeeTHB}`],
+          ["ค่าธรรมเนียมการจองรวมแล้ว", `THB ${activeTrip.bookingFeeTHB}`],
           ["ปลายทาง", fullDestination(activeTrip)],
           ["ประเภทรถ", activeTrip.vehicleType],
         ].map(([label, value, isTotal]) => (
@@ -747,7 +758,7 @@ function TripsTab({ activeTrip }) {
         <p className="text-xs font-bold uppercase tracking-widest text-muted">งานปัจจุบัน</p>
         {hasTrip ? (
           <>
-            <p className="mt-1 text-lg font-black text-slate-900">{activeTrip.passengerName} ไป {fullDestination(activeTrip)}</p>
+            <p className="mt-1 text-lg font-black text-slate-900">{passengerDisplayName(activeTrip)} ไป {fullDestination(activeTrip)}</p>
             <p className="mt-1 text-sm text-muted">{fareLabel(activeTrip)} · {activeTrip.vehicleType} · {activeTrip.status}</p>
             <div className="mt-4 flex items-center gap-2">
               {timeline.map((item, index) => (

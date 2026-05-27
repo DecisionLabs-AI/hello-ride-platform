@@ -33,7 +33,7 @@ function BrandHeader() {
   return <HelloRideWordmark />;
 }
 
-function MobileHeader({ title, backLabel, onBack, rightLabel, showAvatar }) {
+function MobileHeader({ title, backLabel, onBack, rightLabel }) {
   const isBrand = title === "Hello Ride";
   return (
     <div className="flex items-center justify-between py-2.5 mb-3">
@@ -54,11 +54,6 @@ function MobileHeader({ title, backLabel, onBack, rightLabel, showAvatar }) {
         <p className="text-base font-bold text-[#1a2b5e]">{title}</p>
       )}
       <div className="w-16 flex justify-end">
-        {showAvatar && (
-          <div className="w-8 h-8 rounded-full bg-white border border-slate-200 shadow-sm flex items-center justify-center text-xs font-bold text-brand">
-            NT
-          </div>
-        )}
         {rightLabel && <p className="text-xs text-muted">{rightLabel}</p>}
       </div>
     </div>
@@ -136,6 +131,44 @@ function FlowSection({ title, children }) {
   );
 }
 
+// ── QR Entry Simulation ────────────────────────────────────────────────────
+
+function QREntryScreen({ onStart }) {
+  return (
+    <div className="flex min-h-[calc(100vh-140px)] flex-col justify-center gap-5">
+      <MobileHeader title="Hello Ride" />
+      <div className="rounded-3xl border border-brand/10 bg-white p-6 shadow-[0_14px_36px_rgba(21,74,168,0.10)]">
+        <div className="mb-5 flex items-center gap-3">
+          <div className="flex h-12 w-12 shrink-0 items-center justify-center rounded-2xl bg-brand text-white shadow-md">
+            <span className="material-symbols-outlined text-2xl" style={{ fontVariationSettings: "'FILL' 1" }}>
+              qr_code_scanner
+            </span>
+          </div>
+          <div>
+            <p className="text-xs font-black uppercase tracking-widest text-brand">Airport QR Entry</p>
+            <h1 className="mt-0.5 font-headline text-2xl font-black text-slate-900">Scan Airport QR</h1>
+          </div>
+        </div>
+        <p className="text-sm leading-relaxed text-slate-600">
+          For this demo, QR scan is simulated. In production, the airport QR code opens this passenger booking flow with pickup location pre-filled.
+        </p>
+        <div className="mt-5 rounded-2xl border border-slate-200 bg-slate-50 p-4">
+          <p className="text-[10px] font-black uppercase tracking-widest text-slate-400">Detected pickup</p>
+          <p className="mt-1 text-base font-bold text-slate-900">BKK Airport · Level 1, Gate 4</p>
+        </div>
+        <button
+          type="button"
+          onClick={onStart}
+          className="mt-6 flex w-full items-center justify-center gap-2 rounded-2xl bg-gradient-to-r from-brand to-brand-deep py-4 font-headline text-base font-extrabold text-white shadow-[0_12px_28px_rgba(21,74,168,0.28)] active:scale-95 transition-transform"
+        >
+          Start Passenger Booking
+          <span className="material-symbols-outlined text-[20px]">arrow_forward</span>
+        </button>
+      </div>
+    </div>
+  );
+}
+
 // ── Home Screen ────────────────────────────────────────────────────────────
 
 function HomeScreen({ initialData = {}, onNext }) {
@@ -143,6 +176,7 @@ function HomeScreen({ initialData = {}, onNext }) {
   const { activeTrip, setPassengerDestination } = useDemoMatching();
   const activeDestination = destinationLabel(activeTrip);
   const initialDestination = initialData.selectedDestination || initialData.dest || activeDestination || "";
+  const [passengerName, setPassengerName] = useState(initialData.passengerName ?? "");
   const [dest, setDest] = useState(initialDestination);
   const [destInput, setDestInput] = useState(initialDestination);
   const [passengers, setPassengers] = useState(1);
@@ -156,11 +190,30 @@ function HomeScreen({ initialData = {}, onNext }) {
   ).slice(0, 8);
 
   const selectedDestination = dest.trim();
-  const isValid = selectedDestination && passengers >= 1;
+  const passengerNameValue = passengerName.trim();
+  const isValid = passengerNameValue && selectedDestination && passengers >= 1;
 
   return (
     <div className="flex flex-col gap-3.5">
-      <MobileHeader title="Hello Ride" showAvatar />
+      <MobileHeader title="Hello Ride" />
+
+      <FlowSection title="Passenger name">
+        <div className="bg-white border border-slate-200 rounded-2xl p-3.5 shadow-sm">
+          <div className="relative">
+            <span className="material-symbols-outlined absolute left-3 top-1/2 -translate-y-1/2 text-slate-400 text-xl">person</span>
+            <input
+              type="text"
+              value={passengerName}
+              onChange={(e) => setPassengerName(e.target.value)}
+              placeholder="Your name or initials"
+              className="w-full bg-slate-50 border border-slate-200 rounded-2xl pl-10 pr-4 py-3 text-slate-900 placeholder:text-slate-400 text-sm focus:outline-none focus:border-brand focus:bg-white focus:ring-2 focus:ring-brand/10 transition-all"
+            />
+          </div>
+          {!passengerNameValue && (
+            <p className="mt-2 text-xs font-semibold text-red-600">Please enter passenger name</p>
+          )}
+        </div>
+      </FlowSection>
 
       <FlowSection title={t("passenger.destination")}>
         <div className="bg-white border border-slate-200 rounded-2xl p-3.5 shadow-sm">
@@ -262,7 +315,7 @@ function HomeScreen({ initialData = {}, onNext }) {
 
       <div className="sticky bottom-0 z-40 -mx-5 mt-1 px-5 pt-3 pb-4 bg-gradient-to-t from-[#f5f8fb] via-[#f5f8fb]/95 to-transparent">
         <button
-          onClick={() => isValid && onNext({ selectedDestination, dest: selectedDestination, passengers, luggage, specialAssistance, notes })}
+          onClick={() => isValid && onNext({ passengerName: passengerNameValue, selectedDestination, dest: selectedDestination, passengers, luggage, specialAssistance, notes })}
           disabled={!isValid}
           className="w-full py-4 rounded-2xl bg-gradient-to-r from-brand to-brand-deep text-white font-headline font-extrabold text-base shadow-[0_12px_28px_rgba(21,74,168,0.28)] disabled:opacity-100 disabled:from-slate-300 disabled:to-slate-300 disabled:text-white disabled:shadow-none disabled:cursor-not-allowed active:scale-95 transition-all flex items-center justify-center gap-2"
         >
@@ -291,14 +344,11 @@ const RIDE_ICONS = {
 function CarTypeScreen({ activeTrip, destination, passengers, luggage, onBack, onNext }) {
   const { t } = useLanguage();
   const [selectedRide, setSelectedRide] = useState(null);
-  const [selectedPayment, setSelectedPayment] = useState(null);
-  const [showPaymentPicker, setShowPaymentPicker] = useState(false);
+  const [selectedPayment, setSelectedPayment] = useState("cash");
 
   function isEligible(ride) {
     return passengers <= ride.maxPassengers && luggage <= ride.maxLuggage;
   }
-
-  const activePay = PAYMENT_OPTIONS.find((p) => p.id === selectedPayment);
 
   return (
     <div className="flex flex-col gap-5">
@@ -358,53 +408,42 @@ function CarTypeScreen({ activeTrip, destination, passengers, luggage, onBack, o
         </div>
       </div>
 
-      {/* Payment — wallet card style */}
+      {/* Payment */}
       <div>
         <p className="text-base font-extrabold font-headline text-slate-900 mb-3">{t("passenger.payment")}</p>
-        {activePay && !showPaymentPicker ? (
-          <div className="flex items-center justify-between bg-white border-2 border-brand/10 p-4 rounded-2xl shadow-sm">
-            <div className="flex items-center gap-3">
-              <div className="w-10 h-10 bg-brand rounded-xl flex items-center justify-center shrink-0">
-                <span className="material-symbols-outlined text-white text-lg"
-                  style={{ fontVariationSettings: "'FILL' 1" }}>
-                  {activePay.id === "card" ? "credit_card" : "account_balance_wallet"}
-                </span>
-              </div>
-              <div>
-                <p className="text-sm font-bold text-slate-900">{activePay.detail}</p>
-                <p className="text-xs text-muted">{activePay.value}</p>
-              </div>
-            </div>
-            <button
-              onClick={() => setShowPaymentPicker(true)}
-              className="text-brand font-bold text-sm px-4 py-1.5 hover:bg-brand/8 rounded-full transition-colors"
-            >
-              Change
-            </button>
-          </div>
-        ) : (
-          <div className="flex flex-col gap-2">
-            {PAYMENT_OPTIONS.map((pay) => (
+        <div className="flex flex-col gap-2">
+          {PAYMENT_OPTIONS.map((pay) => {
+            const selected = selectedPayment === pay.id;
+            return (
               <button
                 key={pay.id}
-                onClick={() => { setSelectedPayment(pay.id); setShowPaymentPicker(false); }}
-                className="w-full text-left bg-white border border-slate-200 rounded-2xl p-4 flex items-center gap-3 hover:border-brand/40 hover:shadow-sm transition-all"
+                type="button"
+                onClick={() => setSelectedPayment(pay.id)}
+                className={`flex w-full items-center gap-3 rounded-2xl p-4 text-left shadow-sm transition-all ${
+                  selected
+                    ? "border-2 border-brand bg-white shadow-[0_8px_22px_rgba(21,74,168,0.12)]"
+                    : "border border-slate-200 bg-white hover:border-brand/40 hover:shadow-md active:scale-[0.99]"
+                }`}
               >
-                <div className="w-10 h-10 bg-brand rounded-xl flex items-center justify-center shrink-0">
-                  <span className="material-symbols-outlined text-white text-lg"
-                    style={{ fontVariationSettings: "'FILL' 1" }}>
-                    {pay.id === "card" ? "credit_card" : "account_balance_wallet"}
+                <div className={`w-10 h-10 rounded-xl flex items-center justify-center shrink-0 ${selected ? "bg-brand" : "bg-brand/8"}`}>
+                  <span
+                    className={`material-symbols-outlined text-lg ${selected ? "text-white" : "text-brand"}`}
+                    style={{ fontVariationSettings: "'FILL' 1" }}
+                  >
+                    {pay.id === "card" ? "credit_card" : "payments"}
                   </span>
                 </div>
                 <div className="flex-1">
                   <p className="text-sm font-bold text-slate-900">{pay.detail}</p>
                   <p className="text-xs text-muted">{pay.value}</p>
                 </div>
-                <span className="material-symbols-outlined text-slate-300 text-lg">chevron_right</span>
+                <span className={`material-symbols-outlined text-[20px] ${selected ? "text-brand" : "text-slate-300"}`}>
+                  {selected ? "check_circle" : "radio_button_unchecked"}
+                </span>
               </button>
-            ))}
-          </div>
-        )}
+            );
+          })}
+        </div>
       </div>
 
       <button
@@ -619,7 +658,22 @@ function TripInfoRows({ rows }) {
   );
 }
 
-function FindingDriverScreen({ activeTrip }) {
+function CancelRequestBlock({ onCancel }) {
+  return (
+    <div className="rounded-2xl border border-slate-200 bg-white p-4 shadow-sm">
+      <p className="mb-3 text-xs text-muted">No charge before driver confirmation.</p>
+      <button
+        type="button"
+        onClick={onCancel}
+        className="w-full rounded-2xl border border-red-200 bg-red-50 py-3 text-sm font-bold text-red-700 transition-colors hover:bg-red-100 active:scale-95"
+      >
+        Cancel Request
+      </button>
+    </div>
+  );
+}
+
+function FindingDriverScreen({ activeTrip, onCancel }) {
   const { resolveDemoPassengerMatch } = useDemoMatching();
   const pendingDispatch = activeTrip.status === "pending_dispatch";
 
@@ -660,18 +714,27 @@ function FindingDriverScreen({ activeTrip }) {
         ["จุดรับ", activeTrip.pickupGate || "ชั้น 1 ประตู 4 (Level 1, Gate 4)"],
         ["ปลายทาง", activeTrip.destinationName || activeTrip.selectedDestination || "—"],
       ]} />
+      <CancelRequestBlock onCancel={onCancel} />
     </div>
   );
 }
 
-function AssignedScreen({ activeTrip }) {
+function AssignedScreen({ activeTrip, onCancel }) {
   return (
     <div className="flex flex-col gap-4">
       <MobileHeader title="Hello Ride" showAvatar />
       <div className="bg-brand/10 border border-brand/25 rounded-2xl p-5">
-        <p className="text-xs text-brand-deep uppercase tracking-widest font-medium mb-1">Driver assigned</p>
-        <p className="text-xl font-black text-slate-900 mt-1">Waiting for driver confirmation</p>
-        <p className="text-xs text-muted mt-0.5">We will update this screen when the driver accepts the trip.</p>
+        <div className="flex items-center gap-2">
+          <span className="h-2.5 w-2.5 rounded-full bg-brand animate-pulse" />
+          <p className="text-xs text-brand-deep uppercase tracking-widest font-medium">Driver assigned</p>
+        </div>
+        <div className="mt-2 flex items-center gap-3">
+          <div className="h-5 w-5 rounded-full border-2 border-brand border-t-transparent animate-spin" />
+          <p className="text-xl font-black text-slate-900">Waiting for driver confirmation...</p>
+        </div>
+        <p className="text-xs text-muted mt-2">
+          Driver {activeTrip.driverId} has been notified. We’ll update this screen once the driver accepts.
+        </p>
       </div>
       <TripInfoRows rows={[
         ["คนขับ", `${activeTrip.driverId} · ${activeTrip.vehicleType}`],
@@ -679,6 +742,7 @@ function AssignedScreen({ activeTrip }) {
         ["จุดรับ", activeTrip.pickupGate || "ชั้น 1 ประตู 4 (Level 1, Gate 4)"],
         ["ปลายทาง", activeTrip.destinationName || activeTrip.selectedDestination || "—"],
       ]} />
+      <CancelRequestBlock onCancel={onCancel} />
     </div>
   );
 }
@@ -790,11 +854,23 @@ const STATUS_SCREENS = {
 
 export default function PassengerPortal() {
   const [step, setStep] = useState("home");
+  const [qrCompleted, setQrCompleted] = useState(false);
   const [tripData, setTripData] = useState({});
-  const { activeTrip, updatePassengerTrip, updateRideSelection, bookPassengerTrip, completePassengerReview } = useDemoMatching();
+  const { activeTrip, updatePassengerTrip, updateRideSelection, bookPassengerTrip, cancelPassengerRequest, completePassengerReview } = useDemoMatching();
+
+  function handleStartQrBooking() {
+    updatePassengerTrip({
+      pickupGate: "ชั้น 1 ประตู 4 (Level 1, Gate 4)",
+      pickupAddress: "Suvarnabhumi Airport, Bangkok",
+      pickupTerminal: "BKK Airport",
+    });
+    setQrCompleted(true);
+    setStep("home");
+  }
 
   function handleHomeNext(data) {
     updatePassengerTrip({
+      passengerName: data.passengerName?.trim() || "Passenger P001",
       destination: data.selectedDestination,
       passengers: data.passengers,
       luggage: data.luggage,
@@ -826,11 +902,20 @@ export default function PassengerPortal() {
       completePassengerReview();
     }
     setStep("home");
+    setQrCompleted(false);
+    setTripData({});
+  }
+
+  function handleCancelRequest() {
+    cancelPassengerRequest();
+    setStep("home");
+    setQrCompleted(false);
     setTripData({});
   }
 
   const StatusScreen = STATUS_SCREENS[activeTrip.status];
   const shouldShowReview = canShowPassengerReview(activeTrip);
+  const shouldShowQrEntry = activeTrip.status === "idle" && step === "home" && !qrCompleted;
 
   return (
     <MobileShell>
@@ -842,7 +927,9 @@ export default function PassengerPortal() {
             onHome={handleHome}
           />
         ) : StatusScreen ? (
-          <StatusScreen activeTrip={activeTrip} />
+          <StatusScreen activeTrip={activeTrip} onCancel={handleCancelRequest} />
+        ) : shouldShowQrEntry ? (
+          <QREntryScreen onStart={handleStartQrBooking} />
         ) : (
           <>
             <PassengerMatchingStatus />

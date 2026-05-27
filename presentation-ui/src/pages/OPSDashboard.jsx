@@ -441,10 +441,6 @@ function DemandChart({ series, currentPwt = kpiSummary.currentPWT }) {
   const slaY = toY(slaThreshold);
   const pwtPts = series.map((d, i) => `${toX(i)},${toY(d.pwt)}`).join(" ");
   const nowX = toX(7.5);
-  const nowY = toY(currentPwt);
-  const nowLabelWidth = 250;
-  const nowLabelX = Math.min(nowX + 12, W - padR - nowLabelWidth);
-  const nowLabelY = Math.max(nowY - 42, padT + 6);
 
   return (
     <div className={`overflow-hidden rounded-xl border border-gray-100 bg-white p-4 shadow-sm ${severityAccent}`}>
@@ -480,7 +476,6 @@ function DemandChart({ series, currentPwt = kpiSummary.currentPWT }) {
       {/* No explicit height on SVG — scales naturally from viewBox aspect ratio (640:300 ≈ 2.1) */}
       <div>
         <svg viewBox={`0 0 ${W} ${H}`} className="w-full">
-          <rect x={padL} y={padT} width={iW} height={slaY - padT} fill="rgba(220,38,38,0.06)" />
           {series.map((d, i) => {
             if (d.pwt <= slaThreshold) return null;
             const x1 = Math.max(padL, toX(i) - xStep / 2);
@@ -514,24 +509,13 @@ function DemandChart({ series, currentPwt = kpiSummary.currentPWT }) {
             fontFamily="system-ui" fontWeight="700"
             transform={`rotate(-90 14 ${padT + iH / 2})`}
           >
-            Wait (min)
+            PWT (min)
           </text>
           <polyline points={pwtPts} fill="none" stroke="#154AA8" strokeWidth={3} strokeLinejoin="round" strokeLinecap="round" />
           {series.map((d, i) => (
             <circle key={`point-${d.time}`} cx={toX(i)} cy={toY(d.pwt)} r={2.5} fill="#154AA8" />
           ))}
-          <line x1={nowX} y1={nowY + 10} x2={nowX} y2={H - padB} stroke="#dc2626" strokeWidth={1} strokeDasharray="4 4" opacity="0.7" />
-          <circle cx={nowX} cy={nowY} r={7} fill="#dc2626" stroke="#fff" strokeWidth={3} />
-          <circle cx={nowX} cy={nowY} r={12} fill="none" stroke="#dc2626" strokeWidth={2} opacity="0.25" />
-          <g transform={`translate(${nowLabelX} ${nowLabelY})`}>
-            <rect x="0" y="0" width={nowLabelWidth} height="38" rx="12" fill="#dc2626" />
-            <text x={nowLabelWidth / 2} y="14" textAnchor="middle" fontSize="10" fill="#fff" fontFamily="system-ui" fontWeight="800">
-              NOW · {Math.round(currentPwt)} min
-            </text>
-            <text x={nowLabelWidth / 2} y="29" textAnchor="middle" fontSize="10" fill="#fee2e2" fontFamily="system-ui" fontWeight="600">
-              (above historical avg — peak surge day)
-            </text>
-          </g>
+          <line x1={nowX} y1={padT} x2={nowX} y2={H - padB} stroke="#dc2626" strokeWidth={1} strokeDasharray="4 4" opacity="0.7" />
           {series.map((d, i) => (
             i % 4 === 0 ? (
               <text key={i} x={toX(i)} y={H - 10} textAnchor="middle" fontSize={10} fill="#64748b" fontFamily="system-ui">{d.time}</text>
@@ -541,6 +525,9 @@ function DemandChart({ series, currentPwt = kpiSummary.currentPWT }) {
             07:30
           </text>
         </svg>
+        <div className="mt-3 text-center text-xs font-semibold text-slate-500">
+          Time of Day (Suvarnabhumi · 10 May 2026)
+        </div>
       </div>
     </div>
   );
