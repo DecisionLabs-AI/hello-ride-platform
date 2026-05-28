@@ -171,6 +171,9 @@ export const dictionary = {
     "driver.trips": "Trips",
     "driver.wallet": "Wallet",
     "driver.profile": "Profile",
+    "driver.forecast.title": "Airport demand forecast",
+    "driver.forecast.subtitle": "Expected passenger demand by time",
+    "driver.forecast.peakWindow": "Best time to stay online: 18:00–20:00",
 
     // ── Passenger Support Chat ────────────────────────────────────────────
     "support.title": "Passenger Support",
@@ -358,6 +361,9 @@ export const dictionary = {
     "driver.trips": "งาน",
     "driver.wallet": "กระเป๋าเงิน",
     "driver.profile": "โปรไฟล์",
+    "driver.forecast.title": "พยากรณ์ความต้องการสนามบิน",
+    "driver.forecast.subtitle": "แนวโน้มความต้องการผู้โดยสารตามช่วงเวลา",
+    "driver.forecast.peakWindow": "ช่วงเวลาที่ควรออนไลน์: 18:00–20:00",
 
     // ── Passenger Support Chat ────────────────────────────────────────────
     "support.title": "สนับสนุนผู้โดยสาร",

@@ -293,7 +293,7 @@ function HealthCard({ d }) {
       </div>
 
       <div className="flex items-center justify-between gap-4 rounded-lg bg-gray-50 px-4 py-2">
-        <p className="shrink-0 text-xs font-semibold text-gray-500">AI forecast · +15 min projection</p>
+        <p className="shrink-0 text-xs font-semibold text-gray-500">AI forecast · T+45 min projection</p>
         <p className="text-sm font-semibold text-slate-700">
           {Math.round(kpiSummary.currentPWT)} MIN
           {" → "}
@@ -490,13 +490,6 @@ function DemandChart({ series, currentPwt = kpiSummary.currentPWT }) {
           <text x={W - padR - 4} y={slaY - 6} textAnchor="end" fontSize={10} fill="#dc2626" fontFamily="system-ui" fontWeight="700">
             SLA Threshold
           </text>
-          <text
-            x={padL + iW / 2} y={padT + 14}
-            textAnchor="middle" fontSize={8} fill="#dc2626"
-            fontFamily="system-ui" fontWeight="600" letterSpacing="1"
-          >
-            CRITICAL DEFICIT WINDOW
-          </text>
           {[0, 30, 60, 90].map((tick) => (
             <text key={tick} x={padL - 6} y={toY(tick) + 4}
               textAnchor="end" fontSize={10} fill="#94a3b8" fontFamily="system-ui">
@@ -589,7 +582,6 @@ function DeficitBreakdown({ breakdown }) {
         <div className="mb-3">
           <Eyebrow>{t("ops.rootCause")}</Eyebrow>
           <h2 className="mt-0.5 text-lg font-bold text-slate-900">Why the gap is forming</h2>
-          <p className="mt-1 text-xs font-semibold text-slate-500">{ROOT_CAUSE_SUMMARY}</p>
         </div>
 
         <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
@@ -622,6 +614,7 @@ function ImpactSimulation({ sim }) {
   const { t } = useLanguage();
   const severity = getPwtSeverity(sim.currentPwt);
   const severityAccent = getCardSeverityAccent(severity);
+  const displayedImprovement = Math.round(((sim.currentPwt - sim.projectedPwt) / sim.currentPwt) * 100);
   const subtitle = Math.round(kpiSummary.dispatchTier ?? 1) === 2
     ? "Estimated outcome after incentive broadcast response"
     : "Estimated outcome after lane throughput response";
@@ -680,9 +673,9 @@ function ImpactSimulation({ sim }) {
 
         <div className="grid grid-cols-1 gap-3">
           <div className="rounded-lg bg-[#16A34A] px-3 py-3">
-            <p className="text-2xl font-bold text-white">▼ {sim.pwtReductionPct}%</p>
+            <p className="text-2xl font-bold text-white">▼ {displayedImprovement}%</p>
             <p className="mt-0.5 text-xs font-bold uppercase tracking-widest text-[#BBF7D0]">PWT improvement</p>
-            <p className="mt-1 text-xs text-[#DCFCE7]">vs. predicted baseline ({sim.predictedPwt} min)</p>
+            <p className="mt-1 text-xs text-[#DCFCE7]">vs. current PWT</p>
           </div>
         </div>
 
@@ -1305,13 +1298,13 @@ function MatchingAgentLogic() {
   const modes = [
     {
       name: "Normal Matching",
-      threshold: "PWT ≤ 20 min",
+      threshold: "PWT ≤15 min",
       rule: "FCFS + capacity fit",
       tone: "border-emerald-200 bg-emerald-50 text-emerald-700",
     },
     {
       name: "Priority Matching",
-      threshold: "PWT 20–30 min",
+      threshold: "PWT 15–30 min",
       rule: "Queue order + ETA + capacity",
       tone: "border-amber-200 bg-amber-50 text-amber-700",
     },
@@ -1447,7 +1440,7 @@ function LiveMonitoring({ d, terminal, laneActivated, broadcastSent, onApproveAc
     },
     {
       primary: "Dispatch gap",
-      secondary: `Taxis needed ${Math.round(kpiSummary.predDemand)} · buffer 5`,
+      secondary: `Gap = needed ${Math.round(kpiSummary.predDemand)} − available ${Math.round(kpiSummary.predSupply)} + buffer 5`,
       value: String(Math.round(kpiSummary.dispatchGap)),
       caption: "gap",
     },

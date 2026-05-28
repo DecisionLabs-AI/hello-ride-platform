@@ -10,14 +10,17 @@ const D = DRIVER;
 const DRIVER_ONLINE_KEY = "helloride_driverOnline";
 
 const FORECAST_HOURS = new Set([14, 16, 18, 20, 22, 0]);
-const forecastBars = demandChartData
-  .filter((item) => FORECAST_HOURS.has(item.hour))
-  .map((item) => ({
+const forecastItems = demandChartData.filter((item) => FORECAST_HOURS.has(item.hour));
+const maxForecastDemand = Math.max(...forecastItems.map((item) => item.confirmedQR), 1);
+const forecastBars = forecastItems.map((item) => {
+  const demandRatio = item.confirmedQR / maxForecastDemand;
+  return {
     time: item.label,
     height: Math.min(Math.round((item.confirmedQR / 70) * 100), 100),
-    type: item.avgWaitMin > 60 ? "peak" : item.avgWaitMin > 45 ? "surge" : "normal",
-    label: item.avgWaitMin > 60 ? "ช่วงพีค" : item.avgWaitMin > 45 ? "ช่วงหนาแน่น" : null,
-  }));
+    type: item.hour === 18 ? "peak" : demandRatio >= 0.7 ? "medium" : "low",
+    label: null,
+  };
+});
 
 function fareLabel(activeTrip) {
   return `THB ${activeTrip.fareTHB}`;
@@ -62,8 +65,13 @@ function AppHeader({ isOnline, onLogout }) {
         <div className={`w-1.5 h-1.5 rounded-full ${isOnline ? "bg-brand-mid" : "bg-slate-400"}`} />
         {isOnline ? t("driver.online") : t("driver.offline")}
       </div>
-      <button onClick={onLogout} className="flex items-center justify-center hover:opacity-70 transition-opacity">
-        <span className="material-symbols-outlined text-slate-500 text-2xl">account_circle</span>
+      <button
+        onClick={onLogout}
+        aria-label="Sign out"
+        title="Sign out"
+        className="flex h-9 w-9 items-center justify-center rounded-full border border-slate-200 bg-white text-slate-500 shadow-sm transition-colors hover:bg-slate-50 hover:text-slate-700"
+      >
+        <span className="material-symbols-outlined text-[20px]">logout</span>
       </button>
     </header>
   );
@@ -313,13 +321,18 @@ function RegistrationScreen({ onBack, onLogin }) {
 // ── Forecast Bars ──────────────────────────────────────────────────────────
 
 function ForecastBars({ bars }) {
-  const colors = { normal: "bg-brand/50", surge: "bg-amber-400", peak: "bg-danger" };
+  const { t } = useLanguage();
+  const colors = {
+    low: "bg-blue-200",
+    medium: "bg-blue-400",
+    peak: "bg-[#154aa8] shadow-[0_0_0_1px_rgba(21,74,168,0.18)]",
+  };
   return (
     <div className="bg-white shadow-sm border border-slate-100 rounded-2xl overflow-hidden">
       <div className="h-0.5 bg-brand" />
       <div className="p-5">
-        <p className="text-xs text-muted uppercase tracking-widest font-semibold mb-0.5">พยากรณ์ความต้องการวันนี้</p>
-        <p className="text-sm text-slate-600 mb-4">แนวโน้มความหนาแน่นของคิว</p>
+        <p className="text-xs text-muted uppercase tracking-widest font-semibold mb-0.5">{t("driver.forecast.title")}</p>
+        <p className="text-sm text-slate-600 mb-4">{t("driver.forecast.subtitle")}</p>
         <div className="flex gap-1 px-3 mb-1">
           {bars.map((bar, i) => (
             <div key={i} className="flex-1 flex justify-center h-4">
@@ -343,7 +356,7 @@ function ForecastBars({ bars }) {
             </div>
           ))}
         </div>
-        <p className="text-xs text-muted mt-3">ช่วงเวลาที่ดีที่สุด: 18:00–20:00 ความต้องการสูงสุด</p>
+        <p className="text-xs text-muted mt-3">{t("driver.forecast.peakWindow")}</p>
       </div>
     </div>
   );
