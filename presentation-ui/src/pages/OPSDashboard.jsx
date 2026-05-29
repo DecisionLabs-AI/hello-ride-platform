@@ -113,7 +113,7 @@ function buildOpsView() {
       ...base.impactSimulation,
       currentPwt: pwt,
       projectedPwt: slaThreshold,
-      predictedPwt: predictedPWT,
+      predictedPwt: Math.round(aiAdvisory.predictions[2].predictedPWT),
       currentDeficit: projectedDeficit,
       projectedDeficit: Math.max(5, projectedDeficit - 28),
       pwtReductionPct: pwtImprovement,
@@ -242,7 +242,7 @@ function SLAStatusRow({ currentPWT }) {
 function HealthCard({ d }) {
   const severity = getPwtSeverity(d.pwt);
   const severityTone = getSeverityTone(severity);
-  const predictedForecast = Math.floor(kpiSummary.currentPWTPrediction);
+  const predictedForecast = Math.round(aiAdvisory.predictions[2].predictedPWT);
   const loadTone = {
     [PWT_SEVERITY.CRITICAL]: { pill: `${severityTone.bg} ${severityTone.text} border ${severityTone.border}`, label: "Critical" },
     [PWT_SEVERITY.WARNING]: { pill: `${severityTone.bg} ${severityTone.text} border ${severityTone.border}`, label: "High Load" },
@@ -297,10 +297,10 @@ function HealthCard({ d }) {
         <p className="text-sm font-semibold text-slate-700">
           {Math.round(kpiSummary.currentPWT)} MIN
           {" → "}
-          <span className={`font-semibold ${kpiSummary.currentPWTPrediction > kpiSummary.currentPWT ? "text-red-600" : "text-green-600"}`}>
+          <span className={`font-semibold ${predictedForecast > kpiSummary.currentPWT ? "text-red-600" : "text-green-600"}`}>
             {predictedForecast} MIN
             {" "}
-            {kpiSummary.currentPWTPrediction > kpiSummary.currentPWT ? "↑" : "↓"}
+            {predictedForecast > kpiSummary.currentPWT ? "↑" : "↓"}
           </span>
         </p>
       </div>
@@ -418,7 +418,7 @@ function AISituationBrief({ d }) {
         <div>
           <p className="text-sm font-bold leading-snug text-slate-900">Expected impact:</p>
           <p className="mt-1 text-sm leading-snug text-gray-700">
-            PWT improves from <span className="font-bold">{currentPWT}</span> → <span className="font-bold">{slaTarget} min</span> <span className="font-semibold">(SLA target)</span>; deficit drops from <span className="font-bold">{d.projectedDeficit}%</span> → <span className="font-bold">10%</span>.
+            PWT projected to reach <span className="font-bold">{Math.round(d.impactSimulation.predictedPwt)} min</span> (T+45); action targets SLA of <span className="font-bold">{slaTarget} min</span>.
           </p>
         </div>
       </div>
@@ -428,26 +428,67 @@ function AISituationBrief({ d }) {
 
 // ── Demand Chart ───────────────────────────────────────────────────────────
 
-function DemandChart({ series, currentPwt = kpiSummary.currentPWT }) {
-  const severity = getPwtSeverity(currentPwt);
+function DemandChart() {
+  const severity = getPwtSeverity(kpiSummary.currentPWT);
   const severityAccent = getCardSeverityAccent(severity);
   const W = 640, H = 300, padL = 50, padR = 20, padT = 20, padB = 44;
   const iW = W - padL - padR, iH = H - padT - padB;
-  const maxVal = Math.max(90, Math.ceil(currentPwt / 15) * 15);
+  const maxVal = 100;
   const slaThreshold = 30;
-  const xStep = iW / (series.length - 1);
-  const toX = (i) => padL + i * xStep;
+  const totalMin = 495; // 00:00 → 08:15
+
+  const todayPWT = [
+    { time: "00:00", pwt: 90.0 },
+    { time: "00:15", pwt: 69.1 },
+    { time: "00:30", pwt: 78.6 },
+    { time: "00:45", pwt: 67.9 },
+    { time: "01:00", pwt: 77.6 },
+    { time: "01:15", pwt: 42.0 },
+    { time: "01:30", pwt: 83.3 },
+    { time: "01:45", pwt: 73.7 },
+    { time: "02:00", pwt: 65.2 },
+    { time: "02:15", pwt: 70.0 },
+    { time: "02:45", pwt: 81.2 },
+    { time: "03:15", pwt: 76.1 },
+    { time: "04:30", pwt: 58.5 },
+    { time: "04:45", pwt: 23.4 },
+    { time: "05:00", pwt: 25.5 },
+    { time: "05:15", pwt: 37.7 },
+    { time: "05:30", pwt: 77.7 },
+    { time: "05:45", pwt: 67.1 },
+    { time: "06:00", pwt: 90.0 },
+    { time: "06:15", pwt: 74.9 },
+    { time: "06:30", pwt: 90.0 },
+    { time: "06:45", pwt: 90.0 },
+    { time: "07:00", pwt: 80.8 },
+    { time: "07:15", pwt: 76.6 },
+    { time: "07:30", pwt: 84.0 },
+  ];
+
+  const forecastPWT = [
+    { time: "07:30", pwt: 84.0 },
+    { time: "07:45", pwt: 90.0 },
+    { time: "08:00", pwt: 94.2 },
+    { time: "08:15", pwt: 90.8 },
+  ];
+
+  const toMin = (t) => { const [h, m] = t.split(":").map(Number); return h * 60 + m; };
+  const toX = (t) => padL + (toMin(t) / totalMin) * iW;
   const toY = (v) => padT + iH - (v / maxVal) * iH;
   const slaY = toY(slaThreshold);
-  const pwtPts = series.map((d, i) => `${toX(i)},${toY(d.pwt)}`).join(" ");
-  const nowX = toX(7.5);
+  const nowX = toX("07:30");
+
+  const linePts = todayPWT.map((d) => `${toX(d.time)},${toY(d.pwt)}`).join(" ");
+  const areaPolygon = `${toX("00:00")},${padT + iH} ${linePts} ${nowX},${padT + iH}`;
+  const forecastLinePts = forecastPWT.map((d) => `${toX(d.time)},${toY(d.pwt)}`).join(" ");
 
   return (
     <div className={`overflow-hidden rounded-xl border border-gray-100 bg-white p-4 shadow-sm ${severityAccent}`}>
       <div className="mb-3 flex items-start justify-between gap-3">
         <div>
-          <p className="text-xs font-semibold uppercase tracking-widest text-gray-400">Predictive forecast</p>
-          <h2 className="mt-0.5 text-xl font-bold text-gray-900">Arrival wave analysis</h2>
+          <p className="text-xs font-semibold uppercase tracking-widest text-gray-400">Today's PWT timeline</p>
+          <h2 className="mt-0.5 text-xl font-bold text-gray-900">Passenger Wait Time</h2>
+          <p className="mt-0.5 text-xs text-gray-400">10 May 2026</p>
         </div>
         <div className="flex items-center gap-3">
           <div className="flex items-center gap-1.5 text-xs text-slate-500">
@@ -458,10 +499,14 @@ function DemandChart({ series, currentPwt = kpiSummary.currentPWT }) {
             <span className="inline-block w-5 shrink-0" style={{ borderTop: "2px dashed #dc2626", marginTop: "1px" }} />
             SLA 30 min
           </div>
+          <div className="flex items-center gap-1.5 text-xs text-orange-500">
+            <span className="inline-block w-5 shrink-0" style={{ borderTop: "2px dashed #f97316", marginTop: "1px" }} />
+            Forecast
+          </div>
           <span className="relative flex items-center group">
             <button
               type="button"
-              aria-label="Arrival wave data explanation"
+              aria-label="Today PWT data explanation"
               className={INFO_ICON_CLASS}
             >
               ⓘ
@@ -469,26 +514,26 @@ function DemandChart({ series, currentPwt = kpiSummary.currentPWT }) {
             <span
               className="absolute right-0 top-6 z-20 hidden group-hover:block rounded-lg bg-slate-800 text-white text-xs px-3 py-2 shadow-lg whitespace-pre-line pointer-events-none"
               style={{ minWidth: "300px" }}
-            >{`PWT (min) — ค่าเฉลี่ย avgWaitMin ต่อชั่วโมง จาก hybrid dataset\nSLA Threshold — เกณฑ์เวลารอ 30 นาที`}</span>
+            >{`ข้อมูล PWT จริงของวันที่ 10 May 2026 ทุก 15 นาที\nจาก training dataset · snapshot ปัจจุบัน 07:30`}</span>
           </span>
         </div>
       </div>
-      {/* No explicit height on SVG — scales naturally from viewBox aspect ratio (640:300 ≈ 2.1) */}
       <div>
         <svg viewBox={`0 0 ${W} ${H}`} className="w-full">
-          {series.map((d, i) => {
-            if (d.pwt <= slaThreshold) return null;
-            const x1 = Math.max(padL, toX(i) - xStep / 2);
-            const x2 = Math.min(W - padR, toX(i) + xStep / 2);
-            return <rect key={`critical-${d.time}`} x={x1} y={padT} width={x2 - x1} height={iH} fill="rgba(220,38,38,0.08)" />;
-          })}
+          <defs>
+            <clipPath id="above-sla">
+              <rect x={padL} y={padT} width={iW} height={slaY - padT} />
+            </clipPath>
+          </defs>
           {[0, 30, 60, 90].map((tick) => (
             <line key={tick} x1={padL} y1={toY(tick)} x2={W - padR} y2={toY(tick)}
               stroke="rgba(0,0,0,0.06)" strokeWidth={1} strokeDasharray="4 4" />
           ))}
+          <polygon points={areaPolygon} fill="rgba(21,74,168,0.12)" />
+          <polygon points={areaPolygon} fill="rgba(239,68,68,0.15)" clipPath="url(#above-sla)" />
           <line x1={padL} y1={slaY} x2={W - padR} y2={slaY} stroke="#dc2626" strokeWidth={1.5} strokeDasharray="6 5" />
           <text x={W - padR - 4} y={slaY - 6} textAnchor="end" fontSize={10} fill="#dc2626" fontFamily="system-ui" fontWeight="700">
-            SLA Threshold
+            SLA 30 min
           </text>
           {[0, 30, 60, 90].map((tick) => (
             <text key={tick} x={padL - 6} y={toY(tick) + 4}
@@ -504,19 +549,21 @@ function DemandChart({ series, currentPwt = kpiSummary.currentPWT }) {
           >
             PWT (min)
           </text>
-          <polyline points={pwtPts} fill="none" stroke="#154AA8" strokeWidth={3} strokeLinejoin="round" strokeLinecap="round" />
-          {series.map((d, i) => (
-            <circle key={`point-${d.time}`} cx={toX(i)} cy={toY(d.pwt)} r={2.5} fill="#154AA8" />
+          <polyline points={linePts} fill="none" stroke="#154AA8" strokeWidth={3} strokeLinejoin="round" strokeLinecap="round" />
+          {todayPWT.map((d) => (
+            <circle key={d.time} cx={toX(d.time)} cy={toY(d.pwt)} r={2.5} fill="#154AA8" />
           ))}
-          <line x1={nowX} y1={padT} x2={nowX} y2={H - padB} stroke="#dc2626" strokeWidth={1} strokeDasharray="4 4" opacity="0.7" />
-          {series.map((d, i) => (
-            i % 4 === 0 ? (
-              <text key={i} x={toX(i)} y={H - 10} textAnchor="middle" fontSize={10} fill="#64748b" fontFamily="system-ui">{d.time}</text>
-            ) : null
+          <polyline points={forecastLinePts} fill="none" stroke="#f97316" strokeWidth={2.5} strokeDasharray="6 4" strokeLinejoin="round" strokeLinecap="round" />
+          {forecastPWT.slice(1).map((d) => (
+            <circle key={d.time} cx={toX(d.time)} cy={toY(d.pwt)} r={2.5} fill="#f97316" />
           ))}
-          <text x={nowX} y={H - 26} textAnchor="middle" fontSize={10} fill="#dc2626" fontFamily="system-ui" fontWeight="700">
-            07:30
-          </text>
+          {["00:00", "01:00", "02:00", "03:00", "04:00", "05:00", "06:00", "07:00"].map((t) => (
+            <text key={t} x={toX(t)} y={H - 10} textAnchor="middle" fontSize={10} fill="#64748b" fontFamily="system-ui">{t}</text>
+          ))}
+          <text x={nowX} y={H - 10} textAnchor="middle" fontSize={10} fill="#dc2626" fontFamily="system-ui" fontWeight="700">07:30</text>
+          <text x={toX("08:15")} y={H - 10} textAnchor="middle" fontSize={10} fill="#f97316" fontFamily="system-ui" fontWeight="700">08:15</text>
+          <circle cx={nowX} cy={toY(84)} r={5} fill="#dc2626" />
+          <text x={nowX} y={toY(84) - 10} textAnchor="middle" fontSize={10} fill="#dc2626" fontFamily="system-ui" fontWeight="700">Now · 84 min</text>
         </svg>
         <div className="mt-3 text-center text-xs font-semibold text-slate-500">
           Time of Day
@@ -533,10 +580,10 @@ function DeficitBreakdown({ breakdown }) {
   function signalMeta(item) {
     const featureLabels = {
       confirmedQR: "QR Demand",
-      arrivingFlights: "Peak Hour Effect (07:30)",
-      hourOfDay: "Peak Hour Effect (07:30)",
-      avgLaneCapacity: "Lane Capacity Constraint",
-      isWeekend: "Weekend Surge",
+      arrivingFlights: "Peak Hour",
+      hourOfDay: "Peak Hour",
+      avgLaneCapacity: "Lane Capacity",
+      isWeekend: "Weekend",
     };
     const featureIcons = {
       confirmedQR: "qr_code_scanner",
@@ -614,7 +661,7 @@ function ImpactSimulation({ sim }) {
   const { t } = useLanguage();
   const severity = getPwtSeverity(sim.currentPwt);
   const severityAccent = getCardSeverityAccent(severity);
-  const displayedImprovement = Math.round(((sim.currentPwt - sim.projectedPwt) / sim.currentPwt) * 100);
+  const displayedImprovement = Math.round(((sim.predictedPwt - sim.projectedPwt) / sim.predictedPwt) * 100);
   const subtitle = Math.round(kpiSummary.dispatchTier ?? 1) === 2
     ? "Estimated outcome after incentive broadcast response"
     : "Estimated outcome after lane throughput response";
@@ -640,14 +687,17 @@ function ImpactSimulation({ sim }) {
               <p className="font-bold">Estimation method:</p>
               <div className="mt-2 grid grid-cols-[auto_92px_1fr] gap-x-2 gap-y-1.5">
                 <span>·</span>
-                <span className="font-semibold text-gray-600">Without action</span>
-                <span className="whitespace-nowrap">→ PWT rises to 38 min</span>
+                <span className="font-semibold text-gray-600">Current PWT</span>
+                <span className="whitespace-nowrap">→ 84 min (now)</span>
+                <span>·</span>
+                <span className="font-semibold text-gray-600">T+45 forecast</span>
+                <span className="whitespace-nowrap">→ {sim.predictedPwt} min (no action)</span>
                 <span>·</span>
                 <span className="font-semibold text-gray-600">Action target</span>
-                <span className="whitespace-nowrap">→ bring PWT to SLA (30 min)</span>
+                <span className="whitespace-nowrap">→ bring PWT to SLA ({sim.projectedPwt} min)</span>
                 <span>·</span>
                 <span className="font-semibold text-gray-600">Improvement</span>
-                <span className="whitespace-nowrap">→ (38 − 30) ÷ 38 = 21%</span>
+                <span className="whitespace-nowrap">→ ({sim.predictedPwt} − {sim.projectedPwt}) ÷ {sim.predictedPwt} = {displayedImprovement}%</span>
               </div>
             </div>
           </div>
@@ -675,7 +725,7 @@ function ImpactSimulation({ sim }) {
           <div className="rounded-lg bg-[#16A34A] px-3 py-3">
             <p className="text-2xl font-bold text-white">▼ {displayedImprovement}%</p>
             <p className="mt-0.5 text-xs font-bold uppercase tracking-widest text-[#BBF7D0]">PWT improvement</p>
-            <p className="mt-1 text-xs text-[#DCFCE7]">vs. current PWT</p>
+            <p className="mt-1 text-xs text-[#DCFCE7]">vs. T+45 forecast (no action)</p>
           </div>
         </div>
 
@@ -1396,7 +1446,7 @@ function CommandCenter({ d, laneActivated, broadcastSent, onApproveAction }) {
 function ForecastImpactSection({ d }) {
   return (
     <section className="grid grid-cols-1 xl:grid-cols-[minmax(0,1.45fr)_minmax(340px,0.8fr)] gap-5 items-stretch">
-      <DemandChart series={d.forecastSeries} currentPwt={d.pwt} />
+      <DemandChart />
       <ImpactSimulation sim={d.impactSimulation} />
     </section>
   );
@@ -1468,7 +1518,7 @@ function LiveMonitoring({ d, terminal, laneActivated, broadcastSent, onApproveAc
           broadcastSent={broadcastSent}
           onApproveAction={onApproveAction}
         />
-        <DemandChart series={d.forecastSeries} currentPwt={d.pwt} />
+        <DemandChart />
         <ImpactSimulation sim={d.impactSimulation} />
       </div>
 
