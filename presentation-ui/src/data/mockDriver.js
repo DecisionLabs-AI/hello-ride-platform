@@ -1,9 +1,12 @@
 export const DRIVER = {
   profile: {
-    name: "Somchai Jaidee",
+    driverId: "D101",
+    name: "สมชาย",
+    vehicle: "Hello Taxi",
+    plate: "9กก 9867",
+    plateNumber: "9กก 9867",
     status: "Online",
     score: "94.2% ready",
-    vehicle: "Toyota Camry",
   },
   queue: {
     position: 8,
@@ -23,4 +26,5 @@ export const DRIVER = {
 export const DEFAULT_CREDENTIALS = {
   username: "driver_demo",
   password: "1234",
+  driverId: "D101",
 };

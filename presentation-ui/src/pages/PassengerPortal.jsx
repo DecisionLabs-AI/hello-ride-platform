@@ -17,6 +17,24 @@ function pickupLabel(activeTrip) {
   return `${activeTrip.pickupGate}, ${activeTrip.pickupTerminal}`;
 }
 
+function driverPlateNumber(activeTrip) {
+  const plateByDriverId = {
+    D101: "9กก 9867",
+    D118: "2ขข 1188",
+    D124: "3กท 1240",
+    D205: "8กก 2055",
+  };
+  return plateByDriverId[activeTrip.driverId] ||
+    activeTrip.assignedDriver?.plateNumber ||
+    activeTrip.assignedDriver?.plate ||
+    "Taxi plate pending";
+}
+
+function passengerVehicleLabel(activeTrip) {
+  const plate = driverPlateNumber(activeTrip);
+  return activeTrip.vehicleType ? `${plate} · ${activeTrip.vehicleType}` : plate;
+}
+
 function canShowPassengerReview(activeTrip) {
   return activeTrip.status === "completed" &&
     (activeTrip.driverPaymentConfirmed === true || activeTrip.passengerReviewPending === true);
@@ -330,6 +348,13 @@ function HomeScreen({ initialData = {}, onNext }) {
 
 // ── Car Type Screen ────────────────────────────────────────────────────────
 
+// Rule-based vehicle default: SUV for large groups, Taxi for small, Car otherwise.
+function getDefaultRideId(passengers, luggage) {
+  if ((passengers ?? 1) >= 4 || (luggage ?? 0) >= 3) return "hello-suv";
+  if ((passengers ?? 1) <= 2 && (luggage ?? 0) <= 1) return "hello-taxi";
+  return "hello-car";
+}
+
 const RIDE_BADGES = {
   "hello-taxi": { label: "Cheapest", cls: "bg-brand text-white" },
   "hello-car":  { label: "Popular",  cls: "bg-brand/10 text-brand" },
@@ -344,7 +369,7 @@ const RIDE_ICONS = {
 
 function CarTypeScreen({ activeTrip, destination, passengers, luggage, onBack, onNext }) {
   const { t } = useLanguage();
-  const [selectedRide, setSelectedRide] = useState(null);
+  const [selectedRide, setSelectedRide] = useState(() => getDefaultRideId(passengers, luggage));
   const [selectedPayment, setSelectedPayment] = useState("cash");
 
   function isEligible(ride) {
@@ -484,7 +509,7 @@ function RideScreen({ activeTrip, selectedPayment, specialAssistance, notes, onB
         <p className="text-sm text-slate-600 mt-1">
           {route}
         </p>
-        <p className="text-sm text-slate-600">Driver {activeTrip.driverId}</p>
+        <p className="text-sm text-slate-600">{passengerVehicleLabel(activeTrip)}</p>
         <div className="flex items-center justify-between mt-3 pt-3 border-t border-brand/15">
           <p className="text-xs text-muted">Fare</p>
           <p className="text-xl font-bold text-slate-900">{fareLabel(activeTrip)}</p>
@@ -553,7 +578,7 @@ function ReviewScreen({ activeTrip, onBack, onHome }) {
   const [tip, setTip] = useState("฿50");
   const [comment, setComment] = useState("");
   const [submitted, setSubmitted] = useState(false);
-  const driverFirst = activeTrip.driverId;
+  const driverFirst = driverPlateNumber(activeTrip);
 
   if (submitted) {
     return (
@@ -581,7 +606,7 @@ function ReviewScreen({ activeTrip, onBack, onHome }) {
       {/* Driver card */}
       <div className="bg-white shadow-sm border border-slate-100 rounded-2xl p-5">
         <p className="text-xs text-muted uppercase tracking-widest font-medium mb-2">{t("passenger.driver")}</p>
-        <p className="text-base font-bold text-slate-900">{activeTrip.driverId}</p>
+        <p className="text-base font-bold text-slate-900">{driverPlateNumber(activeTrip)}</p>
         <p className="text-xs text-muted">{activeTrip.vehicleType} · {fareLabel(activeTrip)}</p>
       </div>
 
@@ -680,6 +705,7 @@ function FindingDriverScreen({ activeTrip, onCancel }) {
   const { t } = useLanguage();
   const { resolveDemoPassengerMatch } = useDemoMatching();
   const pendingDispatch = activeTrip.status === "pending_dispatch";
+  const rematching = activeTrip.status === "rematching";
 
   useEffect(() => {
     if (!["booked", "finding_driver"].includes(activeTrip.status)) return undefined;
@@ -704,6 +730,14 @@ function FindingDriverScreen({ activeTrip, onCancel }) {
               <p className="text-xs text-amber-700 mt-1 leading-relaxed">{t("passenger.opsReviewingBody")}</p>
             </div>
           </div>
+        </div>
+      ) : rematching ? (
+        <div className="bg-brand/10 border border-brand/25 rounded-2xl p-5 text-center">
+          <div className="flex justify-center mb-3">
+            <div className="w-10 h-10 rounded-full border-4 border-brand border-t-transparent animate-spin" />
+          </div>
+          <p className="text-xs text-brand-deep uppercase tracking-widest font-medium mb-1">{t("passenger.findingAnotherDriver")}</p>
+          <p className="text-base font-bold text-slate-900">{t("passenger.previousDriverUnavailable")}</p>
         </div>
       ) : (
         <div className="bg-brand/10 border border-brand/25 rounded-2xl p-5 text-center">
@@ -738,11 +772,11 @@ function AssignedScreen({ activeTrip, onCancel }) {
           <p className="text-xl font-black text-slate-900">{t("passenger.waitingConfirmation")}</p>
         </div>
         <p className="text-xs text-muted mt-2">
-          {t("passenger.driverLabel")} {activeTrip.driverId} {t("passenger.driverNotifiedNote")}
+          {t("passenger.driverLabel")} {passengerVehicleLabel(activeTrip)} {t("passenger.driverNotifiedNote")}
         </p>
       </div>
       <TripInfoRows rows={[
-        [t("passenger.driverLabel"), `${activeTrip.driverId} · ${activeTrip.vehicleType}`],
+        [t("passenger.driverLabel"), passengerVehicleLabel(activeTrip)],
         [t("passenger.etaLabel"), `${activeTrip.etaMin} ${t("passenger.minUnit")}`],
         [t("passenger.pickup"), activeTrip.pickupGate || "Level 1, Gate 4"],
         [t("passenger.destination"), activeTrip.destinationName || activeTrip.selectedDestination || "—"],
@@ -763,7 +797,7 @@ function AcceptedScreen({ activeTrip }) {
         <p className="text-xs text-muted mt-0.5">{t("passenger.etaNote")}</p>
       </div>
       <TripInfoRows rows={[
-        [t("passenger.driverLabel"), `${activeTrip.driverId} · ${activeTrip.vehicleType}`],
+        [t("passenger.driverLabel"), passengerVehicleLabel(activeTrip)],
         [t("passenger.etaLabel"), `${activeTrip.etaMin} ${t("passenger.minUnit")}`],
         [t("passenger.pickup"), activeTrip.pickupGate || "Level 1, Gate 4"],
       ]} />
@@ -791,7 +825,7 @@ function ArrivedScreen({ activeTrip }) {
         <p className="text-base font-bold text-slate-900">{t("passenger.goPtoPickup")}</p>
       </div>
       <TripInfoRows rows={[
-        [t("passenger.driverLabel"), activeTrip.driverId],
+        [t("passenger.driverLabel"), driverPlateNumber(activeTrip)],
         [t("passenger.vehicleLabel"), activeTrip.vehicleType],
       ]} />
     </div>
@@ -802,7 +836,7 @@ function PassengerMatchingStatus() {
   const { t } = useLanguage();
   const { activeTrip } = useDemoMatching();
 
-  if (activeTrip.status === "idle" || activeTrip.status === "completed") {
+  if (["idle", "completed", "rematching"].includes(activeTrip.status)) {
     return null;
   }
 
@@ -834,7 +868,7 @@ function PassengerMatchingStatus() {
         <div>
           <p className="text-xs font-black uppercase tracking-widest text-brand">{statusCopy}</p>
           <p className="mt-1 text-sm font-bold text-slate-900">
-            {activeTrip.driverId} · {activeTrip.vehicleType}
+            {passengerVehicleLabel(activeTrip)}
           </p>
           <p className="mt-0.5 text-xs text-muted">
             ETA {activeTrip.etaMin} min · {destination} · {fareLabel(activeTrip)}
@@ -853,6 +887,7 @@ function PassengerMatchingStatus() {
 const STATUS_SCREENS = {
   booked: FindingDriverScreen,
   finding_driver: FindingDriverScreen,
+  rematching: FindingDriverScreen,
   pending_dispatch: FindingDriverScreen,
   assigned: AssignedScreen,
   accepted: AcceptedScreen,
@@ -888,13 +923,14 @@ export default function PassengerPortal() {
 
   function handleCarTypeNext(data) {
     const ride = RIDES.find((item) => item.id === data.selectedRide);
-    updateRideSelection({
+    const rideSelection = {
       vehicleType: ride?.label,
       fareTHB: fareToNumber(ride?.price),
       distanceKM: activeTrip.distanceKM,
       tripTimeMin: activeTrip.tripTimeMin,
-    });
-    bookPassengerTrip();
+    };
+    updateRideSelection(rideSelection);
+    bookPassengerTrip(rideSelection);
     setTripData((prev) => ({ ...prev, ...data }));
     setStep("ride");
   }

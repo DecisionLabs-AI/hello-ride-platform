@@ -1,4 +1,4 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useRef } from "react";
 import { DRIVER, DEFAULT_CREDENTIALS } from "../data/mockDriver.js";
 import { demandChartData, kpiSummary } from "../data/index.js";
 import { HelloRideWordmark, MobileScrollArea, MobileShell } from "../components/shared/MobileShell.jsx";
@@ -40,6 +40,21 @@ function passengerDisplayName(activeTrip) {
 
 function passengerLoadLabel(activeTrip) {
   return `${activeTrip.passengerCount} passenger · ${activeTrip.luggageCount} bag`;
+}
+
+function driverPlateNumber(activeTrip) {
+  const plateByDriverId = {
+    D101: "9กก 9867",
+    D118: "2ขข 1188",
+    D124: "3กท 1240",
+    D205: "8กก 2055",
+  };
+  return plateByDriverId[activeTrip.driverId] ||
+    activeTrip.assignedDriver?.plateNumber ||
+    activeTrip.assignedDriver?.plate ||
+    D.profile.plateNumber ||
+    D.profile.plate ||
+    "Taxi plate pending";
 }
 
 function readStoredDriverOnline() {
@@ -535,9 +550,18 @@ function TimerRing({ seconds, total = 12 }) {
 function JobOfferHome({ activeTrip, onAccept, onReject }) {
   const { t } = useLanguage();
   const [seconds, setSeconds] = useState(12);
+  const hasAutoRejected = useRef(false);
+  const onRejectRef = useRef(onReject);
+  onRejectRef.current = onReject;
 
   useEffect(() => {
-    if (seconds <= 0) return;
+    if (seconds <= 0) {
+      if (!hasAutoRejected.current) {
+        hasAutoRejected.current = true;
+        onRejectRef.current();
+      }
+      return;
+    }
     const t = setTimeout(() => setSeconds((s) => s - 1), 1000);
     return () => clearTimeout(t);
   }, [seconds]);
@@ -552,7 +576,7 @@ function JobOfferHome({ activeTrip, onAccept, onReject }) {
             <p className="mt-2 text-[10px] font-black uppercase tracking-widest text-slate-400">{t("driver.passenger")}</p>
             <p className="mt-0.5 text-sm font-bold text-slate-900">{passengerDisplayName(activeTrip)}</p>
             <p className="text-xs text-muted">{passengerLoadLabel(activeTrip)}</p>
-            <p className="text-xs text-muted">สหกรณ์แท็กซี่สุวรรณภูมิ · แจ้งเตือนอัตโนมัติ</p>
+            <p className="text-xs text-muted">{driverPlateNumber(activeTrip)} · สหกรณ์แท็กซี่สุวรรณภูมิ</p>
           </div>
           <TimerRing seconds={seconds} total={12} />
         </div>
@@ -733,8 +757,8 @@ function CompletedTripHome({ activeTrip, onConfirmPayment }) {
   );
 }
 
-function DriverHome({ activeTrip, isOnline, inQueue, onToggleOnline, onAccept, onReject, onArrived, onComplete, onConfirmPayment, showIncentive }) {
-  if (isOnline && activeTrip.status === "assigned") {
+function DriverHome({ activeTrip, isOnline, inQueue, loggedInDriverId, onToggleOnline, onAccept, onReject, onArrived, onComplete, onConfirmPayment, showIncentive }) {
+  if (isOnline && activeTrip.status === "assigned" && loggedInDriverId && activeTrip.driverId === loggedInDriverId) {
     return <JobOfferHome key={activeTrip.driverId} activeTrip={activeTrip} onAccept={onAccept} onReject={onReject} />;
   }
 
@@ -822,7 +846,7 @@ function ProfileTab({ isOnline, onToggleOnline, onLogout }) {
     <div className="flex flex-col gap-4">
       <StatusToggle isOnline={isOnline} onToggle={onToggleOnline} />
       <InfoCard eyebrow="คนขับ" title={D.profile.name} body={`${D.profile.score} · ยืนยันตัวตนแล้ว`} tone="driver" />
-      <InfoCard eyebrow="ยานพาหนะ" title={D.profile.vehicle} body="มีสิทธิ์รับงานสนามบิน · พาร์ทเนอร์ Hello Ride" tone="neutral" />
+      <InfoCard eyebrow="ยานพาหนะ" title={`${D.profile.plate} · ${D.profile.vehicle}`} body="มีสิทธิ์รับงานสนามบิน · พาร์ทเนอร์ Hello Ride" tone="neutral" />
       <div className="rounded-3xl border border-slate-100 bg-white p-2 shadow-sm">
         {["ตั้งค่าบัญชี", "ศูนย์ช่วยเหลือ", "เอกสารการฝึกอบรม"].map((item) => (
           <button key={item} className="flex w-full items-center justify-between rounded-2xl px-4 py-3 text-left text-sm font-bold text-slate-700 hover:bg-slate-50">
@@ -874,6 +898,7 @@ function DriverWorkspace({
   setActiveTab,
   isOnline,
   inQueue,
+  loggedInDriverId,
   onAccept,
   onReject,
   onArrived,
@@ -892,6 +917,7 @@ function DriverWorkspace({
             activeTrip={activeTrip}
             isOnline={isOnline}
             inQueue={inQueue}
+            loggedInDriverId={loggedInDriverId}
             onToggleOnline={onToggleOnline}
             onAccept={onAccept}
             onReject={onReject}
@@ -917,6 +943,7 @@ export default function DriverApp() {
   const [activeTab, setActiveTab] = useState("home");
   const [isOnline, setIsOnline] = useState(readStoredDriverOnline);
   const [inQueue, setInQueue] = useState(false);
+  const [loggedInDriverId, setLoggedInDriverId] = useState(null);
   const { activeTrip, acceptMatch, markArrived, completeMatch, confirmDriverPayment, resetMatch, rejectAndRematch } = useDemoMatching();
   const driverSeverity = getPwtSeverity(kpiSummary.currentPWTPrediction);
   const showIncentive =
@@ -932,6 +959,7 @@ export default function DriverApp() {
     setActiveTab("home");
     setIsOnline(false);
     setInQueue(false);
+    setLoggedInDriverId(null);
   }
 
   function handleReject() {
@@ -965,6 +993,7 @@ export default function DriverApp() {
           setActiveTab={setActiveTab}
           isOnline={isOnline}
           inQueue={inQueue}
+          loggedInDriverId={loggedInDriverId}
           onAccept={acceptMatch}
           onReject={handleReject}
           onArrived={markArrived}
@@ -980,6 +1009,7 @@ export default function DriverApp() {
             <LoginScreen
               onLogin={() => {
                 setIsOnline(true);
+                setLoggedInDriverId(DEFAULT_CREDENTIALS.driverId);
                 setStep("app");
               }}
               onRegister={() => setStep("registration")}

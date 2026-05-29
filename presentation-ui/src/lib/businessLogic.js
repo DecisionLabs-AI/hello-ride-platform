@@ -1,13 +1,27 @@
+// D101 is the demo driver account — always the first offer for capacity-fit, non-rejected requests.
+const DEMO_DRIVER_ID = "D101";
+
 export const MOCK_DRIVER_POOL = [
-  { id: "D101", name: "Somchai Jaidee", vehicle: "Hello Taxi", maxPassengers: 4, maxLuggage: 4, etaMin: 4,  queuePosition: 1, acceptanceRate: 94 },
-  { id: "D118", name: "Driver D118",    vehicle: "Hello Car",  maxPassengers: 2, maxLuggage: 2, etaMin: 6,  queuePosition: 2, acceptanceRate: 88 },
-  { id: "D124", name: "Driver D124",    vehicle: "Hello Taxi", maxPassengers: 4, maxLuggage: 2, etaMin: 8,  queuePosition: 3, acceptanceRate: 91 },
-  { id: "D205", name: "Driver D205",    vehicle: "Hello SUV",  maxPassengers: 6, maxLuggage: 6, etaMin: 11, queuePosition: 4, acceptanceRate: 76 },
+  { id: "D101", name: "สมชาย", plate: "9กก 9867", plateNumber: "9กก 9867", vehicle: "Hello Taxi", maxPassengers: 4, maxLuggage: 4, etaMin: 4,  queuePosition: 1, acceptanceRate: 94 },
+  { id: "D118", name: "Driver D118", plate: "2ขข 1188", plateNumber: "2ขข 1188", vehicle: "Hello Car",  maxPassengers: 2, maxLuggage: 2, etaMin: 6,  queuePosition: 2, acceptanceRate: 88 },
+  { id: "D124", name: "Driver D124", plate: "3กท 1240", plateNumber: "3กท 1240", vehicle: "Hello Taxi", maxPassengers: 4, maxLuggage: 2, etaMin: 8,  queuePosition: 3, acceptanceRate: 91 },
+  { id: "D205", name: "Driver D205", plate: "8กก 2055", plateNumber: "8กก 2055", vehicle: "Hello SUV",  maxPassengers: 6, maxLuggage: 6, etaMin: 11, queuePosition: 4, acceptanceRate: 76 },
 ];
+
+// Allowed vehicle classes per requested type — only upward-capacity fallback permitted.
+const VEHICLE_FALLBACK_CLASSES = {
+  "Hello Taxi": ["Hello Taxi", "Hello Car", "Hello SUV"],
+  "Hello Car":  ["Hello Car", "Hello SUV"],
+  "Hello SUV":  ["Hello SUV"],
+};
 
 export function runMatchingAgent(passengerRequest, driverPool, opsContext = {}) {
   const pwt = Number(opsContext.pwt) || 0;
-  const { passengerCount = 1, luggageCount = 0 } = passengerRequest;
+  const { passengerCount = 1, luggageCount = 0, requestedVehicleType } = passengerRequest;
+
+  const allowedVehicles = requestedVehicleType
+    ? (VEHICLE_FALLBACK_CLASSES[requestedVehicleType] ?? null)
+    : null;
 
   let mode, etaWeight, queueWeight;
   if (pwt > 30) {
@@ -36,10 +50,16 @@ export function runMatchingAgent(passengerRequest, driverPool, opsContext = {}) 
       rejected.push({ driverId: driver.id, reason: `Luggage capacity too small (${driver.maxLuggage} bags max, need ${luggageCount})` });
       continue;
     }
+    if (allowedVehicles && !allowedVehicles.includes(driver.vehicle)) {
+      rejected.push({ driverId: driver.id, reason: `Vehicle type ${driver.vehicle} not compatible with ${requestedVehicleType} request` });
+      continue;
+    }
     const etaScore = Math.max(0, 100 - driver.etaMin * 8);
     const queueScore = Math.max(0, 20 - driver.queuePosition * 4);
     const acceptBonus = driver.acceptanceRate * 0.2;
-    const totalScore = Math.round(etaScore * etaWeight + queueScore * queueWeight + acceptBonus);
+    // Demo driver gets a guaranteed top-of-pool priority when eligible.
+    const demoBonus = driver.id === DEMO_DRIVER_ID ? 500 : 0;
+    const totalScore = Math.round(etaScore * etaWeight + queueScore * queueWeight + acceptBonus) + demoBonus;
     eligible.push({ driver, score: totalScore });
   }
 
@@ -68,9 +88,15 @@ export function runMatchingAgent(passengerRequest, driverPool, opsContext = {}) 
       ? "PWT exceeds 20 min — ETA and queue order balanced"
       : "PWT is normal — queue position used as primary factor";
 
+  const vehicleReason = requestedVehicleType
+    ? (best.driver.vehicle !== requestedVehicleType
+        ? `${best.driver.vehicle} (fallback from ${requestedVehicleType})`
+        : `${best.driver.vehicle} (preferred type matched)`)
+    : `Capacity fits (${passengerCount} pax / ${luggageCount} bags)`;
+
   const reasons = [
     `Shortest ETA among eligible drivers (${best.driver.etaMin} min)`,
-    `Capacity fits passenger request (${passengerCount} pax / ${luggageCount} bags)`,
+    vehicleReason,
     modeReason,
   ];
 

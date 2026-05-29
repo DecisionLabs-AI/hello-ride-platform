@@ -891,6 +891,15 @@ function DemoAssignmentStatus() {
 
   if (activeTrip.status === "idle") return null;
 
+  if (activeTrip.status === "rematching") {
+    return (
+      <div className="flex items-center gap-3 rounded-2xl border border-blue-200 bg-blue-50 px-4 py-3">
+        <div className="h-4 w-4 shrink-0 rounded-full border-2 border-brand border-t-transparent animate-spin" />
+        <p className="text-sm font-bold text-slate-900">Re-matching in progress…</p>
+      </div>
+    );
+  }
+
   if (activeTrip.status === "pending_dispatch") {
     const d = buildOpsView();
     const currentPwt = d.pwt || activeTrip.opsPwt || 0;
@@ -1448,13 +1457,6 @@ function LiveMonitoring({ d, terminal, laneActivated, broadcastSent, onApproveAc
 
   return (
     <div className="flex flex-col gap-3">
-      <div className="flex items-start justify-end gap-4">
-        <span className={`inline-flex items-center gap-1.5 rounded-full px-3 py-1 text-xs font-bold ${isCritical ? "bg-red-50 text-red-700 ring-1 ring-red-200" : `${severityTone.bg} ${severityTone.text} ring-1 ring-gray-100`}`}>
-          <span className={`h-1.5 w-1.5 rounded-full ${isCritical ? "bg-red-600" : severityTone.dot}`} />
-          {isCritical ? "Critical · SLA breached" : severityTone.label}
-        </span>
-      </div>
-
       <AISituationBrief d={d} />
       <DemoAssignmentStatus />
 
@@ -2404,13 +2406,7 @@ export default function OPSDashboard() {
         <div className="mx-auto flex max-w-6xl flex-col gap-8 px-8 py-7">
           <div className="flex items-start justify-between gap-4">
             <div>
-              <div className="flex items-center gap-3 flex-wrap">
-                <h1 className="font-headline font-black text-2xl text-[#1a2b5e]">{t("ops.console")}</h1>
-                <span className="inline-flex items-center gap-1.5 rounded-full bg-emerald-50 border border-emerald-200 px-2.5 py-1 text-xs font-bold text-brand">
-                  <span className="w-1.5 h-1.5 rounded-full bg-brand" />
-                  SLA Breach Active
-                </span>
-              </div>
+              <h1 className="font-headline font-black text-2xl text-[#1a2b5e]">{t("ops.console")}</h1>
               <p className="text-xs text-muted mt-1">OPS Snapshot · 10 May 2026 · 07:30 · Suvarnabhumi</p>
             </div>
           </div>
