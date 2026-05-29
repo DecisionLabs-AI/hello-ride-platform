@@ -1288,48 +1288,86 @@ function MatchingSimulation({ d }) {
 }
 
 function ResponseActionFramework() {
-  const actions = [
+  const tiers = [
     {
-      layer: "Action 1 — Quick Win",
-      action: "Supply shortage response",
-      description: "Immediate action — send incentive broadcast to call taxis from holding zone to curb. Primary action recommended by dashboard.",
-      tone: "border-emerald-200 bg-emerald-50",
+      tier: "Tier 1 — Monitor",
+      situation: "Normal supply",
+      trigger: "Gap = 0",
+      response: "No action required — continue monitoring",
+      badgeClass: "border-slate-200 bg-slate-50 text-slate-700",
     },
     {
-      layer: "Action 2 — Supply",
-      action: "Call from Holding Area",
-      description: "Pull taxis directly from holding zone to curb. Resolves supply routing bottleneck.",
-      tone: "border-blue-200 bg-blue-50",
+      tier: "Tier 2 — Send Incentive",
+      situation: "Supply shortage",
+      trigger: "Gap 1–15",
+      response: "Quick Win: Send incentive broadcast (฿120/driver) to call taxis from holding zone. Max budget: gap × ฿120",
+      active: true,
+      badgeClass: "border-amber-200 bg-amber-50 text-amber-800",
     },
     {
-      layer: "Action 3 — Throughput",
-      action: "Open Additional Lanes",
-      description: "Add taxi pickup lanes to reduce congestion. Resolves 'taxis available but passengers still waiting' issue. Root Cause: Lane Capacity −4.1 min",
-      tone: "border-amber-200 bg-amber-50",
+      tier: "Tier 3 — Emergency",
+      situation: "Severe shortage",
+      trigger: "Gap > 15",
+      response: "Emergency dispatch: direct radio call to holding zone + escalate to management immediately",
+      badgeClass: "border-red-200 bg-red-50 text-red-700",
     },
   ];
 
   return (
     <section>
-      <SectionHeading eyebrow="Response action framework" title="Response Action Framework" />
+      <SectionHeading eyebrow="Response action framework" title="Dispatch Tier & Response Framework" />
       <div className="overflow-hidden rounded-2xl border border-slate-100 bg-white shadow-sm">
-        <div className="grid grid-cols-[0.85fr_1fr_1.7fr] gap-3 border-b border-slate-100 bg-slate-50 px-4 py-3 text-[10px] font-black uppercase tracking-widest text-slate-400">
-          <p>Action Layer</p>
-          <p>Action</p>
-          <p>Description</p>
+        <div className="grid grid-cols-1 gap-3 border-b border-slate-100 bg-slate-50 px-4 py-3 text-[10px] font-black uppercase tracking-widest text-slate-400 md:grid-cols-[0.9fr_0.9fr_0.9fr_1.8fr]">
+          <p>Dispatch Tier</p>
+          <p>Situation</p>
+          <p>Trigger Condition</p>
+          <p>Response Action</p>
         </div>
         <div className="divide-y divide-slate-100">
-          {actions.map((item) => (
-            <div key={item.layer} className="grid grid-cols-1 gap-3 px-4 py-4 md:grid-cols-[0.85fr_1fr_1.7fr] md:items-start">
-              <div>
-                <span className={`inline-flex rounded-full border px-2.5 py-1 text-xs font-black text-slate-800 ${item.tone}`}>
-                  {item.layer}
+          {tiers.map((item) => (
+            <div
+              key={item.tier}
+              className={`grid grid-cols-1 gap-3 px-4 py-4 md:grid-cols-[0.9fr_0.9fr_0.9fr_1.8fr] md:items-start ${item.active ? "bg-slate-50/70" : "bg-white"}`}
+            >
+              <div className="flex flex-wrap items-center gap-2">
+                <span className={`inline-flex rounded-full border px-2.5 py-1 text-xs font-black ${item.badgeClass}`}>
+                  {item.tier}
                 </span>
               </div>
-              <p className="text-sm font-black text-slate-900">{item.action}</p>
-              <p className="text-sm leading-relaxed text-slate-600">{item.description}</p>
+              <p className="text-sm font-black text-slate-900">{item.situation}</p>
+              <p className="text-sm font-semibold text-slate-700">{item.trigger}</p>
+              <p className="text-sm leading-relaxed text-slate-600">{item.response}</p>
             </div>
           ))}
+        </div>
+      </div>
+      <div className="mt-3 rounded-2xl border border-slate-100 border-l-4 border-l-[#F59E0B] bg-white px-4 py-4 shadow-sm">
+        <div className="mb-3 flex items-center gap-2">
+          <span className="h-2 w-2 rounded-full bg-amber-500" aria-hidden="true" />
+          <p className="text-sm font-black text-slate-900">Incentive Rate by PWT Severity</p>
+        </div>
+        <div className="flex flex-col gap-2 text-sm">
+          <div className="flex flex-wrap items-center gap-2 rounded-xl border border-slate-100 bg-slate-50/60 px-3 py-2">
+            <span className="h-2 w-2 rounded-full bg-amber-400" aria-hidden="true" />
+            <span className="min-w-[72px] font-bold text-slate-800">Watch</span>
+            <span className="text-slate-500">15–30 min</span>
+            <span className="text-slate-300">→</span>
+            <span className="font-semibold text-slate-700">฿50–100 / driver</span>
+          </div>
+          <div className="flex flex-wrap items-center gap-2 rounded-xl border border-slate-100 bg-slate-50/60 px-3 py-2">
+            <span className="h-2 w-2 rounded-full bg-red-500" aria-hidden="true" />
+            <span className="min-w-[72px] font-bold text-slate-800">Critical</span>
+            <span className="text-slate-500">&gt;30 min</span>
+            <span className="text-slate-300">→</span>
+            <span className="font-semibold text-slate-700">฿100–150 / driver</span>
+          </div>
+          <div className="flex flex-wrap items-center gap-2 rounded-xl border border-slate-100 bg-slate-50/60 px-3 py-2">
+            <span className="h-2 w-2 rounded-full bg-red-700" aria-hidden="true" />
+            <span className="min-w-[72px] font-bold text-slate-800">Emergency</span>
+            <span className="text-slate-500">&gt;60 min</span>
+            <span className="text-slate-300">→</span>
+            <span className="font-semibold text-slate-700">฿200 max / driver</span>
+          </div>
         </div>
       </div>
     </section>
