@@ -273,8 +273,11 @@ function HealthCard({ d }) {
           <p className="text-xs font-semibold uppercase tracking-widest text-gray-400">Waiting PAX</p>
           <div className="mt-2 flex items-end gap-1.5">
             <p className="text-3xl font-bold leading-none text-gray-900">{d.waitingPassengers.toLocaleString()}</p>
-            <span className={`mb-0.5 text-sm font-bold ${d.waitingTrend?.startsWith("+") ? "text-red-500" : "text-green-600"}`}>
-              {d.waitingTrend}
+            <span className="mb-0.5 inline-flex items-baseline gap-1">
+              <span className={`text-sm font-bold ${d.waitingTrend?.startsWith("+") ? "text-red-500" : "text-green-600"}`}>
+                {d.waitingTrend}
+              </span>
+              <span className="text-[10px] font-semibold text-gray-400">vs prev 15 min</span>
             </span>
           </div>
         </div>
@@ -285,8 +288,11 @@ function HealthCard({ d }) {
           <p className="text-xs font-semibold uppercase tracking-widest text-gray-400">Holding Taxis</p>
           <div className="mt-2 flex items-end gap-1.5">
             <p className="text-3xl font-bold leading-none text-gray-900">{d.holdingTaxis}</p>
-            <span className={`mb-0.5 text-sm font-bold ${d.taxiTrend?.startsWith("-") ? "text-red-500" : "text-green-600"}`}>
-              {d.taxiTrend}
+            <span className="mb-0.5 inline-flex items-baseline gap-1">
+              <span className={`text-sm font-bold ${d.taxiTrend?.startsWith("-") ? "text-red-500" : "text-green-600"}`}>
+                {d.taxiTrend}
+              </span>
+              <span className="text-[10px] font-semibold text-gray-400">vs prev 15 min</span>
             </span>
           </div>
         </div>
@@ -1466,7 +1472,7 @@ function RootCauseTelemetry({ d, flightItems, supplyItems }) {
         eyebrow="Supply telemetry"
         title="Driver response pulse"
         items={supplyItems}
-        tooltip="Taxis at curb: observed from training data (avg last 4 rows). Predicted Taxis: XGBoost Supply Forecast model, T+45 min ahead. Dispatch gap = max(0, demand − supply + buffer 5)."
+        tooltip="Taxis at curb: observed from training data (avg last 4 rows). Dispatch gap = max(0, demand − supply + buffer 5)."
       />
     </section>
   );
@@ -1490,12 +1496,6 @@ function LiveMonitoring({ d, terminal, laneActivated, broadcastSent, onApproveAc
       secondary: null,
       value: String(Math.round(kpiSummary.taxisAtCurb)),
       caption: null,
-    },
-    {
-      primary: "Predicted Taxis",
-      secondary: null,
-      value: String(Math.round(kpiSummary.predSupply)),
-      caption: "taxis",
     },
     {
       primary: "Dispatch gap",
