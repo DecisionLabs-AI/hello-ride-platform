@@ -635,6 +635,7 @@ function DeficitBreakdown({ breakdown }) {
         <div className="mb-3">
           <Eyebrow>{t("ops.rootCause")}</Eyebrow>
           <h2 className="mt-0.5 text-lg font-bold text-slate-900">Why the gap is forming</h2>
+          <p className="mt-1 text-xs font-medium text-gray-400">+ increases PWT · − reduces PWT</p>
         </div>
 
         <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
