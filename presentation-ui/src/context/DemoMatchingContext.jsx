@@ -566,6 +566,7 @@ export function DemoMatchingProvider({ children }) {
     function confirmDriverPayment() {
       setActiveTripState((prev) => ({
         ...prev,
+        status: "completed",
         paymentStatus: "paid",
         driverPaymentConfirmed: true,
         passengerReviewPending: true,

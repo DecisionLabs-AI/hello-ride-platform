@@ -579,6 +579,7 @@ function ReviewScreen({ activeTrip, onBack, onHome }) {
   const [comment, setComment] = useState("");
   const [submitted, setSubmitted] = useState(false);
   const driverFirst = driverPlateNumber(activeTrip);
+  const dest = destinationLabel(activeTrip) || "Destination";
 
   if (submitted) {
     return (
@@ -602,6 +603,19 @@ function ReviewScreen({ activeTrip, onBack, onHome }) {
   return (
     <div className="flex flex-col gap-4">
       <MobileHeader title="How was your ride?" backLabel="Close" onBack={onBack} rightLabel="Hello Ride" />
+
+      <div className="rounded-2xl border border-brand/25 bg-brand/10 p-5">
+        <p className="text-xs font-medium uppercase tracking-widest text-brand-deep">{t("passenger.tripComplete")}</p>
+        <p className="mt-1 text-xl font-black text-slate-900">Payment confirmed</p>
+        <p className="mt-1 text-sm text-slate-600">Your ride to {dest} is complete. Review your trip details before leaving feedback.</p>
+      </div>
+
+      <TripInfoRows rows={[
+        [t("passenger.total"), fareLabel(activeTrip)],
+        [t("passenger.vehicleLabel"), `${driverFirst} · ${activeTrip.vehicleType}`],
+        [t("passenger.destination"), dest],
+        [t("passenger.route"), `${pickupLabel(activeTrip)} → ${dest}`],
+      ]} />
 
       {/* Driver card */}
       <div className="bg-white shadow-sm border border-slate-100 rounded-2xl p-5">
@@ -832,6 +846,27 @@ function ArrivedScreen({ activeTrip }) {
   );
 }
 
+function CompletedPaymentPendingScreen({ activeTrip }) {
+  const { t } = useLanguage();
+  const dest = destinationLabel(activeTrip) || "Destination";
+
+  return (
+    <div className="flex flex-col gap-4">
+      <MobileHeader title="Hello Ride" showAvatar />
+      <div className="rounded-2xl border border-brand/25 bg-brand/10 p-5">
+        <p className="text-xs font-medium uppercase tracking-widest text-brand-deep">{t("passenger.tripComplete")}</p>
+        <p className="mt-1 text-xl font-black text-slate-900">Payment confirmation pending</p>
+        <p className="mt-1 text-sm text-slate-600">Your driver is confirming payment received. Your receipt and feedback screen will appear shortly.</p>
+      </div>
+      <TripInfoRows rows={[
+        [t("passenger.destination"), dest],
+        [t("passenger.vehicleLabel"), passengerVehicleLabel(activeTrip)],
+        [t("passenger.total"), fareLabel(activeTrip)],
+      ]} />
+    </div>
+  );
+}
+
 function PassengerMatchingStatus() {
   const { t } = useLanguage();
   const { activeTrip } = useDemoMatching();
@@ -958,6 +993,7 @@ export default function PassengerPortal() {
 
   const StatusScreen = STATUS_SCREENS[activeTrip.status];
   const shouldShowReview = canShowPassengerReview(activeTrip);
+  const shouldShowCompletedPending = activeTrip.status === "completed";
   const shouldShowQrEntry = activeTrip.status === "idle" && step === "home" && !qrCompleted;
 
   return (
@@ -969,6 +1005,8 @@ export default function PassengerPortal() {
             onBack={() => setStep("ride")}
             onHome={handleHome}
           />
+        ) : shouldShowCompletedPending ? (
+          <CompletedPaymentPendingScreen activeTrip={activeTrip} />
         ) : StatusScreen ? (
           <StatusScreen activeTrip={activeTrip} onCancel={handleCancelRequest} />
         ) : shouldShowQrEntry ? (
