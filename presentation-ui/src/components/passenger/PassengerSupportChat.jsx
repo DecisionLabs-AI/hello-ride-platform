@@ -6,7 +6,7 @@ const ESCALATION_STORAGE_KEY = "helloride_activeEscalation";
 const PASSENGER_MESSAGES_KEY = "helloride_passengerMessages";
 
 const MENU_OPTION_IDS = [
-  { id: "emergency", icon: "emergency_home", triggerText: "ช่วยด้วย", iconColor: "text-red-500" },
+  { id: "emergency", icon: "emergency_home", triggerText: "Please contact me urgently", iconColor: "text-red-500" },
   { id: "pickup",    icon: "luggage",        triggerText: null,       iconColor: "text-blue-500" },
   { id: "message",   icon: "chat",           triggerText: null,       iconColor: "text-slate-500" },
 ];
