@@ -4,7 +4,7 @@ export const EDGE_CASE_PROTOCOLS = [
     name: "Silent SOS / Passenger Safety",
     group: "In-transit Safety",
     severity: "HIGH",
-    triggerKeywords: ["help", "unsafe", "threat", "harass", "ลวนลาม", "คุกคาม", "ช่วยด้วย"],
+    triggerKeywords: ["help", "unsafe", "threat", "harass", "please contact me urgently", "ลวนลาม", "คุกคาม", "ช่วยด้วย"],
     recommendedAction: "Lock trip data + notify OPS safety team",
     opsAction: "Acknowledge Safety Escalation",
     requiredAdditions: "Trip lock, security desk review, human confirmation before external escalation.",

@@ -1597,7 +1597,9 @@ const ADVISORY_COPY = {
     suggested: "Suggested OPS questions",
     placeholder: "Ask about queue situation...",
     send: "Send",
-    generating: "Generating advisory...",
+    generating: "AI is reviewing OPS signals",
+    unsupported:
+      "I can answer predefined OPS advisory questions in this demo. For free-form questions, this panel is designed to connect with GenAI in production.",
     escalationPrefix: "Active demo escalation",
     prompts: [
       { id: "why-critical", label: "Why is PWT critical?" },
@@ -1636,7 +1638,9 @@ const ADVISORY_COPY = {
     suggested: "คำถามแนะนำสำหรับ OPS",
     placeholder: "ถาม AI Advisory...",
     send: "ส่ง",
-    generating: "กำลังสร้างคำแนะนำ...",
+    generating: "AI กำลังตรวจสอบสัญญาณ OPS",
+    unsupported:
+      "ใน demo นี้ AI Advisory รองรับคำถามด้าน OPS ที่กำหนดไว้ก่อนค่ะ สำหรับคำถามอิสระ ระบบถูกออกแบบให้ต่อกับ GenAI ใน production",
     escalationPrefix: "เหตุยกระดับจำลอง",
     prompts: [
       { id: "why-pwt", label: "ทำไม PWT สูง?" },
@@ -1658,6 +1662,31 @@ const ADVISORY_COPY = {
     },
   },
 };
+
+const ADVISORY_RESPONSE_DELAY_MS = 3600;
+
+function isSupportedAdvisoryQuestion(question, promptId) {
+  const normalized = `${promptId || ""} ${question || ""}`.toLowerCase();
+  return [
+    "sla",
+    "incentive",
+    "lane",
+    "action",
+    "taxi",
+    "driver",
+    "supply",
+    "dispatch",
+    "impact",
+    "simulate",
+    "arrival",
+    "risk",
+    "critical",
+    "pwt",
+    "queue",
+    "pressure",
+    "demand",
+  ].some((keyword) => normalized.includes(keyword));
+}
 
 function getDashboardAdvisoryResponse(d, question, promptId) {
   const normalized = `${promptId || ""} ${question || ""}`.toLowerCase();
@@ -1705,6 +1734,28 @@ const OPS_AI_SUGGESTIONS = [
   { id: "sla-breach", label: "Explain SLA breach" },
 ];
 
+function AdvisoryTypingBubble({ label = "AI is reviewing OPS signals" }) {
+  return (
+    <div className="flex gap-2">
+      <div className="mt-1 flex h-7 w-7 shrink-0 items-center justify-center rounded-full bg-[#154aa8]/10 text-[#154aa8]">
+        <span className="material-symbols-outlined leading-none" style={{ fontSize: "16px" }}>auto_awesome</span>
+      </div>
+      <div className="rounded-2xl rounded-bl-md border border-slate-200/80 bg-white px-4 py-3 text-sm text-slate-600 shadow-sm">
+        <p className="font-medium leading-relaxed">{label}</p>
+        <div className="mt-2 flex items-center gap-1.5" aria-label="AI is typing">
+          {[0, 1, 2].map((dot) => (
+            <span
+              key={dot}
+              className="h-1.5 w-1.5 rounded-full bg-[#154aa8]/70 animate-bounce"
+              style={{ animationDelay: `${dot * 140}ms` }}
+            />
+          ))}
+        </div>
+      </div>
+    </div>
+  );
+}
+
 function OPSAIChatWidget({ d }) {
   const [isOpen, setIsOpen] = useState(false);
   const [messages, setMessages] = useState([]);
@@ -1718,18 +1769,22 @@ function OPSAIChatWidget({ d }) {
   }, [messages, loading, isOpen]);
 
   function send(question, promptId = null) {
+    if (loading) return;
     const text = String(question || "").trim();
     if (!text) return;
     setMessages((prev) => [...prev, makeMessage("user", text)]);
     setInput("");
     setLoading(true);
     window.setTimeout(() => {
+      const response = isSupportedAdvisoryQuestion(text, promptId)
+        ? getDashboardAdvisoryResponse(d, text, promptId)
+        : ADVISORY_COPY.en.unsupported;
       setMessages((prev) => [
         ...prev,
-        makeMessage("assistant", getDashboardAdvisoryResponse(d, text, promptId)),
+        makeMessage("assistant", response),
       ]);
       setLoading(false);
-    }, 350);
+    }, ADVISORY_RESPONSE_DELAY_MS);
   }
 
   const visibleMessages = messages.length
@@ -1787,16 +1842,7 @@ function OPSAIChatWidget({ d }) {
                   </div>
                 </div>
               ))}
-              {loading && (
-                <div className="flex gap-2">
-                  <div className="mt-1 flex h-7 w-7 shrink-0 items-center justify-center rounded-full bg-[#154aa8]/10 text-[#154aa8]">
-                    <span className="material-symbols-outlined leading-none" style={{ fontSize: "16px" }}>auto_awesome</span>
-                  </div>
-                  <div className="rounded-2xl rounded-bl-md border border-slate-200 bg-white px-3.5 py-2.5 text-sm text-slate-500 shadow-sm">
-                    Reviewing dashboard context...
-                  </div>
-                </div>
-              )}
+              {loading && <AdvisoryTypingBubble />}
               <div ref={messagesEndRef} />
             </div>
           </div>
@@ -1808,7 +1854,8 @@ function OPSAIChatWidget({ d }) {
                   key={suggestion.id}
                   type="button"
                   onClick={() => send(suggestion.label, suggestion.id)}
-                  className="shrink-0 rounded-full border border-slate-200 bg-white px-3 py-1.5 text-xs font-bold text-slate-600 transition-colors hover:border-[#154aa8]/30 hover:bg-[#154aa8]/5 hover:text-[#154aa8]"
+                  disabled={loading}
+                  className="shrink-0 rounded-full border border-slate-200 bg-white px-3 py-1.5 text-xs font-bold text-slate-600 transition-colors hover:border-[#154aa8]/30 hover:bg-[#154aa8]/5 hover:text-[#154aa8] disabled:cursor-not-allowed disabled:opacity-50"
                 >
                   {suggestion.label}
                 </button>
@@ -1822,14 +1869,15 @@ function OPSAIChatWidget({ d }) {
                 onKeyDown={(event) => {
                   if (event.key === "Enter") send(input);
                 }}
+                disabled={loading}
                 placeholder="Ask about the current operation..."
-                className="min-w-0 flex-1 rounded-xl border border-slate-200 bg-slate-50 px-3 py-2.5 text-sm text-slate-900 placeholder:text-slate-400 transition-all focus:border-[#154aa8] focus:bg-white focus:outline-none focus:ring-2 focus:ring-[#154aa8]/10"
+                className="min-w-0 flex-1 rounded-xl border border-slate-200 bg-slate-50 px-3 py-2.5 text-sm text-slate-900 placeholder:text-slate-400 transition-all focus:border-[#154aa8] focus:bg-white focus:outline-none focus:ring-2 focus:ring-[#154aa8]/10 disabled:cursor-not-allowed disabled:text-slate-400"
               />
               <button
                 type="button"
                 onClick={() => send(input)}
-                disabled={!input.trim()}
-                className="rounded-xl bg-[#154aa8] px-3.5 py-2.5 text-sm font-bold text-white transition-colors hover:bg-[#0f2f68] disabled:opacity-40"
+                disabled={loading || !input.trim()}
+                className="rounded-xl bg-[#154aa8] px-3.5 py-2.5 text-sm font-bold text-white transition-colors hover:bg-[#0f2f68] disabled:cursor-not-allowed disabled:opacity-40"
               >
                 Send
               </button>
@@ -2095,18 +2143,23 @@ function AIAdvisoryWorkspace({ d, initialQuestion }) {
       return copy.responses[promptId];
     }
 
-    if (language === "en") {
-      return getDashboardAdvisoryResponse(d, question, promptId);
+    if (!isSupportedAdvisoryQuestion(question, promptId)) {
+      return copy.unsupported;
     }
 
     if (language === "en" && ADVISORY_RESPONSES[question]) {
       return ADVISORY_RESPONSES[question];
     }
 
+    if (language === "en") {
+      return getDashboardAdvisoryResponse(d, question, promptId);
+    }
+
     return copy.fallback(d);
   }
 
   function handleSend(question, promptId = null) {
+    if (loading) return;
     if (!question.trim()) return;
     const q = question.trim();
     setMessages((prev) => [...prev, makeMessage("user", q)]);
@@ -2115,7 +2168,7 @@ function AIAdvisoryWorkspace({ d, initialQuestion }) {
     setTimeout(() => {
       setMessages((prev) => [...prev, makeMessage("assistant", getResponse(q, promptId))]);
       setLoading(false);
-    }, 800);
+    }, ADVISORY_RESPONSE_DELAY_MS);
   }
 
   const visibleMessages = messages.length
@@ -2176,16 +2229,7 @@ function AIAdvisoryWorkspace({ d, initialQuestion }) {
                 </div>
               </div>
             ))}
-            {loading && (
-              <div className="flex gap-2">
-                <div className="mt-1 flex h-7 w-7 shrink-0 items-center justify-center rounded-full bg-[#154aa8]/10 text-[#154aa8]">
-                  <span className="material-symbols-outlined leading-none" style={{ fontSize: "16px" }}>auto_awesome</span>
-                </div>
-                <div className="rounded-2xl rounded-bl-md border border-slate-200/80 bg-white px-4 py-3 text-sm text-muted shadow-sm animate-pulse">
-                  {copy.generating}
-                </div>
-              </div>
-            )}
+            {loading && <AdvisoryTypingBubble label={copy.generating} />}
             <div ref={messagesEndRef} />
           </div>
 
@@ -2196,7 +2240,8 @@ function AIAdvisoryWorkspace({ d, initialQuestion }) {
               <button
                 key={prompt.id}
                 onClick={() => handleSend(prompt.label, prompt.id)}
-                className="shrink-0 rounded-full border border-slate-200 bg-white px-3 py-1.5 text-xs font-bold text-slate-600 transition-colors hover:border-[#154aa8]/30 hover:bg-[#154aa8]/5 hover:text-[#154aa8]"
+                disabled={loading}
+                className="shrink-0 rounded-full border border-slate-200 bg-white px-3 py-1.5 text-xs font-bold text-slate-600 transition-colors hover:border-[#154aa8]/30 hover:bg-[#154aa8]/5 hover:text-[#154aa8] disabled:cursor-not-allowed disabled:opacity-50"
               >
                 {prompt.label}
               </button>
@@ -2210,13 +2255,14 @@ function AIAdvisoryWorkspace({ d, initialQuestion }) {
               value={input}
               onChange={(e) => setInput(e.target.value)}
               onKeyDown={(e) => e.key === "Enter" && handleSend(input)}
+              disabled={loading}
               placeholder={copy.placeholder}
-              className="min-w-0 flex-1 rounded-xl border border-slate-200 bg-slate-50 px-4 py-3 text-sm text-slate-900 placeholder:text-slate-400 focus:outline-none focus:border-[#154aa8] focus:bg-white focus:ring-2 focus:ring-[#154aa8]/10 transition-all"
+              className="min-w-0 flex-1 rounded-xl border border-slate-200 bg-slate-50 px-4 py-3 text-sm text-slate-900 placeholder:text-slate-400 focus:outline-none focus:border-[#154aa8] focus:bg-white focus:ring-2 focus:ring-[#154aa8]/10 transition-all disabled:cursor-not-allowed disabled:text-slate-400"
             />
             <button
               onClick={() => handleSend(input)}
-              disabled={!input.trim()}
-              className="rounded-xl bg-[#154aa8] px-5 py-3 text-sm font-bold text-white shadow-sm transition-colors hover:bg-[#0f2f68] disabled:opacity-40"
+              disabled={loading || !input.trim()}
+              className="rounded-xl bg-[#154aa8] px-5 py-3 text-sm font-bold text-white shadow-sm transition-colors hover:bg-[#0f2f68] disabled:cursor-not-allowed disabled:opacity-40"
             >
               {copy.send}
             </button>

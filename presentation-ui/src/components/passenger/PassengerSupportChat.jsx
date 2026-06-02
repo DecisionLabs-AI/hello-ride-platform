@@ -126,7 +126,8 @@ export default function PassengerSupportChat() {
     const userLabel = option.title;
     setMessages((prev) => [...prev, { role: "user", text: userLabel }]);
     setTimeout(() => {
-      setMessages((prev) => [...prev, { role: "bot", text: getMenuResponse(option) }]);
+      const botText = getMenuResponse(option);
+      setMessages((prev) => [...prev, { role: "bot", text: botText }]);
     }, 400);
   }
 
